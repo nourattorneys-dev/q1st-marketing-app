@@ -10,8 +10,9 @@ export default defineConfig({
   use: { baseURL: BASE_URL, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    // A production build: it also proves the Cache Components rules hold.
-    command: `pnpm build && pnpm start -p ${E2E_PORT}`,
+    // A clean production build: it proves the Cache Components rules hold, and starting from an empty
+    // .next avoids an incremental build reusing stale compiled CSS (seen 2026-10-21 after a globals.css edit).
+    command: `rm -rf .next && pnpm build && pnpm start -p ${E2E_PORT}`,
     url: `${BASE_URL}/api/health`,
     reuseExistingServer: false,
     timeout: 300_000,
