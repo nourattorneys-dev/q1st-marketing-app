@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-const isoDateTime = z.iso.datetime({ offset: true });
+// ISO 8601 date-time; seconds are optional ("2026-10-22T10:00+04:00" is valid ISO and must not break a page).
+const isoDateTime = z.string().refine((value) => /\d{2}:\d{2}/.test(value) && !Number.isNaN(Date.parse(value)), {
+  message: "Expected an ISO 8601 date-time",
+});
 
 // ── Envelope (spec §3) ───────────────────────────────────────────────────────
 export const EngineErrorBodySchema = z.object({
@@ -87,6 +90,8 @@ export const SiteSchema = z.object({
 });
 export type Site = z.infer<typeof SiteSchema>;
 export const SitesSchema = z.array(SiteSchema);
+/** GET /sites read only for the site id, so a drift elsewhere in Site can't break every site-scoped call. */
+export const SiteRefsSchema = z.array(z.object({ id: z.string() }));
 
 // ── Plan & Quota (spec §4) ───────────────────────────────────────────────────
 export const QuotaSchema = z.object({

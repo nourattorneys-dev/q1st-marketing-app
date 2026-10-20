@@ -30,7 +30,7 @@ export function createMockFetch(options: MockOptions): FetchLike {
     const method = (init.method ?? "GET").toUpperCase();
 
     if (method === "GET" && path === "/meta") return ok(mockMeta());
-    if (method === "GET" && path === "/sites") return ok([mockSite()]);
+    if (method === "GET" && path === "/sites") return ok([scenario === "drift" ? driftedSite() : mockSite()]);
     if (method === "GET" && path === "/account/plan") return ok(mockPlan());
 
     const siteRoute = /^\/sites\/([^/]+)(\/.*)?$/.exec(path);

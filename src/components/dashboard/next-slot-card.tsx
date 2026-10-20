@@ -13,7 +13,7 @@ export async function NextSlotCard({ locale }: { locale: AppLocale }) {
   const t = await getTranslations("Dashboard.nextSlot");
   const engine = await getEngine();
   const [site, scheduled] = await Promise.all([
-    tryEngine(() => engine.site()),
+    tryEngine(() => engine.siteTimezone()),
     tryEngine(() => engine.scheduled({ pageSize: 5 })),
   ]);
 

@@ -79,6 +79,9 @@ test.describe("engine problems", () => {
     await setMockScenario(context, "drift");
     await page.goto("/en");
     await expect(page.getByTestId("engine-notice").first()).toHaveAttribute("data-code", "invalid_response");
+    await expect(page.getByTestId("engine-notice")).toHaveCount(1);
+    await expect(page.getByTestId("next-slot-time")).toBeVisible();
+    await expect(page.getByTestId("connection-linkedin")).toBeVisible();
     await expect(page.getByTestId("quota-articles")).toBeVisible();
   });
 });

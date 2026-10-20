@@ -142,6 +142,32 @@ describe("engine client", () => {
   });
 });
 
+describe("engine client timeouts", () => {
+  it("times out a hung read, retries it, then reports network_error", async () => {
+    let calls = 0;
+    const fetch: FetchLike = () => {
+      calls++;
+      return new Promise<Response>(() => {});
+    };
+    const client = createEngineClient({ ...config(fetch), timeoutMs: 20 });
+    const error = await failure(client.request({ method: "GET", path: "/x", schema: Thing }));
+    expect(error.code).toBe("network_error");
+    expect(calls).toBe(3);
+  });
+
+  it("aborts the hung request so the connection is released", async () => {
+    const signals: AbortSignal[] = [];
+    const fetch: FetchLike = (_url, init) => {
+      if (init.signal) signals.push(init.signal);
+      return new Promise<Response>(() => {});
+    };
+    const client = createEngineClient({ ...config(fetch), timeoutMs: 20 });
+    await failure(client.request({ method: "POST", path: "/x", schema: Thing, idempotencyKey: "k" }));
+    expect(signals).toHaveLength(1);
+    expect(signals[0].aborted).toBe(true);
+  });
+});
+
 describe("tryEngine", () => {
   it("wraps success", async () => {
     await expect(tryEngine(async () => 5)).resolves.toEqual({ ok: true, data: 5 });

@@ -8,12 +8,12 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
     cp .env.example .env.local
     pnpm dev            # http://localhost:3000 → /en
 
-- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, and a user with no role). Refused on Vercel.
+- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, and a user with no role). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
 
 ## Checks
 
-    pnpm lint && pnpm typecheck && pnpm test && pnpm e2e && pnpm build
+    pnpm lint && pnpm typecheck && pnpm test && pnpm e2e && ALLOW_TEST_LOGINS=1 pnpm build
 
 ## Docs
 
@@ -37,5 +37,7 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 - **Digits are Latin** in both languages, and **times are 12-hour in the site's timezone**.
 - **No database yet**; it arrives with webhooks in M4. Requiring two-factor login for the Admin also lands in M4, with real Clerk sign-in.
 - **TypeScript 5**, as pinned by the Next.js 16.4 template.
-- **Browser tests build from an empty `.next`.** An incremental build once reused stale compiled CSS.
+- **Browser tests build from an empty `.next`.** One incremental build shipped stale compiled CSS (2026-10-21); it could not be reproduced later, so normal builds keep Next's default build cache (`experimental.turbopackFileSystemCacheForBuild` can turn it off if it recurs).
+- **Engine requests time out after 10 s per attempt.** Reads retry twice, then show "can't be reached".
+- **Each dashboard section validates only the site fields it uses**, and `GET /sites` is read only for the site id, so one changed field can't blank the whole app.
 - **Browser tests match only visible elements after in-app navigation.** Next 16 keeps up to 3 previous pages in the page, hidden (React `<Activity>`).

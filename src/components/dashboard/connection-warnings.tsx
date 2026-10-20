@@ -12,7 +12,7 @@ export async function ConnectionWarnings({ locale }: { locale: AppLocale }) {
   const session = await requireSession(locale);
   const t = await getTranslations("Dashboard.connections");
   const engine = await getEngine();
-  const site = await tryEngine(() => engine.site());
+  const site = await tryEngine(() => engine.siteConnections());
 
   let body;
   if (!site.ok) body = <EngineNotice error={site.error} />;

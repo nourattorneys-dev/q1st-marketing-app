@@ -10,6 +10,8 @@ const EnvSchema = z.object({
   ENGINE_API_KEY: z.string().min(1).optional(),
   AUTH_MODE: z.enum(["mock", "clerk"]).default("mock"),
   VERCEL: z.string().optional(),
+  NODE_ENV: z.string().optional(),
+  ALLOW_TEST_LOGINS: z.string().optional(),
 });
 
 export type ServerEnv = {
@@ -25,8 +27,15 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
   );
   const env = EnvSchema.parse(cleaned);
 
-  if (env.AUTH_MODE === "mock" && env.VERCEL === "1") {
-    throw new Error("AUTH_MODE=mock is for local development only and is refused on Vercel. Set AUTH_MODE=clerk.");
+  if (env.AUTH_MODE === "mock") {
+    if (env.VERCEL === "1") {
+      throw new Error("AUTH_MODE=mock is for local development only and is refused on Vercel. Set AUTH_MODE=clerk.");
+    }
+    if (env.NODE_ENV === "production" && env.ALLOW_TEST_LOGINS !== "1") {
+      throw new Error(
+        "AUTH_MODE=mock is refused in production builds. Set AUTH_MODE=clerk, or ALLOW_TEST_LOGINS=1 for a local test build.",
+      );
+    }
   }
 
   if (env.ENGINE_MODE === "live") {

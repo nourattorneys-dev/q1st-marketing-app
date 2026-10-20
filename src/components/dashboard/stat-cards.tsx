@@ -11,7 +11,7 @@ export async function StatCards({ locale }: { locale: AppLocale }) {
   await requireSession(locale);
   const t = await getTranslations("Dashboard.stats");
   const engine = await getEngine();
-  const site = await tryEngine(() => engine.site());
+  const site = await tryEngine(() => engine.siteCounts());
   if (!site.ok) return <EngineNotice error={site.error} />;
 
   const { counts } = site.data;

@@ -20,6 +20,16 @@ describe("parseServerEnv", () => {
     expect(() => parseServerEnv({ VERCEL: "1" })).toThrow(/refused on Vercel/);
   });
 
+  it("refuses test logins in a production build unless explicitly allowed", () => {
+    expect(() => parseServerEnv({ NODE_ENV: "production" })).toThrow(/refused in production builds/);
+    expect(parseServerEnv({ NODE_ENV: "production", ALLOW_TEST_LOGINS: "1" }).authMode).toBe("mock");
+    expect(parseServerEnv({ NODE_ENV: "production", AUTH_MODE: "clerk" }).authMode).toBe("clerk");
+  });
+
+  it("never allows test logins on Vercel, even with the opt-in", () => {
+    expect(() => parseServerEnv({ NODE_ENV: "production", ALLOW_TEST_LOGINS: "1", VERCEL: "1" })).toThrow(/refused on Vercel/);
+  });
+
   it("allows Clerk on Vercel", () => {
     expect(parseServerEnv({ AUTH_MODE: "clerk", VERCEL: "1" }).authMode).toBe("clerk");
   });

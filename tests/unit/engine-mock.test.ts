@@ -79,9 +79,12 @@ describe("engine API over the mock engine", () => {
     expect((await failure(engine.plan())).code).toBe("network_error");
   });
 
-  it("simulates a changed response shape for the site only", async () => {
+  it("isolates a changed response shape to the data that changed, even when /sites drifts too", async () => {
     const { engine } = setup({ scenario: "drift" });
-    expect((await failure(engine.site())).code).toBe("invalid_response");
+    expect((await failure(engine.siteCounts())).code).toBe("invalid_response");
+    await expect(engine.siteTimezone()).resolves.toEqual({ timezone: "Asia/Dubai" });
+    await expect(engine.siteConnections()).resolves.toMatchObject({ connections: { linkedin: "expiring" } });
+    await expect(engine.scheduled()).resolves.toMatchObject({ autoPublish: true });
     await expect(engine.plan()).resolves.toMatchObject({ plan: { name: "Pro" } });
   });
 
@@ -94,6 +97,13 @@ describe("engine API over the mock engine", () => {
   it("only accepts known scenario names", () => {
     expect(isMockScenario("drift")).toBe(true);
     expect(isMockScenario("explode")).toBe(false);
+  });
+});
+
+describe("date-time fields", () => {
+  it("accept ISO 8601 times without seconds and reject non-dates", () => {
+    expect(ScheduledSchema.safeParse({ autoPublish: true, nextSlotAt: "2026-10-22T10:00+04:00", posts: [] }).success).toBe(true);
+    expect(ScheduledSchema.safeParse({ autoPublish: true, nextSlotAt: "tomorrow", posts: [] }).success).toBe(false);
   });
 });
 

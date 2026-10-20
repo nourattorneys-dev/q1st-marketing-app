@@ -22,3 +22,13 @@ test("the theme toggle switches and remembers the theme", async ({ page, context
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
+
+test("dark mode survives a language switch", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_reviewer");
+  await page.goto("/en");
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByTestId("locale-switch").click();
+  await expect(page).toHaveURL(/\/ar$/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});

@@ -11,6 +11,8 @@ export type EngineClientConfig = {
   fetch: FetchLike;
   /** Delays between read retries; reads are tried retryDelaysMs.length + 1 times. */
   retryDelaysMs?: readonly number[];
+  /** Per-attempt limit (request + body). A timed-out attempt counts as a network failure. */
+  timeoutMs?: number;
 };
 
 export type EngineRequest<S extends z.ZodType> = {
@@ -26,10 +28,12 @@ export type EngineRequest<S extends z.ZodType> = {
 export type EngineResponse<T> = { data: T; meta: ListMeta | null };
 
 const DEFAULT_RETRY_DELAYS_MS = [250, 750] as const;
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 export function createEngineClient(config: EngineClientConfig) {
   const base = config.baseUrl.replace(/\/+$/, "");
   const retryDelays = config.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+  const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   async function request<S extends z.ZodType>(req: EngineRequest<S>): Promise<EngineResponse<z.infer<S>>> {
     const url = new URL(base + req.path);
@@ -51,8 +55,10 @@ export function createEngineClient(config: EngineClientConfig) {
     const attempts = req.method === "GET" ? retryDelays.length + 1 : 1;
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await config.fetch(url.toString(), { method: req.method, headers, body, cache: "no-store" });
-        return await parseResponse(response, req.schema);
+        return await withTimeout(timeoutMs, async (signal) => {
+          const response = await config.fetch(url.toString(), { method: req.method, headers, body, cache: "no-store", signal });
+          return parseResponse(response, req.schema);
+        });
       } catch (error) {
         if (error instanceof EngineError) throw error;
         if (attempt >= attempts - 1) {
@@ -109,6 +115,23 @@ async function parseResponse<S extends z.ZodType>(response: Response, schema: S)
   }
 
   return { data: data.data, meta: envelope.data.meta ?? null };
+}
+
+/** Runs one attempt with an abort signal; rejects (and aborts) if it takes longer than `ms`. */
+async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Engine request timed out after ${ms} ms`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([run(controller.signal), timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function sleep(ms: number): Promise<void> {
