@@ -1,0 +1,72 @@
+{
+  "Meta": { "title": "Articles AI" },
+  "Shell": {
+    "brand": "Articles AI",
+    "nav": { "label": "القائمة الرئيسية", "dashboard": "لوحة التحكم" },
+    "role": { "admin": "مسؤول", "reviewer": "مراجع" },
+    "signOut": "تسجيل الخروج",
+    "language": "English",
+    "themeDark": "الوضع الداكن",
+    "themeLight": "الوضع الفاتح",
+    "loading": "جارٍ التحميل…"
+  },
+  "SignIn": {
+    "title": "تسجيل الدخول",
+    "devNotice": "حسابات تجريبية محلية. تعمل في بيئة التطوير فقط ويتم رفضها على Vercel.",
+    "signInAs": "الدخول باسم {name}"
+  },
+  "NoAccess": {
+    "title": "لا توجد صلاحية بعد",
+    "body": "لم يُمنح حسابك دوراً بعد. اطلب من المسؤول منحك الصلاحية."
+  },
+  "Dashboard": {
+    "title": "لوحة التحكم",
+    "stats": {
+      "suggestions": "أفكار المواضيع",
+      "pending": "بانتظار المراجعة",
+      "scheduled": "مجدولة",
+      "published": "منشورة",
+      "failed": "فشلت"
+    },
+    "nextSlot": {
+      "title": "موعد النشر التالي",
+      "off": "النشر التلقائي متوقف. لن يُنشر شيء حتى يضغط أحدهم «انشر الآن».",
+      "waiting": "لا يُنشر شيء الآن: {reason}",
+      "reasons": {
+        "outside_hours": "خارج ساعات النشر",
+        "daily_limit": "تم بلوغ حد اليوم",
+        "gap": "بانتظار الفاصل بين المنشورات",
+        "queue_empty": "قائمة الانتظار فارغة"
+      }
+    },
+    "connections": {
+      "title": "الاتصالات",
+      "allGood": "جميع الاتصالات تعمل.",
+      "names": { "website": "الموقع", "linkedin": "لينكدإن", "instagram": "إنستغرام", "searchConsole": "Search Console" },
+      "statuses": { "expiring": "تنتهي صلاحيته قريباً", "error": "لا يعمل", "missing": "غير متصل" },
+      "fixInSettings": "أصلح ذلك من الإعدادات.",
+      "askAdmin": "اطلب من المسؤول إصلاح ذلك."
+    },
+    "quota": {
+      "title": "الاستخدام الشهري",
+      "unlimited": "{used} مستخدم · بلا حد",
+      "usage": "{used} من {limit}",
+      "warning": "قريب من الحد الشهري",
+      "over": "تم بلوغ الحد الشهري",
+      "metrics": {
+        "articles": "المقالات",
+        "socialPosts": "منشورات التواصل",
+        "photos": "الصور",
+        "publishes": "عمليات النشر",
+        "siteScans": "فحوصات الموقع",
+        "aiTokens": "رموز الذكاء الاصطناعي",
+        "sites": "المواقع"
+      }
+    }
+  },
+  "Errors": {
+    "serviceUnavailable": "الخدمة غير متاحة، تواصل مع Quantum1st.",
+    "engineUnreachable": "تعذّر الوصول إلى محرك المحتوى الآن. حاول مرة أخرى بعد قليل.",
+    "engineInvalid": "أرسل محرك المحتوى بيانات بصيغة غير متوقعة. تواصل مع Quantum1st إذا استمر ذلك."
+  }
+}

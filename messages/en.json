@@ -1,0 +1,72 @@
+{
+  "Meta": { "title": "Articles AI" },
+  "Shell": {
+    "brand": "Articles AI",
+    "nav": { "label": "Main", "dashboard": "Dashboard" },
+    "role": { "admin": "Admin", "reviewer": "Reviewer" },
+    "signOut": "Sign out",
+    "language": "العربية",
+    "themeDark": "Dark mode",
+    "themeLight": "Light mode",
+    "loading": "Loading…"
+  },
+  "SignIn": {
+    "title": "Sign in",
+    "devNotice": "Local test logins. They only work in development and are refused on Vercel.",
+    "signInAs": "Sign in as {name}"
+  },
+  "NoAccess": {
+    "title": "No access yet",
+    "body": "Your account doesn't have a role yet. Ask your admin to give you access."
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "suggestions": "Topic ideas",
+      "pending": "Waiting for review",
+      "scheduled": "Scheduled",
+      "published": "Published",
+      "failed": "Failed"
+    },
+    "nextSlot": {
+      "title": "Next publish slot",
+      "off": "Auto-publish is off. Nothing goes out until someone presses Publish now.",
+      "waiting": "Nothing is going out: {reason}",
+      "reasons": {
+        "outside_hours": "outside publishing hours",
+        "daily_limit": "today's limit is reached",
+        "gap": "waiting for the gap between posts",
+        "queue_empty": "the queue is empty"
+      }
+    },
+    "connections": {
+      "title": "Connections",
+      "allGood": "All connections are working.",
+      "names": { "website": "Website", "linkedin": "LinkedIn", "instagram": "Instagram", "searchConsole": "Search Console" },
+      "statuses": { "expiring": "expiring soon", "error": "not working", "missing": "not connected" },
+      "fixInSettings": "Fix this in Settings.",
+      "askAdmin": "Ask your admin to fix this."
+    },
+    "quota": {
+      "title": "Monthly usage",
+      "unlimited": "{used} used · unlimited",
+      "usage": "{used} of {limit}",
+      "warning": "Close to the monthly limit",
+      "over": "Monthly limit reached",
+      "metrics": {
+        "articles": "Articles",
+        "socialPosts": "Social posts",
+        "photos": "Photos",
+        "publishes": "Publishes",
+        "siteScans": "Site scans",
+        "aiTokens": "AI tokens",
+        "sites": "Sites"
+      }
+    }
+  },
+  "Errors": {
+    "serviceUnavailable": "Service unavailable, contact Quantum1st.",
+    "engineUnreachable": "The content engine can't be reached right now. Try again shortly.",
+    "engineInvalid": "The content engine sent data in an unexpected format. Contact Quantum1st if this continues."
+  }
+}
