@@ -5,6 +5,7 @@ import { serverEnv } from "@/lib/env";
 import { createEngineApi } from "./api";
 import { createEngineClient, type FetchLike } from "./client";
 import { createMockFetch, isMockScenario, MOCK_SCENARIO_COOKIE } from "./mock/server";
+import { MOCK_STORE_COOKIE, mockStoreFor } from "./mock/registry";
 
 /** One engine API per request. Call only inside a component rendered under <Suspense>. */
 export const getEngine = cache(async () => {
@@ -12,11 +13,13 @@ export const getEngine = cache(async () => {
   let fetchImpl: FetchLike;
 
   if (env.engineMode === "mock") {
-    const scenario = (await cookies()).get(MOCK_SCENARIO_COOKIE)?.value;
+    const jar = await cookies();
+    const scenario = jar.get(MOCK_SCENARIO_COOKIE)?.value;
     fetchImpl = createMockFetch({
       baseUrl: env.engineBaseUrl,
       apiKey: env.engineApiKey,
       scenario: isMockScenario(scenario) ? scenario : "normal",
+      store: mockStoreFor(jar.get(MOCK_STORE_COOKIE)?.value),
     });
   } else {
     fetchImpl = (input, init) => fetch(input, init);
