@@ -1,7 +1,7 @@
 "use client";
 
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { editorExtensions } from "./extensions";
@@ -10,6 +10,11 @@ type Props = { initialHtml: string; editable: boolean; dir: "ltr" | "rtl"; lang:
 
 export function RichText({ initialHtml, editable, dir, lang, label, onChange }: Props) {
   const t = useTranslations("Editor.toolbar");
+  // TipTap rewrites engine HTML into its own form (e.g. <li>text</li> becomes <li><p>text</p></li>), so "changed"
+  // is measured against the editor's form of what it loaded, and an unchanged document reports the HTML it was given.
+  // initialHtml follows the form as the reviewer types; the editor remounts (key) whenever new content is loaded.
+  const original = useRef(initialHtml);
+  const loaded = useRef<string | null>(null);
   const editor = useEditor({
     extensions: editorExtensions,
     content: initialHtml,
@@ -24,11 +29,17 @@ export function RichText({ initialHtml, editable, dir, lang, label, onChange }: 
         class: "prose-article min-h-64 rounded-md border border-input bg-card p-4 focus:outline-none",
       },
     },
-    onUpdate: ({ editor: current }) => onChange(current.getHTML()),
+    onCreate: ({ editor: current }) => {
+      loaded.current = current.getHTML();
+    },
+    onUpdate: ({ editor: current }) => {
+      const html = current.getHTML();
+      onChange(html === loaded.current ? original.current : html);
+    },
   });
 
   useEffect(() => {
-    editor?.setEditable(editable);
+    editor?.setEditable(editable, false); // a lock change isn't an edit: don't emit an update
   }, [editor, editable]);
 
   if (!editor) return <div className="min-h-64 rounded-md border border-input bg-card" aria-hidden="true" />;

@@ -17,6 +17,17 @@ test("opens a post from the queue and saves a change", async ({ page }) => {
   await expect(page.getByTestId("field-title")).toHaveValue("Commission rules in the UAE");
 });
 
+test("opening an article with lists isn't an edit, and undoing an edit clears it", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await expect(page.getByTestId("editor-body")).toContainText("The employee's performance");
+  await expect(page.getByTestId("save")).toBeDisabled();
+  await page.getByTestId("editor-body").click();
+  await page.keyboard.type("x");
+  await expect(page.getByTestId("save")).toBeEnabled();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.getByTestId("save")).toBeDisabled();
+});
+
 test("a second tab's save shows a conflict instead of overwriting (Review Focus 2)", async ({ page, context }) => {
   await page.goto("/en/review/p_201");
   const other = await context.newPage();
