@@ -68,7 +68,8 @@
         "missing": "not connected"
       },
       "fixInSettings": "Fix this in Settings.",
-      "askAdmin": "Ask your admin to fix this."
+      "askAdmin": "Ask your admin to fix this.",
+      "fix": "Fix"
     },
     "quota": {
       "title": "Monthly usage",
@@ -582,5 +583,16 @@
       "connected": "{platform} connected.",
       "unsafeAddress": "The content engine sent a sign-in address the portal won't open. Contact Quantum1st."
     }
+  },
+  "NotConnected": {
+    "message": "{name} isn't connected, so this can't be published.",
+    "names": {
+      "website": "The website",
+      "linkedin": "LinkedIn",
+      "instagram": "Instagram",
+      "searchConsole": "Google Search Console"
+    },
+    "fix": "Fix the connection in Settings",
+    "askAdmin": "Ask your admin to connect it."
   }
 }

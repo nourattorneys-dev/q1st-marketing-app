@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { connectionWarnings } from "@/lib/dashboard/connections";
+import { connectionWarnings, settingsPageFor } from "@/lib/dashboard/connections";
 import { nextSlotView } from "@/lib/dashboard/next-slot";
 import { quotaView } from "@/lib/dashboard/quota";
 
@@ -81,5 +81,17 @@ describe("nextSlotView", () => {
   it("passes the engine's waiting reason through, even an unknown one", () => {
     expect(nextSlotView({ autoPublish: true, nextSlotAt: null, waitingReason: "holiday" })).toEqual({ kind: "waiting", reason: "holiday" });
     expect(nextSlotView({ autoPublish: true })).toEqual({ kind: "waiting", reason: "queue_empty" });
+  });
+});
+
+describe("settingsPageFor (design §9 not_connected, M1 follow-up)", () => {
+  it("sends the website connection to its own page and every account to Social accounts", () => {
+    expect(["website", "linkedin", "instagram", "searchConsole", "tiktok"].map(settingsPageFor)).toEqual([
+      "/settings/website",
+      "/settings/social",
+      "/settings/social",
+      "/settings/social",
+      "/settings/social",
+    ]);
   });
 });

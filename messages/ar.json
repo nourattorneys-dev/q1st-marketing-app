@@ -68,7 +68,8 @@
         "missing": "غير متصل"
       },
       "fixInSettings": "أصلح ذلك من الإعدادات.",
-      "askAdmin": "اطلب من المسؤول إصلاح ذلك."
+      "askAdmin": "اطلب من المسؤول إصلاح ذلك.",
+      "fix": "إصلاح"
     },
     "quota": {
       "title": "الاستخدام الشهري",
@@ -582,5 +583,16 @@
       "connected": "تم ربط {platform}.",
       "unsafeAddress": "أرسل محرك المحتوى عنوان تسجيل دخول لن تفتحه البوابة. تواصل مع Quantum1st."
     }
+  },
+  "NotConnected": {
+    "message": "{name} غير متصل، لذا لا يمكن نشر هذا.",
+    "names": {
+      "website": "الموقع",
+      "linkedin": "لينكدإن",
+      "instagram": "إنستغرام",
+      "searchConsole": "Google Search Console"
+    },
+    "fix": "أصلح الاتصال من الإعدادات",
+    "askAdmin": "اطلب من المسؤول ربطه."
   }
 }

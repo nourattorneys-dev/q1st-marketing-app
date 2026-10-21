@@ -27,7 +27,7 @@ export type HistoryEntry = {
 };
 
 /** Spec v1.1 §6 /history: live URL, publish time, platform, target, override reason and error; Retry for failed posts. */
-export function HistoryBoard({ locale, entries }: { locale: string; entries: HistoryEntry[] }) {
+export function HistoryBoard({ locale, entries, canManageSettings }: { locale: string; entries: HistoryEntry[]; canManageSettings: boolean }) {
   const t = useTranslations("History");
   const tReview = useTranslations("Review");
   const tStatus = useTranslations("Editor.status");
@@ -104,7 +104,7 @@ export function HistoryBoard({ locale, entries }: { locale: string; entries: His
               </Button>
             </div>
           )}
-          {errors[entry.id] && <ActionError error={errors[entry.id]} />}
+          {errors[entry.id] && <ActionError error={errors[entry.id]} canManageSettings={canManageSettings} />}
         </li>
       ))}
     </ul>

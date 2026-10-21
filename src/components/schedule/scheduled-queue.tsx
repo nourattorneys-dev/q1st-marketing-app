@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { EngineNotice } from "@/components/dashboard/engine-notice";
 import { SkippedNote } from "@/components/lists/skipped-note";
 import type { AppLocale } from "@/i18n/locales";
+import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { nextSlotView } from "@/lib/dashboard/next-slot";
 import { getEngine } from "@/lib/engine";
@@ -12,7 +13,7 @@ import { ScheduleBoard, type QueueItem } from "./schedule-board";
 
 /** Spec v1.1 §6 /scheduled: the banner (auto-publish state and next slot, or why nothing is going out) and the queue. */
 export async function ScheduledQueue({ locale }: { locale: AppLocale }) {
-  await requirePermission(locale, "content.work");
+  const session = await requirePermission(locale, "content.work");
   const t = await getTranslations("Scheduled");
   const tSlot = await getTranslations("Dashboard.nextSlot");
   const engine = await getEngine();
@@ -50,7 +51,7 @@ export async function ScheduledQueue({ locale }: { locale: AppLocale }) {
         {banner}
       </p>
       <SkippedNote count={scheduled.data.skipped} />
-      <ScheduleBoard locale={locale} items={items} />
+      <ScheduleBoard locale={locale} items={items} canManageSettings={can(session.role, "settings.manage")} />
     </div>
   );
 }

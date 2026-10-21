@@ -27,10 +27,11 @@ type Props = {
   pollSeconds: number;
   lockedBy: string | null;
   onLocked: (by: string) => void;
+  canManageSettings: boolean;
 };
 
 /** Buttons come from post.actions (spec v1.1 §5); approval and publishing follow the findings. Nothing runs while someone else holds the lock. */
-export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked }: Props) {
+export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked, canManageSettings }: Props) {
   const t = useTranslations("Editor");
   const router = useRouter();
   const approve = useEngineAction(approvePostAction);
@@ -128,6 +129,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             confirmLabel={t("publishNow")}
             pending={publish.pending}
             onConfirm={publishPost}
+            canManageSettings={canManageSettings}
           />
         )}
         {allowed.has("changes") && (
@@ -183,7 +185,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
       {(allowed.has("approve") || allowed.has("publishNow")) && mode !== "blocked" && dirty && (
         <p className="text-sm text-muted-foreground">{t("saveFirst")}</p>
       )}
-      {error && <ActionError error={error} />}
+      {error && <ActionError error={error} canManageSettings={canManageSettings} />}
     </div>
   );
 }

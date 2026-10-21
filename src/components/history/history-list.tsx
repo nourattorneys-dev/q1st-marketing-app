@@ -4,6 +4,7 @@ import { Pager } from "@/components/lists/pager";
 import { SkippedNote } from "@/components/lists/skipped-note";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/locales";
+import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
@@ -15,7 +16,7 @@ type Props = { locale: AppLocale; searchParams: Promise<Record<string, string | 
 
 /** Spec v1.1 §6 /history: published, failed and rejected posts, newest first, a page at a time. */
 export async function HistoryList({ locale, searchParams }: Props) {
-  await requirePermission(locale, "content.work");
+  const session = await requirePermission(locale, "content.work");
   const page = requestedPage((await searchParams).page);
   const t = await getTranslations("History");
   const tLists = await getTranslations("Lists");
@@ -76,7 +77,7 @@ export async function HistoryList({ locale, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <SkippedNote count={list.data.skipped} />
-      <HistoryBoard locale={locale} entries={entries} />
+      <HistoryBoard locale={locale} entries={entries} canManageSettings={can(session.role, "settings.manage")} />
       <Pager pathname="/history" page={page} pages={pageCount(list.data.meta)} />
     </div>
   );

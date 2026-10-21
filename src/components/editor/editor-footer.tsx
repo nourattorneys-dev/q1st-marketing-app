@@ -16,9 +16,10 @@ export type EditorFooterProps = {
   pollSeconds: number;
   lockedBy: string | null;
   onLocked: (by: string) => void;
+  canManageSettings: boolean;
 };
 
-export function EditorFooter({ locale, post, dirty, editable, saving, onSave, pollSeconds, lockedBy, onLocked }: EditorFooterProps) {
+export function EditorFooter({ locale, post, dirty, editable, saving, onSave, pollSeconds, lockedBy, onLocked, canManageSettings }: EditorFooterProps) {
   const t = useTranslations("Editor");
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -33,7 +34,7 @@ export function EditorFooter({ locale, post, dirty, editable, saving, onSave, po
           <ExportButtons locale={locale} postId={post.id} />
         </div>
       </div>
-      <ActionBar locale={locale} post={post} dirty={dirty} pollSeconds={pollSeconds} lockedBy={lockedBy} onLocked={onLocked} />
+      <ActionBar locale={locale} post={post} dirty={dirty} pollSeconds={pollSeconds} lockedBy={lockedBy} onLocked={onLocked} canManageSettings={canManageSettings} />
     </div>
   );
 }

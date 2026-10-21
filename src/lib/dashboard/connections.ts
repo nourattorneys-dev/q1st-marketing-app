@@ -16,3 +16,6 @@ export function connectionWarnings(connections: Site["connections"]): { key: Con
     return status && status !== "ok" ? [{ key, status }] : [];
   });
 }
+
+/** The settings page that fixes a connection (design §9 not_connected; M1 follow-up: warnings link to Settings). */
+export const settingsPageFor = (connection: string) => (connection === "website" ? "/settings/website" : "/settings/social");

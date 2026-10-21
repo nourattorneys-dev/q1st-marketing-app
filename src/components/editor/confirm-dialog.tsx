@@ -29,9 +29,11 @@ type Props = {
   note?: { label: string; required: boolean };
   pending: boolean;
   onConfirm: (note: string) => Promise<EngineFailure | null>;
+  /** A not_connected refusal links an admin to Settings (design §9). */
+  canManageSettings?: boolean;
 };
 
-export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm }: Props) {
+export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm, canManageSettings }: Props) {
   const t = useTranslations("Editor");
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -71,7 +73,7 @@ export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline"
             <Textarea id={`${testId}-note`} data-testid={`${testId}-note`} rows={3} value={text} onChange={(event) => setText(event.target.value)} />
           </div>
         )}
-        {error && <ActionError error={error} />}
+        {error && <ActionError error={error} canManageSettings={canManageSettings} />}
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">{t("cancel")}</Button>

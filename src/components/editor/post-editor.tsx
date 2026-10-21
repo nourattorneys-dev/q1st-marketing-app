@@ -38,11 +38,12 @@ type Props = {
   categories: Category[];
   lockMinutes: number;
   pollSeconds: number;
+  canManageSettings: boolean;
 };
 
 const parseHashtags = (text: string) => text.split(",").map((tag) => tag.trim()).filter(Boolean);
 
-export function PostEditor({ locale, post, twin, limits, photoLimits, categories, lockMinutes, pollSeconds }: Props) {
+export function PostEditor({ locale, post, twin, limits, photoLimits, categories, lockMinutes, pollSeconds, canManageSettings }: Props) {
   const t = useTranslations("Editor");
   const [saved, setSaved] = useState<Post | null>(null);
   // The newest version wins for status, checks and actions: my last save, or what the server re-rendered after refresh().
@@ -328,6 +329,7 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
         pollSeconds={pollSeconds}
         lockedBy={lockedBy}
         onLocked={setLockedBy}
+        canManageSettings={canManageSettings}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { SectionSkeleton } from "@/components/dashboard/section-skeleton";
 import { PostEditor } from "@/components/editor/post-editor";
 import { Link } from "@/i18n/navigation";
 import { asAppLocale } from "@/i18n/locales";
+import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine, type EngineFailure } from "@/lib/engine/result";
@@ -22,7 +23,7 @@ async function EditorLoader({ params }: { params: Promise<{ locale: string; post
   const { locale: rawLocale, postId } = await params;
   const locale = asAppLocale(rawLocale);
   setRequestLocale(locale);
-  await requirePermission(locale, "content.work");
+  const session = await requirePermission(locale, "content.work");
   const t = await getTranslations("Editor");
   const engine = await getEngine();
 
@@ -55,6 +56,7 @@ async function EditorLoader({ params }: { params: Promise<{ locale: string; post
       categories={categories.ok ? categories.data : []}
       lockMinutes={meta.data.limits.lockMinutes}
       pollSeconds={meta.data.pollSeconds}
+      canManageSettings={can(session.role, "settings.manage")}
     />
   );
 }

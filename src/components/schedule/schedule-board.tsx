@@ -25,7 +25,7 @@ export type QueueItem = {
 };
 
 /** Spec v1.1 §6 /scheduled: the queue in order; hold, resume and publish now, one by one or in bulk. */
-export function ScheduleBoard({ locale, items }: { locale: string; items: QueueItem[] }) {
+export function ScheduleBoard({ locale, items, canManageSettings }: { locale: string; items: QueueItem[]; canManageSettings: boolean }) {
   const t = useTranslations("Scheduled");
   const tReview = useTranslations("Review");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -85,8 +85,9 @@ export function ScheduleBoard({ locale, items }: { locale: string; items: QueueI
         confirmLabel={t("publishNow")}
         pending={bulk.pending}
         onConfirm={publishSelected}
+        canManageSettings={canManageSettings}
       />
-      {error && <ActionError error={error} />}
+      {error && <ActionError error={error} canManageSettings={canManageSettings} />}
       {failures.length > 0 && (
         <div role="alert" data-testid="bulk-failures" className="rounded-md bg-bad-bg p-3 text-sm text-bad-fg">
           <p className="font-medium">{t("bulkFailed")}</p>
@@ -156,6 +157,7 @@ export function ScheduleBoard({ locale, items }: { locale: string; items: QueueI
                 confirmLabel={t("publishNow")}
                 pending={publish.pending}
                 onConfirm={publishOne(item.id)}
+                canManageSettings={canManageSettings}
               />
             )}
           </li>
