@@ -10,7 +10,8 @@
       "review": "Review",
       "scheduled": "Scheduled",
       "history": "History",
-      "keywords": "Keywords"
+      "keywords": "Keywords",
+      "ideas": "Topic ideas"
     },
     "role": {
       "admin": "Admin",
@@ -360,6 +361,40 @@
       "submit": "Propose",
       "running": "Proposing keywords…",
       "ready": "New keywords are in the New tab."
+    }
+  },
+  "Ideas": {
+    "title": "Topic ideas",
+    "empty": "No topic ideas yet. Propose topics from Keywords, or start a new request.",
+    "why": "Why: {why}",
+    "statuses": {
+      "drafting": "Drafting…",
+      "drafted": "Drafted"
+    },
+    "openDraft": "Open draft {n}",
+    "select": "Select “{title}”",
+    "draft": "Draft",
+    "draftTitle": "Draft this topic?",
+    "draftBody": "Choose the language. Both languages makes an English and an Arabic version that are linked.",
+    "draftConfirm": "Start drafting",
+    "dismiss": "Dismiss",
+    "draftSelected": "Draft selected ({count})",
+    "dismissSelected": "Dismiss selected ({count})",
+    "bulkFailed": "Not done:",
+    "request": {
+      "title": "New request",
+      "hint": "Ask for an article or a social post on any topic.",
+      "topic": "Topic",
+      "kind": "Type",
+      "platform": "Platform",
+      "language": "Language",
+      "tone": "Tone (optional)",
+      "keywords": "Keywords (optional)",
+      "keywordsHint": "Separate them with commas. Leave empty and the engine proposes them.",
+      "submit": "Start drafting",
+      "started": "{count, plural, one {Drafting {n} post. It will appear in Review.} other {Drafting {n} posts. They will appear in Review.}}",
+      "openReview": "Open Review",
+      "running": "Drafting…"
     }
   }
 }

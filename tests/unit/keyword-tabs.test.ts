@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftLanguageOptions } from "@/lib/drafting/choices";
+import { draftLanguageOptions, platformsFor } from "@/lib/drafting/choices";
 import { keywordTab, tabActions, tabStatuses } from "@/lib/keywords/tabs";
 
 describe("keyword tabs (spec v1.1 §6 /keywords)", () => {
@@ -27,5 +27,12 @@ describe("keyword tabs (spec v1.1 §6 /keywords)", () => {
 describe("drafting languages (spec v1.1 §6: en, ar or both)", () => {
   it("adds both only when the site has more than one language", () => {
     expect([draftLanguageOptions(["en", "ar"]), draftLanguageOptions(["en"])]).toEqual([["en", "ar", "both"], ["en"]]);
+  });
+});
+
+describe("new-request platforms (spec v1.1 §4 Post.platform)", () => {
+  it("sends an article to the website and a social post to a social platform", () => {
+    const platforms = ["website", "linkedin", "instagram"];
+    expect([platformsFor("blog", platforms), platformsFor("social", platforms)]).toEqual([["website"], ["linkedin", "instagram"]]);
   });
 });
