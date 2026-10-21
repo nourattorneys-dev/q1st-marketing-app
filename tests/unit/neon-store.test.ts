@@ -43,4 +43,12 @@ describe("the Neon store's SQL (DB_MODE=neon)", () => {
     expect(sent).toMatch(/"sent_at" is not null/);
     expect(sent).toMatch(/"sent_at" < \$\d+/);
   });
+
+  it("records deliveries per person without duplicates, reads them by event, and forgets old ones (final review)", () => {
+    const record = queries.recordDelivery(db, ["evt_1", "evt_2"], "a@example.com", AT).toSQL();
+    expect(record.sql).toMatch(/^insert into "notification_deliveries"/);
+    expect(record.sql).toMatch(/on conflict do nothing$/);
+    expect(queries.deliveries(db, ["evt_1", "evt_2"]).toSQL().sql).toMatch(/"event_id" in \(\$\d+, \$\d+\)/);
+    expect(queries.forgetDeliveries(db, AT).toSQL().sql).toMatch(/^delete from "notification_deliveries" where "notification_deliveries"\."sent_at" < \$1/);
+  });
 });

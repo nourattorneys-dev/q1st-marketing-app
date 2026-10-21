@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { notificationFor, WEBHOOK_EVENTS } from "@/lib/webhooks/events";
 import { decryptSecret, encryptSecret, secretKeyFor } from "@/lib/webhooks/secret";
 import { signBody, verifySignature } from "@/lib/webhooks/signature";
@@ -85,6 +85,25 @@ describe("which events email whom (design §10)", () => {
     expect(notificationFor("evt_8", envelope("post.published", { postId: "p_1", url: "https://x.example", platform: "blog" }), NOW)).toBeNull();
     expect(notificationFor("evt_9", envelope("something.new", {}), NOW)).toBeNull();
     expect(notificationFor("evt_10", envelope("post.drafted", { id: 5 }), NOW)).toBeNull();
+  });
+
+  it("tells the Admin about a failed post whatever shape its error has (final review)", () => {
+    const long = "x".repeat(800);
+    for (const error of [long, { code: "publish_failed" }, { message: `<html>${long}</html>` }, null, undefined, 42]) {
+      const notification = notificationFor("evt_f", envelope("post.failed", { postId: "p_9", error }), NOW);
+      expect(notification).toMatchObject({ kind: "failed", audience: "admins", data: { postId: "p_9" } });
+      expect(String(notification?.data.error ?? "").length).toBeLessThanOrEqual(500);
+    }
+  });
+
+  it("says so in the server log when an email-worthy delivery is dropped for its data's shape (final review)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(notificationFor("evt_11", envelope("post.drafted", { id: 5 }), NOW)).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("post.drafted"));
+    warn.mockClear();
+    expect(notificationFor("evt_12", envelope("connection.changed", { type: "website", status: "ok" }), NOW)).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

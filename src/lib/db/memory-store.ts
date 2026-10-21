@@ -15,6 +15,7 @@ export function createMemoryStore(): AppStore {
   const events = new Map<string, { event: string; receivedAt: Date }>();
   const notifications = new Map<string, Logged>();
   const emailOff = new Set<string>();
+  const deliveries = new Map<string, Map<string, Date>>();
   let webhook: WebhookConfig | null = null;
 
   return {
@@ -60,9 +61,30 @@ export function createMemoryStore(): AppStore {
       }
     },
 
+    async deliveries(eventIds) {
+      const found = new Map<string, Set<string>>();
+      for (const id of eventIds) {
+        const people = deliveries.get(id);
+        if (people && people.size > 0) found.set(id, new Set(people.keys()));
+      }
+      return found;
+    },
+
+    async recordDelivery(eventIds, email, at) {
+      for (const id of eventIds) {
+        const people = deliveries.get(id) ?? new Map<string, Date>();
+        if (!people.has(email)) people.set(email, new Date(at));
+        deliveries.set(id, people);
+      }
+    },
+
     async forgetBefore(cutoff) {
       for (const [id, event] of events) if (event.receivedAt < cutoff) events.delete(id);
       for (const [id, item] of notifications) if (item.sentAt && item.sentAt < cutoff) notifications.delete(id);
+      for (const [id, people] of deliveries) {
+        for (const [email, sentAt] of people) if (sentAt < cutoff) people.delete(email);
+        if (people.size === 0) deliveries.delete(id);
+      }
     },
 
     async emailOffUsers() {

@@ -179,15 +179,44 @@ describe("flushNotifications", () => {
     expect(await flushNotifications(options(store, mailer, 400))).toEqual({ batches: 0, emails: 0, failed: 0 });
   });
 
-  it("keeps a batch pending when an email fails; the retry reuses the same keys, so nobody gets it twice (Review Focus 2)", async () => {
+  it("keeps a batch pending when an email fails; the retry emails only the person it missed, with the same key (Review Focus 2)", async () => {
     const store = await seeded();
     const first = fakeMailer((to) => to === "admin2@example.com");
     expect(await flushNotifications(options(store, first.mailer, 200))).toEqual({ batches: 2, emails: 2, failed: 1 });
     expect((await store.pendingNotifications()).map((n) => n.eventId)).toEqual(["e4"]);
     const second = fakeMailer();
+    expect(await flushNotifications(options(store, second.mailer, 500))).toEqual({ batches: 1, emails: 1, failed: 0 });
+    expect(second.attempts.map((email) => email.to)).toEqual(["admin2@example.com"]);
+    const keyFor = (attempts: Email[], to: string) => attempts.find((email) => email.to === to)?.idempotencyKey;
+    expect(keyFor(second.attempts, "admin2@example.com")).toBe(keyFor(first.attempts, "admin2@example.com"));
+    expect(await store.pendingNotifications()).toEqual([]);
+  });
+
+  it("a retry after new items arrived sends each person only what's new to them (final review; Review Focus 2)", async () => {
+    const store = await seeded();
+    const first = fakeMailer((to) => to === "admin2@example.com");
+    await flushNotifications(options(store, first.mailer, 200));
+    await store.recordEvent({ id: "e5", event: "post.failed", receivedAt: at(300) }, item("e5", "failed", "admins", { postId: "p_5", error: null }, 300));
+    const second = fakeMailer();
     expect(await flushNotifications(options(store, second.mailer, 500))).toEqual({ batches: 1, emails: 2, failed: 0 });
-    const adminKeys = (attempts: Email[]) => attempts.filter((email) => email.to.startsWith("admin")).map((email) => email.idempotencyKey);
-    expect(adminKeys(second.attempts)).toEqual(adminKeys(first.attempts));
+    expect(second.attempts.map((email) => email.to)).toEqual(["admin@example.com", "admin2@example.com"]);
+    expect(second.attempts[0].text).toContain("1 post failed to publish");
+    expect(second.attempts[1].text).toContain("2 posts failed to publish");
+    expect(await store.pendingNotifications()).toEqual([]);
+  });
+
+  it("stops waiting for someone it can't reach after a day, without emailing anyone else again (final review)", async () => {
+    const store = await seeded();
+    const failing = () => fakeMailer((to) => to === "admin2@example.com");
+    await flushNotifications(options(store, failing().mailer, 200));
+    const later = failing();
+    expect(await flushNotifications(options(store, later.mailer, 3600))).toEqual({ batches: 1, emails: 0, failed: 1 });
+    expect(later.attempts.map((email) => email.to)).toEqual(["admin2@example.com"]);
+    expect((await store.pendingNotifications()).map((n) => n.eventId)).toEqual(["e4"]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await flushNotifications(options(store, failing().mailer, 25 * 3600))).toEqual({ batches: 1, emails: 0, failed: 1 });
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
     expect(await store.pendingNotifications()).toEqual([]);
   });
 

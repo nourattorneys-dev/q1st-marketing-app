@@ -50,7 +50,7 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
    - `EMAIL_MODE=resend`
    - `RESEND_API_KEY`
    - `EMAIL_FROM` (for example `Articles AI <notifications@notifications.fakhernco.com>`)
-3. **Cron:** set `CRON_SECRET` (a long random string). `vercel.json` calls `/api/cron/notifications` every 5 minutes, which needs Vercel Pro; on Hobby, crons run at most once a day.
+3. **Cron:** set `CRON_SECRET` (a long random string). `vercel.json` calls `/api/cron/notifications` every 15 minutes. That needs Vercel Pro: on Hobby a cron that runs more than once a day makes the deployment fail. Every 15 minutes lets Neon's database sleep between runs, so the Free plan's monthly compute lasts the month; every 5 minutes would keep it awake and use it up by mid-month.
 4. **Webhook:** after deploying, open **Settings → Webhook** on the production address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted. A preview deployment that does the same takes the webhook over (one webhook per site): set it up again on production afterwards.
 
 ## Decisions in M1
@@ -195,8 +195,8 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
   - The page says when the webhook points at another address, or when this server can't read its secret (a changed `WEBHOOK_ENCRYPTION_KEY`).
 - **Emails** (design §10):
   - **Who gets what:** drafts go to Reviewers (to the Admins when there are no Reviewers). Failed posts, connections that stop working or are about to expire, quota warnings and finished site scans go to the Admins.
-  - **Batching:** a batch goes out as one email per person, English then Arabic, once nothing new has arrived for 2 minutes. The cron runs every 5 minutes.
-  - **Retries:** a failed send is retried on the next run. Resend's idempotency key keeps anyone from getting it twice.
+  - **Batching:** a batch goes out as one email per person, English then Arabic, once nothing new has arrived for 2 minutes. The cron runs every 15 minutes (Neon's Free plan).
+  - **Retries:** each person gets only the items they haven't had yet, so a failed send is retried on the next run without emailing anyone twice. After a day of failing for someone, the batch stops waiting for them (logged).
   - **Each person's setting:** everyone can turn their emails off on the Email notifications page.
 - **Not built:**
   - **Badges from webhooks:** every list and the dashboard read the engine when they open, so their counts are current.

@@ -5,7 +5,7 @@ import type { AppStore, StoredNotification, WebhookConfig } from "./store";
 
 export type Db = NeonHttpDatabase<typeof schema>;
 const WEBHOOK_ROW = 1;
-const { webhookEvents, webhookConfig, notifications, notificationPrefs } = schema;
+const { webhookEvents, webhookConfig, notifications, notificationDeliveries, notificationPrefs } = schema;
 
 /** The queries, kept apart from running them so tests can read the SQL they make (no database runs locally). */
 export const queries = {
@@ -29,6 +29,17 @@ export const queries = {
       .update(notifications)
       .set({ sentAt: at, recipients })
       .where(and(inArray(notifications.eventId, eventIds), isNull(notifications.sentAt))),
+  deliveries: (db: Db, eventIds: string[]) =>
+    db
+      .select({ eventId: notificationDeliveries.eventId, email: notificationDeliveries.email })
+      .from(notificationDeliveries)
+      .where(inArray(notificationDeliveries.eventId, eventIds)),
+  recordDelivery: (db: Db, eventIds: string[], email: string, at: Date) =>
+    db
+      .insert(notificationDeliveries)
+      .values(eventIds.map((eventId) => ({ eventId, email, sentAt: at })))
+      .onConflictDoNothing(),
+  forgetDeliveries: (db: Db, cutoff: Date) => db.delete(notificationDeliveries).where(lt(notificationDeliveries.sentAt, cutoff)),
   forgetEvents: (db: Db, cutoff: Date) => db.delete(webhookEvents).where(lt(webhookEvents.receivedAt, cutoff)),
   forgetSent: (db: Db, cutoff: Date) => db.delete(notifications).where(and(isNotNull(notifications.sentAt), lt(notifications.sentAt, cutoff))),
   emailOffUsers: (db: Db) => db.select({ userId: notificationPrefs.userId }).from(notificationPrefs).where(eq(notificationPrefs.emailOff, true)),
@@ -79,8 +90,19 @@ export function createNeonStore(db: Db): AppStore {
       if (eventIds.length > 0) await queries.markSent(db, eventIds, recipients, at);
     },
 
+    async deliveries(eventIds) {
+      const found = new Map<string, Set<string>>();
+      if (eventIds.length === 0) return found;
+      for (const row of await queries.deliveries(db, eventIds)) found.set(row.eventId, (found.get(row.eventId) ?? new Set()).add(row.email));
+      return found;
+    },
+
+    async recordDelivery(eventIds, email, at) {
+      if (eventIds.length > 0) await queries.recordDelivery(db, eventIds, email, at);
+    },
+
     async forgetBefore(cutoff) {
-      await db.batch([queries.forgetEvents(db, cutoff), queries.forgetSent(db, cutoff)]);
+      await db.batch([queries.forgetEvents(db, cutoff), queries.forgetSent(db, cutoff), queries.forgetDeliveries(db, cutoff)]);
     },
 
     async emailOffUsers() {

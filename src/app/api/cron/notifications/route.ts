@@ -16,7 +16,7 @@ function authorized(header: string | null, secret: string | null): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-/** GET /api/cron/notifications: every 5 minutes (vercel.json), sends the notification emails that are due (design §10). */
+/** GET /api/cron/notifications: every 15 minutes (vercel.json), sends the notification emails that are due (design §10). */
 export async function GET(request: Request) {
   const env = servicesEnv();
   if (!authorized(request.headers.get("Authorization"), env.cronSecret)) {

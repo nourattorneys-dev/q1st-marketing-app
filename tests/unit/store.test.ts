@@ -53,4 +53,20 @@ describe("the in-memory store (DB_MODE=memory)", () => {
     await store.setEmailOff("user_2", false, at(1));
     expect([...(await store.emailOffUsers())]).toEqual(["user_1"]);
   });
+
+  it("records who got which notification, once each (final review: no one is emailed twice)", async () => {
+    const store = createMemoryStore();
+    expect(await store.deliveries(["evt_1"])).toEqual(new Map());
+    await store.recordDelivery(["evt_1", "evt_2"], "a@example.com", at(1));
+    await store.recordDelivery(["evt_1"], "b@example.com", at(2));
+    await store.recordDelivery(["evt_1"], "a@example.com", at(3));
+    expect(await store.deliveries(["evt_1", "evt_2", "evt_3"])).toEqual(
+      new Map([
+        ["evt_1", new Set(["a@example.com", "b@example.com"])],
+        ["evt_2", new Set(["a@example.com"])],
+      ]),
+    );
+    await store.forgetBefore(at(2));
+    expect(await store.deliveries(["evt_1", "evt_2"])).toEqual(new Map([["evt_1", new Set(["b@example.com"])]]));
+  });
 });

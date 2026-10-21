@@ -18,7 +18,11 @@ export interface AppStore {
   /** Notifications not emailed yet, oldest first. */
   pendingNotifications(): Promise<StoredNotification[]>;
   markSent(eventIds: string[], recipients: string[], at: Date): Promise<void>;
-  /** Forgets deliveries received, and notifications sent, before `cutoff` (design §4: event ids are kept 30 days). */
+  /** Who already got each of these notifications (by event id), so a retried batch emails each person only what's new to them. */
+  deliveries(eventIds: string[]): Promise<Map<string, Set<string>>>;
+  /** Records that `email` got these notifications. */
+  recordDelivery(eventIds: string[], email: string, at: Date): Promise<void>;
+  /** Forgets deliveries received, and notifications and their per-person records sent, before `cutoff` (design §4: 30 days). */
   forgetBefore(cutoff: Date): Promise<void>;
   /** The people (by user id) who turned their notification emails off. */
   emailOffUsers(): Promise<Set<string>>;
