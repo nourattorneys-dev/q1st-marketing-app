@@ -445,6 +445,46 @@
         "fri": "Friday",
         "sat": "Saturday"
       }
+    },
+    "seo": {
+      "title": "SEO profile",
+      "hint": "How the site presents itself, and the profile the AI writes from.",
+      "groups": {
+        "site": "Site",
+        "profile": "AI profile",
+        "links": "Links and sharing"
+      },
+      "profileHint": "The AI follows this profile whenever it writes for the site.",
+      "fields": {
+        "siteName": "Site name",
+        "siteUrl": "Site address",
+        "blogPath": "Articles path",
+        "defaultLang": "Default language",
+        "author": "Author",
+        "focusKeywords": "Focus keywords",
+        "locations": "Locations",
+        "cta": "Call to action",
+        "tone": "Tone",
+        "audience": "Audience",
+        "avoid": "Avoid",
+        "linkedin": "LinkedIn page",
+        "instagram": "Instagram page",
+        "ogImage": "Share image address"
+      },
+      "listHint": "Separate with commas or new lines.",
+      "propose": "Suggest focus keywords and a call to action",
+      "proposing": "Suggesting…",
+      "proposed": "Suggestions filled in. Check them, then save.",
+      "proposalUnreadable": "The suggestions came back in a form the portal can't read. Nothing was changed.",
+      "picture": {
+        "title": "Share picture",
+        "hint": "Shown when an article is shared without its own photo. {types}, up to {size} MB.",
+        "preview": "Share picture",
+        "none": "No picture uploaded yet.",
+        "upload": "Upload a picture",
+        "remove": "Remove",
+        "tooLarge": "This file is {size} MB; the limit is {limit} MB."
+      }
     }
   }
 }
