@@ -70,7 +70,8 @@ test("an Arabic post is edited right to left", async ({ page }) => {
 
 test("a social post has a plain-text body and hashtags", async ({ page }) => {
   await page.goto("/en/review/p_206");
-  await expect(page.getByTestId("field-hashtags")).toHaveValue("#UAELabourLaw, #Dubai");
+  await expect(page.getByTestId("hashtag-chip-0")).toHaveText(/#UAELabourLaw/);
+  await expect(page.getByTestId("hashtag-chip-1")).toHaveText(/#Dubai/);
   await expect(page.getByTestId("editor-body")).toHaveValue(/Resigning doesn't cancel/);
 });
 

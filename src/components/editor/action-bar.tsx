@@ -15,7 +15,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { Post } from "@/lib/engine/schemas";
-import { approvalMode } from "@/lib/posts/rules";
+import { approvalMode, needsPhoto } from "@/lib/posts/rules";
 import { ConfirmDialog } from "./confirm-dialog";
 import { JobProgress } from "./job-progress";
 import { StatusWatcher } from "./status-watcher";
@@ -50,6 +50,8 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
   // Publishing straight from review needs what approval needs; with a critical finding, approve with a reason first.
   // A rule that can't be overridden blocks publishing in any status (an approved twin can stop matching later).
   const publishable = mode !== "blocked" && (post.status !== "pending" || mode === "direct");
+  // Spec v1.1 §4 Post.image: an Instagram post can't be approved or published without a photo.
+  const photoMissing = needsPhoto(post);
 
   /** A refusal because someone else took the lock shows the lock banner (with Take over) instead of an error. */
   function refusal(failure: EngineFailure): EngineFailure | null {
@@ -95,7 +97,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
       {!jobId && post.status === "drafting" && <StatusWatcher locale={locale} postId={post.id} status={post.status} pollSeconds={pollSeconds} />}
       <div className="flex flex-wrap items-center gap-2">
         {allowed.has("approve") && mode === "direct" && (
-          <Button data-testid="approve" disabled={dirty || locked || approve.pending} onClick={() => void approveDirectly()}>
+          <Button data-testid="approve" disabled={dirty || locked || approve.pending || photoMissing} onClick={() => void approveDirectly()}>
             {t("approve")}
           </Button>
         )}
@@ -104,7 +106,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             testId="approve"
             triggerVariant="default"
             triggerLabel={t("approve")}
-            disabled={dirty || locked}
+            disabled={dirty || locked || photoMissing}
             title={t("overrideTitle")}
             description={t("overrideBody")}
             confirmLabel={t("approveAnyway")}
@@ -123,7 +125,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             testId="publish"
             triggerVariant="secondary"
             triggerLabel={t("publishNow")}
-            disabled={dirty || locked || !publishable}
+            disabled={dirty || locked || !publishable || photoMissing}
             title={t("publishTitle")}
             description={post.status === "pending" ? t("publishBodyPending") : t("publishBody")}
             confirmLabel={t("publishNow")}
@@ -172,6 +174,11 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           />
         )}
       </div>
+      {(allowed.has("approve") || allowed.has("publishNow")) && photoMissing && (
+        <p data-testid="photo-needed" className="text-sm text-bad-fg">
+          {t("photoNeeded")}
+        </p>
+      )}
       {(allowed.has("approve") || allowed.has("publishNow")) && mode === "blocked" && (
         <p data-testid="approve-blocked" className="text-sm text-bad-fg">
           {t("approveBlockedHint")}

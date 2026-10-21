@@ -155,7 +155,7 @@
     "focusKeyword": "focus",
     "addKeyword": "Add a keyword and press Enter",
     "removeKeyword": "Remove “{keyword}”",
-    "hashtagsHint": "Separate with commas",
+    "hashtagsHint": "Press Enter to add. Spaces and commas separate hashtags.",
     "counter": "{length} / {limit}",
     "toolbar": {
       "h2": "Heading",
@@ -246,7 +246,15 @@
     "publishNeedsApproval": "Approve it with a reason first; then it can be published.",
     "viewLive": "View it live",
     "exportHtml": "Export HTML",
-    "exportMarkdown": "Export Markdown"
+    "exportMarkdown": "Export Markdown",
+    "addHashtag": "Add a hashtag",
+    "removeHashtag": "Remove {tag}",
+    "photoNeeded": "Add a photo first: Instagram posts can't be approved or published without one.",
+    "preview": {
+      "title": "Preview on {platform}",
+      "empty": "Nothing to post yet.",
+      "count": "{count, plural, one {{n} character} other {{n} characters}}"
+    }
   },
   "Scheduled": {
     "title": "Scheduled",

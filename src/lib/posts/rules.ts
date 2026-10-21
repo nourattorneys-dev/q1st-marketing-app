@@ -21,3 +21,6 @@ export function approvalMode(findings: readonly FindingLike[]): "direct" | "over
   if (critical.some((f) => !isOverridable(f))) return "blocked";
   return critical.length > 0 ? "override" : "direct";
 }
+
+/** Spec v1.1 §4 Post.image: an Instagram post can't be approved or published without a photo. */
+export const needsPhoto = (post: { platform: string; image?: unknown }) => post.platform === "instagram" && !post.image;

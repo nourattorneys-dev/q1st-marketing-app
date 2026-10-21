@@ -24,9 +24,11 @@ import { ConflictPanel } from "./conflict-panel";
 import { EditorBody } from "./editor-body";
 import { EditorFooter } from "./editor-footer";
 import { FieldCounter, FieldError } from "./field-counter";
+import { HashtagChips } from "./hashtag-chips";
 import { KeywordChips } from "./keyword-chips";
 import { LockBanner } from "./lock-banner";
 import { PhotoPanel, type PhotoLimits } from "./photo-panel";
+import { SocialPreview } from "./social-preview";
 import { SourcesList } from "./sources-list";
 
 type Props = {
@@ -41,8 +43,6 @@ type Props = {
   canManageSettings: boolean;
 };
 
-const parseHashtags = (text: string) => text.split(",").map((tag) => tag.trim()).filter(Boolean);
-
 export function PostEditor({ locale, post, twin, limits, photoLimits, categories, lockMinutes, pollSeconds, canManageSettings }: Props) {
   const t = useTranslations("Editor");
   const [saved, setSaved] = useState<Post | null>(null);
@@ -51,7 +51,6 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
   const [draft, setDraft] = useState<Draft>(() => draftOf(post));
   const form = draft.form;
   const [seenPost, setSeenPost] = useState(post);
-  const [hashtagText, setHashtagText] = useState(() => post.hashtags.join(", "));
   const [bodyKey, setBodyKey] = useState(0);
   const [lockedBy, setLockedBy] = useState<string | null>(null);
   const [conflict, setConflict] = useState<Post | null>(null);
@@ -69,7 +68,6 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
   /** Show fields that came from the server rather than from typing: the body and the hashtag text reload too. */
   function show(next: Draft) {
     setDraft(next);
-    setHashtagText(next.form.hashtags.join(", "));
     setBodyKey((key) => key + 1);
   }
 
@@ -243,18 +241,10 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
           />
           {errors.byField.content && <FieldError testId="field-content-error" message={errors.byField.content} />}
           {current.kind === "social" ? (
-            <FieldCounter
-              id="hashtags" error={errors.byField.hashtags}
-              testId="field-hashtags"
-              label={t("fields.hashtags")}
-              hint={t("hashtagsHint")}
-              value={hashtagText}
-              onChange={(value) => {
-                setHashtagText(value);
-                set("hashtags")(parseHashtags(value));
-              }}
-              disabled={!editable}
-            />
+            <>
+              <HashtagChips value={form.hashtags} onChange={set("hashtags")} disabled={!editable} />
+              {errors.byField.hashtags && <FieldError testId="field-hashtags-error" message={errors.byField.hashtags} />}
+            </>
           ) : (
             <>
               <FieldCounter id="slug" error={errors.byField.slug} testId="field-slug" label={t("fields.slug")} value={form.slug ?? ""} onChange={(value) => set("slug")(value || null)} disabled={!editable} dir="ltr" />
@@ -304,6 +294,15 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
           )}
         </div>
         <aside className="flex flex-col gap-4">
+          {current.kind === "social" && (
+            <SocialPreview
+              platform={current.platform}
+              language={current.language}
+              content={form.content}
+              hashtags={form.hashtags}
+              imageUrl={current.image?.url ?? null}
+            />
+          )}
           <PhotoPanel
             locale={locale}
             post={current}

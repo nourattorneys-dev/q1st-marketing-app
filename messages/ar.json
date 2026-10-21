@@ -155,7 +155,7 @@
     "focusKeyword": "الرئيسية",
     "addKeyword": "أضف كلمة مفتاحية واضغط Enter",
     "removeKeyword": "إزالة «{keyword}»",
-    "hashtagsHint": "افصل بينها بفواصل",
+    "hashtagsHint": "اضغط Enter للإضافة. المسافات والفواصل تفصل بين الوسوم.",
     "counter": "{length} / {limit}",
     "toolbar": {
       "h2": "عنوان",
@@ -246,7 +246,15 @@
     "publishNeedsApproval": "اعتمده مع ذكر السبب أولاً، ثم يمكن نشره.",
     "viewLive": "عرضه منشوراً",
     "exportHtml": "تصدير HTML",
-    "exportMarkdown": "تصدير Markdown"
+    "exportMarkdown": "تصدير Markdown",
+    "addHashtag": "أضف وسماً",
+    "removeHashtag": "إزالة {tag}",
+    "photoNeeded": "أضف صورة أولاً: لا يمكن اعتماد منشورات إنستغرام أو نشرها بدونها.",
+    "preview": {
+      "title": "معاينة على {platform}",
+      "empty": "لا شيء للنشر بعد.",
+      "count": "{count, plural, zero {لا أحرف} one {حرف واحد} two {حرفان} few {{n} أحرف} many {{n} حرفاً} other {{n} حرف}}"
+    }
   },
   "Scheduled": {
     "title": "المجدولة",
