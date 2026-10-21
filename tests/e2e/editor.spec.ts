@@ -188,3 +188,20 @@ test("with nothing unsaved, Back leaves without asking", async ({ page }) => {
   await page.getByTestId("editor-back").click();
   await expect(page).toHaveURL(/\/en\/review$/);
 });
+
+test("with unsaved edits, the sidebar and the user menu ask before leaving too (final review; Review Focus 1)", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.waitForLoadState("networkidle");
+  await page.getByTestId("field-title").fill("Unsaved, then the sidebar");
+  let asked = 0;
+  page.on("dialog", (dialog) => {
+    asked += 1;
+    void dialog.dismiss();
+  });
+  await page.getByTestId("nav-keywords").filter({ visible: true }).click();
+  await page.getByTestId("user-notifications").filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/en\/review\/p_201$/);
+  expect(asked).toBe(2);
+  await expect(page.getByTestId("field-title")).toHaveValue("Unsaved, then the sidebar");
+});
+

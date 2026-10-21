@@ -4,7 +4,6 @@ import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
 import { formatDateTime } from "@/lib/format/datetime";
-import { withoutSecrets } from "@/lib/settings/website-form";
 import { WebsiteSettingsForm } from "./website-settings-form";
 
 export async function WebsiteView({ locale }: { locale: AppLocale }) {
@@ -19,5 +18,5 @@ export async function WebsiteView({ locale }: { locale: AppLocale }) {
   if (!website.ok) return <EngineNotice error={website.error} />;
   const checkedAt = website.data.lastCheckedAt;
   const lastChecked = checkedAt ? formatDateTime(checkedAt, { timeZone: site.ok ? site.data.timezone : "UTC", locale }) : null;
-  return <WebsiteSettingsForm locale={locale} saved={withoutSecrets(website.data, meta.data.targetTypes)} types={meta.data.targetTypes} lastChecked={lastChecked} />;
+  return <WebsiteSettingsForm locale={locale} saved={website.data} types={meta.data.targetTypes} lastChecked={lastChecked} />;
 }

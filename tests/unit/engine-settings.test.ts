@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mockMeta } from "@/lib/engine/mock/fixtures";
 import type { SeoUpdate } from "@/lib/engine/schemas";
 import { fakeEngine, type FakeCall } from "./fake-engine";
 
@@ -130,5 +131,23 @@ describe("settings (spec v1.1 §4, §7)", () => {
     });
     expect(await engine.seoSettings()).toMatchObject({ siteName: "", siteUrl: "", defaultLang: "" });
     expect(await engine.websiteSettings()).toMatchObject({ secretSet: false, status: "missing" });
+  });
+  it("never hands the browser a secret-type setting, whatever the field is called, on read or after a save (final review; Review Focus 4)", async () => {
+    const meta = mockMeta();
+    const targetTypes = meta.targetTypes.map((type) => {
+      const secretField = type.fields.find((field) => field.kind === "secret");
+      return type.type === "wordpress" && secretField ? { ...type, fields: [...type.fields, { ...secretField, key: "token" }] } : type;
+    });
+    const leaked = { ...WEBSITE, settings: { ...WEBSITE.settings, token: "leaked-token", secret: "leaked-secret" } };
+    const { engine } = fakeEngine({
+      "GET /meta": { ...meta, targetTypes },
+      "GET /sites/site_1/settings/website": leaked,
+      "PUT /sites/site_1/settings/website": leaked,
+    });
+    for (const target of [await engine.websiteSettings(), await engine.saveWebsite({ ...TARGET, version: 1 }, ctx)]) {
+      expect(target.settings).not.toHaveProperty("token");
+      expect(target.settings).not.toHaveProperty("secret");
+      expect(target.settings).toMatchObject({ url: "https://fakhernco.com" });
+    }
   });
 });

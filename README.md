@@ -206,13 +206,13 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 
 - **Errors** anywhere in the app, the app frame and the session read included, show the dashboard's error page in the reader's language. A failure in the root layout shows a short page in both languages.
 - **Unsaved edits in the editor:**
-  - Back, closing or reloading the tab, and switching language ask first.
+  - Any link inside the dashboard (Back, the sidebar, the user menu), closing or reloading the tab, and switching language ask first. The browser's own Back and Forward buttons don't yet (M4e).
   - Ask for changes and Reject wait for a save, like Approve.
 - **First-run settings:**
   - A website connection the engine hasn't created yet opens an empty form.
   - SEO fields not set yet read as empty.
-  - No secret-type setting is sent to the browser.
+  - No secret-type setting is sent to the browser: the engine API strips them from every read and save.
 - **Arabic:**
-  - Clerk's sign-in and account screens are in Arabic on `/ar` (`@clerk/localizations`).
+  - Clerk's sign-in and account screens are in Arabic on `/ar` (`@clerk/localizations`, plus Arabic for what it leaves in English: placeholders, the wrong-password and wrong-code errors, the sign-in title, dates).
   - The dashboard's own refusals, the plural counts, the keyword limits and the dialog's Close label are translated.
 - **Photos** are limited to 4 MB, under Vercel's 4.5 MB request limit, whatever the engine allows.

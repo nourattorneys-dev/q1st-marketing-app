@@ -2,7 +2,8 @@
 
 ## Before go-live (M5)
 
-- **Clerk in Arabic:** `/ar/sign-in` and `/ar/security` show Clerk's screens in Arabic, right to left (needs real Clerk keys).
+- **Clerk in Arabic:** `/ar/sign-in` and `/ar/security` show Clerk's screens in Arabic, right to left (needs real Clerk keys). Check a wrong password and a wrong two-factor code show Arabic errors, and the device list's dates read in Arabic with Latin digits.
+- **First save after a 404:** ask Quantum1st whether `PUT …/settings/website` accepts `version: 0` when `GET` answered 404 (the dashboard's first-run fallback).
 - **The 4 MB photo limit:** a photo between 4 and 5 MB is stopped with the size message on Vercel. A direct-upload address from Quantum1st would lift the limit back to the engine's 5 MB.
 
 ## Next: M4e (data and robustness)
@@ -24,3 +25,20 @@ From the M4d triage (ids as in that triage), still open:
 - **O43, `EMAIL_MODE=log` in production:** refuse it on Vercel production.
 - **The rest of two partly handled lines:** M2a's i18n line (`post-card.tsx` passes numbers where the rest passes `String(...)`; `JobProgress` shows the engine's English `error.message`) and M3a's limits line (no hint for the 20-keyword limit on a new topic request).
 - **The low-impact items in the triage** (O10–O17, O25–O35): pick the visible ones.
+
+## Deferred minor findings (final review)
+
+- **The browser's own Back and Forward buttons leave the editor without asking,** and after any in-app navigation the hidden editor keeps its draft without a `beforeunload` guard (Next keeps it in `<Activity>`, which removes effects). Closing the tab later loses it silently. A confirmed leave also doesn't discard the draft, so reopening the post brings it back. (M4e, with the edit locks.)
+- **`website-settings-form.tsx:204` still uses `engineNoticeKey`:** a connection test refused by the dashboard's own input check (for example a secret over 4000 characters) shows "Invalid request." on `/ar`. Use `failureNoticeKey(testError)`.
+- **First-run SEO language select:** with `defaultLang: ""`, the first language looks selected while the value is empty, and saving says "Choose one of the site's languages." Add an empty "Choose…" option.
+- **The keyword-limit and "save first" hints aren't announced:** no live region or `aria-describedby`, and the disabled buttons can't be focused.
+- **Arabic grammar:** `Keywords.add.tooLong` reads "100 حرفًا"; after 100 the noun is genitive singular ("100 حرف").
+- **The auth_crash e2e test** would also pass if only `(app)/error.tsx` caught the error. Assert `locale-switch` is gone, to prove the frame was replaced.
+- **Clerk's Arabic payload:** about 55 KB (13 KB gzipped) in every `/ar` RSC response in Clerk mode. Importing `@clerk/localizations/ar-SA` would make the tree-shaking explicit.
+- **The 404 fallback ignores the error code:** an engine still on v1.0's `/settings/strapi` would show an empty form. Log a server-side warning when it's used.
+- **Nits:**
+  - `export { INVALID }` sits between import lines in `server.ts`.
+  - `next.config.ts`'s 6 MB body limit and its 5 MB comment are stale (4 MB uploads).
+  - The M2a i18n note doesn't mention `INVALID`.
+  - Clerk 402 and 409 responses still read "can't be reached".
+

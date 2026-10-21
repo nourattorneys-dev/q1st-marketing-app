@@ -37,10 +37,12 @@ import {
   WebsiteTestSchema,
   type PostUpdate,
   type PublishingSettings,
+  type PublishTarget,
   type SeoUpdate,
   type WebsiteTargetInput,
   type WebsiteUpdate,
 } from "./schemas";
+import { withoutSecrets } from "@/lib/settings/website-form";
 
 /** Memoises an argument-less read for the life of one API instance (one request). */
 function once<T>(load: () => Promise<T>): () => Promise<T> {
@@ -353,10 +355,19 @@ export function createEngineApi(client: EngineClient) {
     (await client.request({ method: "PUT", path: await settingsPath("/publishing"), schema: PublishingSettingsSchema, body: update, ...ctx })).data;
 
   /** Before the first connection an engine may answer 404: that's "not connected", not a removed item (first-run setup, M3b follow-up). */
+  /** No secret-type setting leaves the server, whatever the engine sends back (design §11; final review): reads, saves, the conflict panel. */
+  async function withoutSecretSettings(target: PublishTarget): Promise<PublishTarget> {
+    const types = await meta().then(
+      (data) => data.targetTypes,
+      () => [],
+    );
+    return withoutSecrets(target, types);
+  }
+
   const websiteSettings = async () => {
     const path = await settingsPath("/website"); // outside the try: "this key has no site" (also a 404) must still be an error
     try {
-      return (await client.request({ method: "GET", path, schema: PublishTargetSchema })).data;
+      return await withoutSecretSettings((await client.request({ method: "GET", path, schema: PublishTargetSchema })).data);
     } catch (error) {
       if (isEngineError(error) && error.status === 404) return PublishTargetSchema.parse({ type: null, settings: {}, fieldMap: {}, languages: [], status: "missing", version: 0 });
       throw error;
@@ -365,8 +376,9 @@ export function createEngineApi(client: EngineClient) {
 
   // A save of a changed connection and a test both reach the website itself, so they get the slow-change limit.
   const saveWebsite = async (update: WebsiteUpdate, ctx: ChangeContext) =>
-    (await client.request({ method: "PUT", path: await settingsPath("/website"), schema: PublishTargetSchema, body: update, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
-      .data;
+    withoutSecretSettings(
+      (await client.request({ method: "PUT", path: await settingsPath("/website"), schema: PublishTargetSchema, body: update, timeoutMs: SLOW_CHANGE_MS, ...ctx })).data,
+    );
 
   const testWebsite = async (target: WebsiteTargetInput, ctx: ChangeContext) =>
     (
