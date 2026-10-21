@@ -1,36 +1,14 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { z } from "zod";
-import { LOCALES } from "@/i18n/locales";
 import type { ActionResult } from "@/lib/actions/result";
-import { requirePermission } from "@/lib/auth/session";
-import { getEngine } from "@/lib/engine";
-import { ENGINE_ID } from "@/lib/engine/ids";
-import type { ChangeContext } from "@/lib/engine/api";
+import { change, EngineId, engineFor, IdempotencyKey, INVALID, Locale } from "@/lib/actions/server";
+import { BULK_ACTIONS, type BulkAction } from "@/lib/engine/api";
 import { tryEngine } from "@/lib/engine/result";
 import { PostUpdateSchema, type BulkResult, type Job, type JobStart, type Post } from "@/lib/engine/schemas";
 
-// Ids go into engine URL paths: only the engine's opaque id characters, so "." or ".." can't reach another endpoint.
-const Locale = z.enum(LOCALES);
-const Id = z.string().regex(ENGINE_ID);
-const Base = z.object({ locale: Locale, postId: Id });
-const Change = Base.extend({ idempotencyKey: z.string().min(8) });
-
-const INVALID = { ok: false as const, error: { status: 400, code: "invalid_input", message: "Invalid request." } };
-
-/** Role check + engine + who is acting. Every change in this file goes through it. */
-async function engineFor(locale: string) {
-  const session = await requirePermission(locale, "content.work");
-  return { engine: await getEngine(), actingUser: session.email };
-}
-
-async function change<T>(locale: string, idempotencyKey: string, run: (ctx: ChangeContext & { engine: Awaited<ReturnType<typeof getEngine>> }) => Promise<T>): Promise<ActionResult<T>> {
-  const { engine, actingUser } = await engineFor(locale);
-  const result = await tryEngine(() => run({ engine, actingUser, idempotencyKey }));
-  if (result.ok) refresh();
-  return result;
-}
+const Base = z.object({ locale: Locale, postId: EngineId });
+const Change = Base.extend({ idempotencyKey: IdempotencyKey });
 
 export async function loadPostAction(input: { locale: string; postId: string }): Promise<ActionResult<Post>> {
   const parsed = Base.safeParse(input);
@@ -117,14 +95,29 @@ export async function takeoverPostAction(input: { locale: string; postId: string
   return change(locale, idempotencyKey, ({ engine, ...ctx }) => engine.takeoverPost(postId, ctx));
 }
 
+/** Publish now (spec v1.1 §7 POST …/publish), also used for Retry in History. */
+export async function publishPostAction(input: { locale: string; postId: string; idempotencyKey: string }): Promise<ActionResult<Post>> {
+  const parsed = Change.safeParse(input);
+  if (!parsed.success) return INVALID;
+  const { locale, postId, idempotencyKey } = parsed.data;
+  return change(locale, idempotencyKey, ({ engine, ...ctx }) => engine.publishPost(postId, ctx));
+}
+
+export async function holdPostAction(input: { locale: string; postId: string; hold: boolean; idempotencyKey: string }): Promise<ActionResult<Post>> {
+  const parsed = Change.extend({ hold: z.boolean() }).safeParse(input);
+  if (!parsed.success) return INVALID;
+  const { locale, postId, hold, idempotencyKey } = parsed.data;
+  return change(locale, idempotencyKey, ({ engine, ...ctx }) => engine.holdPost(postId, hold, ctx));
+}
+
 export async function bulkPostsAction(input: {
   locale: string;
-  action: "approve" | "reject" | "delete";
+  action: BulkAction;
   ids: string[];
   idempotencyKey: string;
 }): Promise<ActionResult<BulkResult>> {
   const parsed = z
-    .object({ locale: Locale, action: z.enum(["approve", "reject", "delete"]), ids: z.array(Id).min(1).max(100), idempotencyKey: z.string().min(8) })
+    .object({ locale: Locale, action: z.enum(BULK_ACTIONS), ids: z.array(EngineId).min(1).max(100), idempotencyKey: IdempotencyKey })
     .safeParse(input);
   if (!parsed.success) return INVALID;
   const { locale, action, ids, idempotencyKey } = parsed.data;
@@ -132,8 +125,21 @@ export async function bulkPostsAction(input: {
 }
 
 export async function jobAction(input: { locale: string; jobId: string }): Promise<ActionResult<Job>> {
-  const parsed = z.object({ locale: Locale, jobId: Id }).safeParse(input);
+  const parsed = z.object({ locale: Locale, jobId: EngineId }).safeParse(input);
   if (!parsed.success) return INVALID;
   const { engine } = await engineFor(parsed.data.locale);
   return tryEngine(() => engine.job(parsed.data.jobId));
+}
+
+export type ExportedFile = { filename: string; contentType: string; body: string };
+
+/** Export HTML or Markdown (spec v1.1 §7). A read: no key, no refresh. The file comes through our server, so the key never reaches the browser. */
+export async function exportPostAction(input: { locale: string; postId: string; format: "html" | "md" }): Promise<ActionResult<ExportedFile>> {
+  const parsed = Base.extend({ format: z.enum(["html", "md"]) }).safeParse(input);
+  if (!parsed.success) return INVALID;
+  const { locale, postId, format } = parsed.data;
+  const { engine } = await engineFor(locale);
+  const file = await tryEngine(() => engine.exportPost(postId, format));
+  if (!file.ok) return file;
+  return { ok: true, data: { filename: file.data.filename ?? `${postId}.${format}`, contentType: file.data.contentType, body: file.data.body } };
 }
