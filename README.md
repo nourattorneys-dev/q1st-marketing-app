@@ -41,3 +41,16 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 - **Engine requests time out after 10 s per attempt.** Reads retry twice, then show "can't be reached".
 - **Each dashboard section validates only the site fields it uses**, and `GET /sites` is read only for the site id, so one changed field can't blank the whole app.
 - **Browser tests match only visible elements after in-app navigation.** Next 16 keeps up to 3 previous pages in the page, hidden (React `<Activity>`).
+
+## Decisions in M2a (review and editing)
+
+- **The mock engine keeps state per `mock_store` cookie.** Each browser test sets its own namespace, so tests can't affect each other. Without the cookie, everything shares the "default" store until the server restarts.
+- **Every change carries an `Idempotency-Key`.** It's created by `useEngineAction`, reused only after a network error, and the mock replays repeated keys exactly as the engine will.
+- **Edit locks:** taken on opening the editor, renewed every half of `lockMinutes`, released on leaving, and taken over on request. An abandoned lock expires on its own.
+- **Approval follows the findings:**
+  - **Direct:** no critical findings.
+  - **Override:** critical findings that can be overridden, with a required reason recorded in History.
+  - **Blocked:** a non-overridable finding such as `structure_mismatch`.
+- **The side-by-side view aligns sections** with a longest-common-subsequence match on block tags, so one missing paragraph shows as one gap.
+- **The editor only counts real edits.** TipTap rewrites engine HTML into its own form (`<li>text</li>` becomes `<li><p>text</p></li>`), so "unsaved changes" is measured against the editor's form of what it loaded. StarterKit's trailing node is off because it adds an empty paragraph on the first click.
+- **In mock mode, engine reads opt out of prerendering** (`await connection()` in `getEngine`), as a real network call would. Otherwise the mock store's clock trips Next's prerender check.
