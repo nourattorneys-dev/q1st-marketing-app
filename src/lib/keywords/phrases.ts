@@ -5,7 +5,7 @@ export const normalizePhrase = (phrase: string) => phrase.trim().replace(/\s+/g,
 export function parsePhrases(text: string): string[] {
   const seen = new Set<string>();
   const phrases: string[] = [];
-  for (const part of text.split(/[,\n]/)) {
+  for (const part of text.split(/[,،\n]/)) {
     const phrase = part.trim().replace(/\s+/g, " ");
     const key = normalizePhrase(phrase);
     if (!phrase || seen.has(key)) continue;

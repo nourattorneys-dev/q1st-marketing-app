@@ -14,3 +14,9 @@ describe("keyword phrases (spec v1.1 §6: comma or line separated)", () => {
     expect(skippedPhrases(["laser hair removal", "Commission UAE labour law"], [{ phrase: "laser hair removal" }])).toEqual(["Commission UAE labour law"]);
   });
 });
+
+describe("Arabic separators (final review)", () => {
+  it("splits on the Arabic comma too", () => {
+    expect(parsePhrases("دعوى عمالية، تعويض الفصل\nnon-compete")).toEqual(["دعوى عمالية", "تعويض الفصل", "non-compete"]);
+  });
+});

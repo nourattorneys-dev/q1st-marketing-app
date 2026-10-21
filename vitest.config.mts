@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/unit/**/*.test.ts"],
+    // next-intl's middleware imports "next/server" without an extension; let Vite resolve it (proxy tests).
+    server: { deps: { inline: ["next-intl"] } },
   },
 });

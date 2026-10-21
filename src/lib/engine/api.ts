@@ -227,15 +227,15 @@ export function createEngineApi(client: EngineClient) {
       })
     ).data;
 
-  async function listSuggestions(options: { statuses: string[] }) {
-    const { data } = await client.request({
+  async function listSuggestions(options: { statuses: string[]; page?: number; pageSize?: number }) {
+    const { data, meta } = await client.request({
       method: "GET",
       path: `${await sitePath()}/suggestions`,
       schema: z.array(z.unknown()),
-      query: { status: options.statuses.join(",") },
+      query: { status: options.statuses.join(","), page: options.page, pageSize: options.pageSize },
     });
     const { items, skipped } = parseItems(data, SuggestionSchema);
-    return { suggestions: items, skipped };
+    return { suggestions: items, skipped, meta };
   }
 
   const suggestionPath = async (id: string, suffix: string) => {

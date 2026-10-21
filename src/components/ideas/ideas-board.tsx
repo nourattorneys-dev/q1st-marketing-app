@@ -98,6 +98,7 @@ export function IdeasBoard({ locale, ideas, languages, pollSeconds, canRequestUp
             locale={locale}
             idea={idea}
             languages={languages}
+            pollSeconds={pollSeconds}
             canRequestUpgrade={canRequestUpgrade}
             selected={selected.has(idea.id)}
             onSelect={(checked) => toggle(idea.id, checked)}

@@ -73,3 +73,12 @@ describe("keywords and suggestions (spec v1.1 §7)", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("paging topic ideas (final review)", () => {
+  it("asks for a page of suggestions and returns the list's meta", async () => {
+    const { engine, calls } = fakeEngine({ "GET /sites/site_1/suggestions": [SUGGESTION] });
+    const list = await engine.listSuggestions({ statuses: ["new"], page: 2, pageSize: 25 });
+    const query = new URLSearchParams(calls.at(-1)?.search);
+    expect([query.get("page"), query.get("pageSize"), list.meta?.total]).toEqual(["2", "25", 3]);
+  });
+});

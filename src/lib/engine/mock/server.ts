@@ -122,17 +122,26 @@ function route(
   }
 
   const statusesOf = () => url.searchParams.get("status")?.split(",").filter(Boolean) ?? null;
+  const pageOf = () => ({
+    page: Math.max(1, Number(url.searchParams.get("page")) || 1),
+    pageSize: Math.min(100, Math.max(1, Number(url.searchParams.get("pageSize")) || 25)),
+  });
   const idsOf = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
   if (rest === "/keywords" && method === "GET") {
-    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get("pageSize")) || 25));
+    const { page, pageSize } = pageOf();
     const listed = store.listKeywords(statusesOf(), page, pageSize);
     return listed.ok ? { status: 200, json: { ok: true, data: listed.data.items, meta: listed.data.meta } } : outcome(listed);
   }
   if (rest === "/keywords" && method === "POST") return outcome(store.addKeywords(body.phrases, body.language, actor));
   if (rest === "/keywords/bulk" && method === "POST") return outcome(store.bulkKeywords(String(body.action ?? ""), idsOf(body.ids)));
-  if (rest === "/suggestions" && method === "GET") return outcome(store.listSuggestions(statusesOf()));
+  if (rest === "/suggestions" && method === "GET") {
+    const listed = store.listSuggestions(statusesOf());
+    if (!listed.ok) return outcome(listed);
+    const { page, pageSize } = pageOf();
+    const items = listed.data.slice((page - 1) * pageSize, page * pageSize);
+    return { status: 200, json: { ok: true, data: items, meta: { page, pageSize, total: listed.data.length } } };
+  }
   const draftingRequest = method === "POST" && DRAFTING_ROUTE.test(rest) && !(rest === "/suggestions/bulk" && body.action !== "draft");
   if (scenario === "quota" && draftingRequest) return QUOTA_EXCEEDED;
   if (rest === "/keywords/propose" && method === "POST") return outcome(store.proposeKeywords(body.language));

@@ -22,7 +22,7 @@ test("drafting an idea in both languages makes a linked pair that arrives in Rev
   await page.getByTestId("idea-draft-sg_2").click();
   await page.getByTestId("idea-draft-sg_2-language-both").check();
   await page.getByTestId("idea-draft-sg_2-confirm").click();
-  await expect(page.getByTestId("idea-drafting-sg_2")).toBeVisible();
+  await expect(page.getByTestId("idea-job-sg_2")).toBeVisible();
   await expect(page.getByTestId("idea-drafted-sg_2")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("idea-card-sg_2").locator('[data-testid^="idea-post-"]')).toHaveCount(2);
   await page.goto("/en/review");
@@ -87,4 +87,18 @@ test("topics proposed from Keywords show up as new ideas", async ({ page }) => {
   await expect(page.getByTestId("topics-ready")).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("open-ideas").click();
   await expect(page.getByText("What to know about shareholder deadlock uae").filter({ visible: true })).toBeVisible();
+});
+
+test("a page past the end says so and links back to the first page (final review)", async ({ page }) => {
+  await page.goto("/en/ideas?page=2");
+  await expect(page.getByTestId("list-page-empty")).toBeVisible();
+  await expect(page.getByTestId("list-first-page")).toHaveAttribute("href", "/en/ideas");
+});
+
+test("drafting one idea shows its own progress until it's done (final review)", async ({ page }) => {
+  await page.goto("/en/ideas");
+  await page.getByTestId("idea-draft-sg_1").click();
+  await page.getByTestId("idea-draft-sg_1-confirm").click();
+  await expect(page.getByTestId("idea-job-sg_1")).toBeVisible();
+  await expect(page.getByTestId("idea-job-sg_1")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
 });
