@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { DirectionProvider } from "@/components/ui/direction";
 import { directionOf } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
+import { clerkLocalizationFor } from "@/lib/auth/clerk-localization";
 import { serverEnv } from "@/lib/env";
 import "../globals.css";
 
@@ -48,7 +49,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
       </head>
       <body className="min-h-dvh antialiased">
         {serverEnv().authMode === "clerk" ? (
-          <ClerkProvider signInUrl={`/${locale}/sign-in`} afterSignOutUrl={`/${locale}/sign-in`}>
+          <ClerkProvider localization={clerkLocalizationFor(locale)} signInUrl={`/${locale}/sign-in`} afterSignOutUrl={`/${locale}/sign-in`}>
             {content}
           </ClerkProvider>
         ) : (
