@@ -2,7 +2,9 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { MOCK_STORE_COOKIE } from "@/lib/engine/mock/registry";
 import { serverEnv } from "@/lib/env";
+import { createMockDirectory } from "@/lib/users/mock-directory";
 import { roleFromClaims, sessionFromClerkUser } from "./clerk-session";
 import { decodeMockSession, MOCK_SESSION_COOKIE } from "./mock-session";
 import { can, type Permission, type Role } from "./roles";
@@ -11,7 +13,11 @@ import type { AuthedSession, Session } from "./types";
 /** Reads the signed-in person once per request (React cache), so a page's many guards make one Clerk lookup. Call only under <Suspense>. */
 export const getSession = cache(async (): Promise<Session | null> => {
   if (serverEnv().authMode === "mock") {
-    return decodeMockSession((await cookies()).get(MOCK_SESSION_COOKIE)?.value);
+    // The cookie names a fixed test user; their current role and two-factor status come from the test directory,
+    // so a change on /users takes effect on the person's next request, as it does with Clerk.
+    const jar = await cookies();
+    const user = decodeMockSession(jar.get(MOCK_SESSION_COOKIE)?.value);
+    return user ? createMockDirectory(jar.get(MOCK_STORE_COOKIE)?.value).sessionOf(user.userId) : null;
   }
   const { currentUser } = await import("@clerk/nextjs/server");
   const user = await currentUser();
