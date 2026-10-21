@@ -754,5 +754,22 @@
     "enableTest": "Turn on two-factor login (test)",
     "continue": "Continue to the dashboard",
     "continueOnceOn": "I've turned it on: continue"
+  },
+  "Email": {
+    "subject": {
+      "reviewers": "{count, plural, one {{n} draft ready for review} other {{n} drafts ready for review}}",
+      "admins": "{count, plural, one {{n} update needs your attention} other {{n} updates need your attention}}"
+    },
+    "heading": {
+      "reviewers": "New drafts are waiting in Review.",
+      "admins": "Here's what changed on the website."
+    },
+    "drafted": "{count, plural, one {{n} draft is ready for review} other {{n} drafts are ready for review}}",
+    "failed": "{count, plural, one {{n} post failed to publish} other {{n} posts failed to publish}}",
+    "connection": "{name} connection: {status}",
+    "quotaWarning": "{metric}: {used} of {limit} used this month",
+    "quotaExceeded": "{metric}: the monthly limit of {limit} is reached",
+    "scan": "{count, plural, one {Site scan finished: {n} finding} other {Site scan finished: {n} findings}}",
+    "footer": "You get these emails because you can sign in to Articles AI. You can turn them off on the Email notifications page."
   }
 }

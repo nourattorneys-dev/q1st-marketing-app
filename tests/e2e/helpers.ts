@@ -1,5 +1,5 @@
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { BASE_URL } from "./constants";
+import { BASE_URL, E2E_CRON_SECRET } from "./constants";
 
 export type TestUser = "dev_admin" | "dev_reviewer" | "dev_norole" | "dev_admin_no2fa";
 
@@ -51,4 +51,26 @@ export async function deliverEvent(page: Page, event: string, data: unknown, eve
   const json = (await response.json()) as { data: { delivered: boolean; status?: number; body?: unknown } };
   expect(json.data.delivered).toBe(true);
   return { status: json.data.status ?? 0, body: json.data.body };
+}
+
+export type SentEmail = { to: string; subject: string; html: string; text: string; idempotencyKey: string };
+
+/** Runs the notifications cron now, as Vercel Cron would (the e2e server's quiet period is 0 seconds). */
+export async function flushEmails(page: Page): Promise<{ batches: number; emails: number; failed: number }> {
+  const response = await page.request.get("/api/cron/notifications", { headers: { Authorization: `Bearer ${E2E_CRON_SECRET}` } });
+  expect(response.status()).toBe(200);
+  return ((await response.json()) as { data: { batches: number; emails: number; failed: number } }).data;
+}
+
+/** The emails EMAIL_MODE=log kept (test logins only). */
+export async function readOutbox(page: Page): Promise<SentEmail[]> {
+  const response = await page.request.get("/api/dev/outbox");
+  expect(response.status()).toBe(200);
+  return ((await response.json()) as { data: SentEmail[] }).data;
+}
+
+/** The emails in `after` that weren't in `before` (the outbox is shared by every test on the server). */
+export function newEmails(before: SentEmail[], after: SentEmail[]): SentEmail[] {
+  const seen = new Set(before.map((email) => email.idempotencyKey));
+  return after.filter((email) => !seen.has(email.idempotencyKey));
 }

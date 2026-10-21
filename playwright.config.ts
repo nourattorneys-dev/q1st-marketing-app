@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { BASE_URL, E2E_ENGINE_KEY, E2E_PORT } from "./tests/e2e/constants";
+import { BASE_URL, E2E_CRON_SECRET, E2E_ENGINE_KEY, E2E_PORT } from "./tests/e2e/constants";
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -16,6 +16,6 @@ export default defineConfig({
     url: `${BASE_URL}/api/health`,
     reuseExistingServer: false,
     timeout: 300_000,
-    env: { ENGINE_MODE: "mock", AUTH_MODE: "mock", ALLOW_TEST_LOGINS: "1", ENGINE_API_KEY: E2E_ENGINE_KEY },
+    env: { ENGINE_MODE: "mock", AUTH_MODE: "mock", ALLOW_TEST_LOGINS: "1", ENGINE_API_KEY: E2E_ENGINE_KEY, CRON_SECRET: E2E_CRON_SECRET, NOTIFY_QUIET_SECONDS: "0" },
   },
 });
