@@ -21,6 +21,12 @@ export const textOf = (value: unknown) => (typeof value === "string" ? value : v
 /** The fields a person types for the connection itself (everything but the secret). */
 const connectionKeys = (type: TargetType | undefined) => (type?.fields ?? []).filter((field) => field.kind !== "secret").map((field) => field.key);
 
+/** The target without settings whose field is a secret (or named "secret"), so no password or token reaches the browser even if the engine sends one. */
+export function withoutSecrets(target: PublishTarget, types: TargetType[]): PublishTarget {
+  const secret = new Set(["secret", ...(typeOf(types, target.type ?? "")?.fields ?? []).filter((field) => field.kind === "secret").map((field) => field.key)]);
+  return { ...target, settings: Object.fromEntries(Object.entries(target.settings).filter(([key]) => !secret.has(key))) };
+}
+
 export function toWebsiteForm(target: PublishTarget, types: TargetType[]): WebsiteForm {
   const known = target.type && typeOf(types, target.type) ? target.type : null;
   const type = known ?? types[0]?.type ?? "";

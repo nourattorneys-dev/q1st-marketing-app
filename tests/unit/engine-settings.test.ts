@@ -118,4 +118,17 @@ describe("settings (spec v1.1 §4, §7)", () => {
     await expect(engine.connectSocial("../account", back)).rejects.toMatchObject({ code: "not_found" });
     expect(calls.length).toBe(before);
   });
+  it("treats a website connection the engine hasn't created yet (404) as not connected, so first-run setup opens the form (Review Focus 4)", async () => {
+    const { engine } = fakeEngine({});
+    expect(await engine.websiteSettings()).toMatchObject({ type: null, settings: {}, secretSet: false, status: "missing", version: 0 });
+  });
+
+  it("reads an SEO profile and a website connection whose fields aren't set yet (Review Focus 4)", async () => {
+    const { engine } = fakeEngine({
+      "GET /sites/site_1/settings/seo": { ...SEO, siteName: null, siteUrl: null, defaultLang: null },
+      "GET /sites/site_1/settings/website": { ...WEBSITE, secretSet: null, status: null },
+    });
+    expect(await engine.seoSettings()).toMatchObject({ siteName: "", siteUrl: "", defaultLang: "" });
+    expect(await engine.websiteSettings()).toMatchObject({ secretSet: false, status: "missing" });
+  });
 });

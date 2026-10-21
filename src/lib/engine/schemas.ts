@@ -314,10 +314,20 @@ export type TargetType = Meta["targetTypes"][number];
 export type TargetField = TargetType["fields"][number];
 
 export const SeoSettingsSchema = z.object({
-  siteName: z.string(),
-  siteUrl: z.string(),
+  // A first-run profile may come back with these unset; the form shows them empty and requires them on save.
+  siteName: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
+  siteUrl: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
   blogPath: z.string().nullish(),
-  defaultLang: z.string(),
+  defaultLang: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
   focusKeywords: list(z.string()),
   locations: list(z.string()),
   author: z.string().nullish(),
@@ -377,12 +387,18 @@ export const PublishTargetSchema = z.object({
     .record(z.string(), z.unknown())
     .nullish()
     .transform((value) => value ?? {}),
-  secretSet: z.boolean(),
+  secretSet: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? false),
   fieldMap: stringMap,
   body: z.object({ format: z.string(), blockMap: z.record(z.string(), z.string()).nullish() }).nullish(),
   arabic: z.object({ mode: z.string() }).nullish(),
   languages: list(z.string()),
-  status: z.string(), // known: ok | error | missing
+  status: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? "missing"), // known: ok | error | missing
   lastCheckedAt: isoDateTime.nullish(),
   lastError: z.string().nullish(),
   version: z.number().int(),

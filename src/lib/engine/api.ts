@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { EngineClient } from "./client";
-import { EngineError } from "./errors";
+import { EngineError, isEngineError } from "./errors";
 import { ENGINE_ID } from "./ids";
 import {
   AuthorizeSchema,
@@ -352,7 +352,16 @@ export function createEngineApi(client: EngineClient) {
   const savePublishing = async (update: PublishingSettings, ctx: ChangeContext) =>
     (await client.request({ method: "PUT", path: await settingsPath("/publishing"), schema: PublishingSettingsSchema, body: update, ...ctx })).data;
 
-  const websiteSettings = async () => (await client.request({ method: "GET", path: await settingsPath("/website"), schema: PublishTargetSchema })).data;
+  /** Before the first connection an engine may answer 404: that's "not connected", not a removed item (first-run setup, M3b follow-up). */
+  const websiteSettings = async () => {
+    const path = await settingsPath("/website"); // outside the try: "this key has no site" (also a 404) must still be an error
+    try {
+      return (await client.request({ method: "GET", path, schema: PublishTargetSchema })).data;
+    } catch (error) {
+      if (isEngineError(error) && error.status === 404) return PublishTargetSchema.parse({ type: null, settings: {}, fieldMap: {}, languages: [], status: "missing", version: 0 });
+      throw error;
+    }
+  };
 
   // A save of a changed connection and a test both reach the website itself, so they get the slow-change limit.
   const saveWebsite = async (update: WebsiteUpdate, ctx: ChangeContext) =>

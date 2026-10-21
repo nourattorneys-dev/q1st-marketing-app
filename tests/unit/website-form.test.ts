@@ -11,6 +11,7 @@ import {
   toWebsiteForm,
   toWebsiteTarget,
   toWebsiteUpdate,
+  withoutSecrets,
 } from "@/lib/settings/website-form";
 
 const TYPES = mockMeta().targetTypes;
@@ -106,5 +107,15 @@ describe("the website form (spec v1.1 §4 PublishTarget, §6, §10)", () => {
   it("sends a block map only with the blocks format, without empty rows", () => {
     const strapi = { ...switchType(toWebsiteForm(SAVED, TYPES), "strapi", TYPES), blockMap: { heading: "blocks.heading", quote: "" } };
     expect(toWebsiteTarget(strapi, TYPES).body).toEqual({ format: "blocks", blockMap: { heading: "blocks.heading" } });
+  });
+});
+
+describe("withoutSecrets (Review Focus 4)", () => {
+  it("drops settings whose field is a secret before anything reaches the browser", () => {
+    const leaked = { ...SAVED, settings: { ...SAVED.settings, secret: "app-password-1234" } };
+    const cleaned = withoutSecrets(leaked, TYPES);
+    expect(cleaned.settings).not.toHaveProperty("secret");
+    expect(cleaned.settings).toMatchObject({ url: "https://fakhernco.com", username: "articles-ai" });
+    expect(withoutSecrets({ ...SAVED, type: "unknown", settings: { secret: "x", url: "u" } }, TYPES).settings).toEqual({ url: "u" });
   });
 });
