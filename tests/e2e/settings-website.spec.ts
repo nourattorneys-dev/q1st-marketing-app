@@ -36,6 +36,16 @@ test("a wrong application password fails the test with its message, and Save sta
   await expect(page.getByTestId("website-field-secret")).toHaveValue("");
 });
 
+test("a test the engine refuses with not_connected shows the engine's own reason, not 'test first' (final review)", async ({ page }) => {
+  await page.goto("/en/settings/website");
+  await page.getByTestId("website-field-secret").fill("disabled-password");
+  await page.getByTestId("website-test").click();
+  await expect(page.getByTestId("website-test-result")).toHaveAttribute("data-ok", "false");
+  await expect(page.getByTestId("website-test-result")).toContainText("turned off on the site");
+  await expect(page.getByTestId("settings-test-first")).toHaveCount(0);
+  await expect(page.getByTestId("settings-save")).toBeDisabled();
+});
+
 test("changing the address after a passing test blocks Save until it's tested again", async ({ page }) => {
   await page.goto("/en/settings/website");
   await page.getByTestId("website-test").click();

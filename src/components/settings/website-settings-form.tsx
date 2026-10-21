@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { loadWebsiteAction, saveWebsiteAction, testWebsiteAction } from "@/app/[locale]/(app)/settings/actions";
+import { ActionError } from "@/components/actions/action-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "@/i18n/navigation";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
+import { engineNoticeKey } from "@/lib/engine/notice";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { PublishTarget, TargetField, TargetType, WebsiteTest } from "@/lib/engine/schemas";
 import { settingsFieldErrors } from "@/lib/settings/field-errors";
@@ -74,6 +76,8 @@ export function WebsiteSettingsForm({ locale, saved, types, lastChecked }: Props
     const tested = { fingerprint, type: form.type };
     const result = await test.run({ locale, target: toWebsiteTarget(form, types) });
     if (!result.ok) {
+      // The latest test didn't pass, so an earlier passing result no longer counts.
+      setRun(null);
       setTestError(result.error);
       return;
     }
@@ -194,7 +198,17 @@ export function WebsiteSettingsForm({ locale, saved, types, lastChecked }: Props
               {t("needsTest")}
             </p>
           )}
-          <SaveFailure error={testError} />
+          {testError &&
+            (testError.fields && Object.keys(testError.fields).length > 0 ? (
+              <SaveFailure error={testError} />
+            ) : engineNoticeKey(testError.code) ? (
+              <ActionError error={testError} />
+            ) : (
+              // A refused test (e.g. 422 not_connected, spec v1.1 §9) shows the engine's own reason (§10).
+              <p role="alert" data-testid="website-test-result" data-ok="false" className="rounded-md bg-bad-bg px-3 py-2 text-sm text-bad-fg">
+                {t("testFailed", { error: testError.message })}
+              </p>
+            ))}
         </div>
         <MapEditor
           testId="field-map"

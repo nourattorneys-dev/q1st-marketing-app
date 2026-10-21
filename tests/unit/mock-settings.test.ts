@@ -170,6 +170,15 @@ describe("website connection (spec v1.1 §4 PublishTarget, §7, §10)", () => {
     expect(data(store.settings.saveWebsite({ ...WORDPRESS, secret: "new-password", version: 1 }))).toMatchObject({ status: "ok", secretSet: true, version: 2 });
   });
 
+  it("a site that has this kind of sign-in turned off answers the test with 422 not_connected and its reason (final review)", () => {
+    expect(store.settings.testWebsite({ ...WORDPRESS, secret: "disabled-password" })).toMatchObject({
+      ok: false,
+      status: 422,
+      code: "not_connected",
+      message: expect.stringContaining("turned off on the site"),
+    });
+  });
+
   it("saves a change to the field map, the format or the Arabic mode without a new test", () => {
     expect(data(store.settings.saveWebsite({ ...WORDPRESS, fieldMap: { title: "title", slug: "slug" }, body: { format: "boldbuilder" }, version: 1 }))).toMatchObject({
       fieldMap: { title: "title", slug: "slug" },

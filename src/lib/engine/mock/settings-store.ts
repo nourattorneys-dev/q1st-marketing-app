@@ -184,9 +184,13 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
   function testWebsite(input: Record<string, unknown>): MockOutcome<Record<string, unknown>> {
     const resolved = resolve(input);
     if ("ok" in resolved) return resolved;
+    const secretLabel = resolved.type.fields.find((field) => field.kind === "secret")?.label ?? "secret";
     if (resolved.secret?.includes("wrong")) {
-      const secretLabel = resolved.type.fields.find((field) => field.kind === "secret")?.label ?? "secret";
       return ok({ ok: false, error: `${resolved.type.label} refused the connection (401 Unauthorized). Check the ${secretLabel}.` });
+    }
+    // Spec v1.1 §9: not_connected also means "its test failed"; an engine may answer a failed test this way (mock rule: "disabled").
+    if (resolved.secret?.includes("disabled")) {
+      return fail(422, "not_connected", `${resolved.type.label} won't accept this ${secretLabel}: it's turned off on the site.`);
     }
     passedTests.add(fingerprintOf(resolved));
     const adapter = ADAPTERS[resolved.type.type] ?? { fields: [], blockTypes: [], suggestedFieldMap: {}, suggestedBlockMap: {} };
