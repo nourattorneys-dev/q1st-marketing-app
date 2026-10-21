@@ -555,6 +555,32 @@
         "blockMap": "ربط الكتل",
         "arabicMode": "النسخة العربية"
       }
+    },
+    "social": {
+      "title": "حسابات التواصل الاجتماعي",
+      "hint": "الحسابات التي تُنشر عليها منشورات التواصل الاجتماعي. يفتح الربط صفحة تسجيل الدخول الخاصة بالمنصة.",
+      "platforms": {
+        "linkedin": "لينكدإن",
+        "instagram": "إنستغرام",
+        "searchConsole": "Google Search Console"
+      },
+      "statuses": {
+        "ok": "متصل",
+        "expiring": "تنتهي صلاحيته قريباً",
+        "error": "لا يعمل",
+        "missing": "غير متصل"
+      },
+      "searchConsoleHint": "أداء البحث للمقالات المنشورة.",
+      "account": "الحساب: {name}",
+      "expires": "ينتهي الوصول {time}",
+      "lastError": "آخر خطأ: {error}",
+      "connect": "ربط",
+      "reconnect": "إعادة الربط",
+      "disconnect": "فصل",
+      "disconnectTitle": "فصل {platform}؟",
+      "disconnectBody": "لا يمكن نشر منشورات {platform} حتى يُربط من جديد.",
+      "connected": "تم ربط {platform}.",
+      "unsafeAddress": "أرسل محرك المحتوى عنوان تسجيل دخول لن تفتحه البوابة. تواصل مع Quantum1st."
     }
   }
 }

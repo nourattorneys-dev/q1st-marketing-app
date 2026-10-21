@@ -555,6 +555,32 @@
         "blockMap": "Block mapping",
         "arabicMode": "Arabic version"
       }
+    },
+    "social": {
+      "title": "Social accounts",
+      "hint": "The accounts social posts are published to. Connecting opens the platform's own sign-in.",
+      "platforms": {
+        "linkedin": "LinkedIn",
+        "instagram": "Instagram",
+        "searchConsole": "Google Search Console"
+      },
+      "statuses": {
+        "ok": "Connected",
+        "expiring": "Expiring soon",
+        "error": "Not working",
+        "missing": "Not connected"
+      },
+      "searchConsoleHint": "Search performance for published articles.",
+      "account": "Account: {name}",
+      "expires": "Access ends {time}",
+      "lastError": "Last error: {error}",
+      "connect": "Connect",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect {platform}?",
+      "disconnectBody": "Posts for {platform} can't be published until it's connected again.",
+      "connected": "{platform} connected.",
+      "unsafeAddress": "The content engine sent a sign-in address the portal won't open. Contact Quantum1st."
     }
   }
 }
