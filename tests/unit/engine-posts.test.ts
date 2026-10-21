@@ -216,3 +216,20 @@ describe("photos and export over the mock engine", () => {
     expect(file.body).toContain("## When the commission is earned");
   });
 });
+
+describe("the quota scenario over the mock engine (design §9 429)", () => {
+  it("refuses drafting with 429 quota_exceeded, still lets dismissing through, and accepts an upgrade request", async () => {
+    const quotaFetch = createMockFetch({ baseUrl: BASE, apiKey: "mock-key", scenario: "quota", store: createMockStore() });
+    const engine = createEngineApi(createEngineClient({ baseUrl: BASE, apiKey: "mock-key", retryDelaysMs: [0, 0], fetch: quotaFetch }));
+    expect(await failure(engine.draftKeywordArticles(["kw_3"], "en", ctx()))).toMatchObject({
+      status: 429,
+      code: "quota_exceeded",
+      details: { metric: "articles", used: 40, limit: 40 },
+    });
+    expect((await failure(engine.createDrafts({ topic: "Gratuity", kind: "blog", platform: "website", language: "en" }, ctx()))).code).toBe("quota_exceeded");
+    expect((await failure(engine.draftSuggestion("sg_1", "en", ctx()))).code).toBe("quota_exceeded");
+    expect((await engine.bulkSuggestions("dismiss", ["sg_3"], undefined, ctx())).done).toEqual(["sg_3"]);
+    expect((await engine.plan()).quotas.find((quota) => quota.metric === "articles")).toMatchObject({ used: 40, limit: 40 });
+    await expect(engine.requestUpgrade("articles", undefined, ctx())).resolves.toEqual({ requested: true });
+  });
+});

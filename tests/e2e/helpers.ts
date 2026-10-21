@@ -9,7 +9,7 @@ export async function signInWithCookie(context: BrowserContext, user: TestUser):
 
 export async function setMockScenario(
   context: BrowserContext,
-  scenario: "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash",
+  scenario: "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash" | "quota",
 ): Promise<void> {
   await context.addCookies([{ name: "mock_scenario", value: scenario, url: BASE_URL }]);
 }

@@ -61,3 +61,71 @@ describe("topic ideas (spec v1.1 §6 /suggestions)", () => {
     expect(data(store.listSuggestions(["drafted"]))[0]).toMatchObject({ id: "sg_5", postIds: ["p_201", "p_202"] });
   });
 });
+
+describe("AI jobs (spec v1.1 §2: drafting is async)", () => {
+  const finish = () => {
+    t += 1000;
+  };
+
+  it("proposes keywords that appear in the New tab once the job is done", () => {
+    const { jobId } = data(store.proposeKeywords("en"));
+    expect(data(store.job(jobId)).status).not.toBe("done");
+    finish();
+    expect(data(store.job(jobId)).status).toBe("done");
+    expect(data(store.listKeywords(["new"], 1, 25)).items.map((keyword) => keyword.phrase)).toEqual(
+      expect.arrayContaining(["labour court claims dubai", "non-compete clause uae"]),
+    );
+  });
+
+  it("proposes a topic idea per keyword, but not for dismissed keywords", () => {
+    const { jobId } = data(store.keywordTopics(["kw_5"]));
+    finish();
+    expect((data(store.job(jobId)).result as { suggestionIds: string[] }).suggestionIds).toHaveLength(1);
+    expect(data(store.listSuggestions(["new"])).at(-1)).toMatchObject({
+      title: "What to know about shareholder deadlock uae",
+      keywords: ["shareholder deadlock uae"],
+    });
+    expect(store.keywordTopics(["kw_8"])).toMatchObject({ ok: false, status: 422 });
+  });
+
+  it("drafts one article per keyword; both languages make a linked pair whose structures match (Review Focus 5)", () => {
+    const started = data(store.draftKeywordArticles(["kw_3"], "both", ME));
+    expect(started.postIds).toHaveLength(2);
+    const [en, ar] = started.postIds.map((id) => data(store.getPost(id)));
+    expect([en.status, ar.status, en.pairId, ar.pairId, en.language, ar.language]).toEqual(["drafting", "drafting", ar.id, en.id, "en", "ar"]);
+    finish();
+    const done = started.postIds.map((id) => data(store.getPost(id)));
+    expect(done.map((post) => post.status)).toEqual(["pending", "pending"]);
+    expect(done[1].findings.some((finding) => finding.code === "structure_mismatch")).toBe(false);
+    expect(data(store.listKeywords(["new"], 1, 25)).items.find((keyword) => keyword.id === "kw_3")?.uses).toBe(1);
+  });
+
+  it("drafts a topic idea: drafting with links to its drafts, then drafted", () => {
+    const started = data(store.draftSuggestion("sg_1", "en", ME));
+    expect(data(store.listSuggestions(["drafting"]))).toMatchObject([{ id: "sg_1", postIds: started.postIds }]);
+    finish();
+    expect(data(store.listSuggestions(["drafted"])).map((suggestion) => suggestion.id)).toContain("sg_1");
+    expect(data(store.getPost(started.postIds[0]))).toMatchObject({
+      status: "pending",
+      title: "End-of-service gratuity: how to work out what you're owed",
+    });
+  });
+
+  it("bulk drafts and dismisses topic ideas, naming what it couldn't do (Review Focus 4)", () => {
+    expect(data(store.bulkSuggestions("draft", ["sg_2", "sg_5"], "en", ME))).toEqual({
+      done: ["sg_2"],
+      failed: [{ id: "sg_5", code: "invalid_input", message: "Only new topic ideas can be drafted." }],
+    });
+    expect(data(store.bulkSuggestions("dismiss", ["sg_3"], undefined, ME)).done).toEqual(["sg_3"]);
+  });
+
+  it("checks a new draft request the way the engine would", () => {
+    expect(store.createDrafts({ topic: "", kind: "blog", platform: "linkedin", language: "fr" }, ME)).toMatchObject({
+      ok: false,
+      status: 400,
+      fields: { topic: expect.any(String), platform: expect.any(String), language: expect.any(String) },
+    });
+    const started = data(store.createDrafts({ topic: "Gratuity for part-time staff", kind: "social", platform: "linkedin", language: "en" }, ME));
+    expect(data(store.getPost(started.postIds[0]))).toMatchObject({ kind: "social", platform: "linkedin", status: "drafting" });
+  });
+});

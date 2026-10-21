@@ -2,9 +2,12 @@ import type { FetchLike } from "../client";
 import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "./fixtures";
 import { createMockStore, type ExportFile, type MockOutcome, type MockStore, type UploadedFile } from "./store";
 
-/** normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off) · crash (a non-engine error). */
-export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash";
-const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual", "crash"];
+/**
+ * normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off)
+ * · crash (a non-engine error) · quota (the monthly article limit is reached).
+ */
+export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash" | "quota";
+const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual", "crash", "quota"];
 export const MOCK_SCENARIO_COOKIE = "mock_scenario";
 
 export function isMockScenario(value: unknown): value is MockScenario {
@@ -70,6 +73,20 @@ export function createMockFetch(options: MockOptions): FetchLike {
 /** With the "drift" scenario, lists also carry a post in a shape the portal doesn't know (Review Focus 4). */
 const DRIFTED_POST = { id: "p_drift", title: 42 };
 
+/** Requests that draft with AI, refused with 429 in the "quota" scenario (design §9). */
+const DRAFTING_ROUTE = /^\/(keywords\/draft-articles|drafts|suggestions\/bulk|suggestions\/[^/]+\/draft)$/;
+
+const QUOTA_EXCEEDED: Reply = {
+  status: 429,
+  json: { ok: false, error: { code: "quota_exceeded", message: "Monthly limit reached for articles.", details: { metric: "articles", used: 40, limit: 40 } } },
+};
+
+/** The plan as it looks when the article limit is reached. */
+function planAtLimit() {
+  const plan = mockPlan();
+  return { ...plan, quotas: plan.quotas.map((quota) => (quota.metric === "articles" && quota.limit !== null ? { ...quota, used: quota.limit } : quota)) };
+}
+
 function route(
   method: string,
   path: string,
@@ -81,7 +98,8 @@ function route(
 ): Reply {
   if (method === "GET" && path === "/meta") return ok(mockMeta());
   if (method === "GET" && path === "/sites") return ok([scenario === "drift" ? driftedSite() : mockSite()]);
-  if (method === "GET" && path === "/account/plan") return ok(mockPlan());
+  if (method === "GET" && path === "/account/plan") return ok(scenario === "quota" ? planAtLimit() : mockPlan());
+  if (method === "POST" && path === "/account/upgrade-request") return ok({ requested: true });
 
   const jobRoute = /^\/jobs\/([^/]+)$/.exec(path);
   if (jobRoute && method === "GET") return outcome(store.job(decodeURIComponent(jobRoute[1])));
@@ -115,11 +133,19 @@ function route(
   if (rest === "/keywords" && method === "POST") return outcome(store.addKeywords(body.phrases, body.language, actor));
   if (rest === "/keywords/bulk" && method === "POST") return outcome(store.bulkKeywords(String(body.action ?? ""), idsOf(body.ids)));
   if (rest === "/suggestions" && method === "GET") return outcome(store.listSuggestions(statusesOf()));
+  const draftingRequest = method === "POST" && DRAFTING_ROUTE.test(rest) && !(rest === "/suggestions/bulk" && body.action !== "draft");
+  if (scenario === "quota" && draftingRequest) return QUOTA_EXCEEDED;
+  if (rest === "/keywords/propose" && method === "POST") return outcome(store.proposeKeywords(body.language));
+  if (rest === "/keywords/topics" && method === "POST") return outcome(store.keywordTopics(idsOf(body.ids)));
+  if (rest === "/keywords/draft-articles" && method === "POST") return outcome(store.draftKeywordArticles(idsOf(body.ids), body.language, actor));
+  if (rest === "/suggestions/bulk" && method === "POST") return outcome(store.bulkSuggestions(String(body.action ?? ""), idsOf(body.ids), body.language, actor));
+  if (rest === "/drafts" && method === "POST") return outcome(store.createDrafts(body, actor));
 
   const suggestionRoute = /^\/suggestions\/([^/]+)(\/.*)?$/.exec(rest);
   if (suggestionRoute && suggestionRoute[1] !== "bulk") {
     const id = decodeURIComponent(suggestionRoute[1]);
     if (suggestionRoute[2] === "/dismiss" && method === "POST") return outcome(store.dismissSuggestion(id));
+    if (suggestionRoute[2] === "/draft" && method === "POST") return outcome(store.draftSuggestion(id, body.language, actor));
   }
 
   if (rest === "/posts" && method === "GET") {

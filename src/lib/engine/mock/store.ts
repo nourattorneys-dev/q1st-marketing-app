@@ -1,6 +1,7 @@
 import { normalizePhrase } from "@/lib/keywords/phrases";
 import { approvalMode } from "@/lib/posts/rules";
 import type { BulkResult, Category, Job, Keyword, Photo, Post, Suggestion } from "../schemas";
+import { draftedContent, ideaTitleFor, PROPOSALS, topicFor } from "./drafting";
 import { exportHtml, exportMarkdown } from "./export";
 import { searchMockPhotos } from "./photos";
 import { mockMeta } from "./fixtures";
@@ -30,7 +31,9 @@ function isImageText(value: unknown): value is { alt: string | null; credit: str
 }
 export type StoredResponse = { fingerprint: string; status: number; json: unknown };
 
-type MockJob = { id: string; postId: string; note: string; startedAt: number; durationMs: number; done: boolean };
+/** A slow AI job: it finishes lazily `durationMs` after it starts, and `complete()` applies its effect and gives its result. */
+type MockJob = { id: string; startedAt: number; durationMs: number; done: boolean; result: unknown; complete: () => unknown };
+type DraftInput = { topic: string; kind: string; platform: string; language: string; keywords: string[] };
 
 /** What a post's buttons may do (spec v1.1 §5: the API returns post.actions; the portal never works it out). */
 function actionsFor(post: Post): string[] {
@@ -88,6 +91,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   const suggestions = new Map<string, Suggestion>();
   const siteLanguages = mockMeta().languages;
   let keywordSequence = 100;
+  let suggestionSequence = 100;
+  let postSequence = 600;
   const iso = (ms: number) => new Date(ms).toISOString();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
@@ -151,21 +156,34 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     post.updatedAt = iso(now());
   }
 
-  /** Jobs finish lazily: every read or change first applies the jobs whose time is up. */
+  /** Jobs finish lazily: every read or change first completes the jobs whose time is up. */
   function tick(): void {
     for (const job of jobs.values()) {
       if (job.done || now() - job.startedAt < job.durationMs) continue;
       job.done = true;
-      const post = posts.get(job.postId);
-      if (!post || post.status !== "drafting") continue;
+      job.result = job.complete();
+    }
+  }
+
+  function startJob(complete: () => unknown): string {
+    const id = `j_${++sequence}`;
+    jobs.set(id, { id, startedAt: now(), durationMs: jobDurationMs, done: false, result: null, complete });
+    return id;
+  }
+
+  /** "Ask for changes" finished: the note is answered in the text and the post comes back for review. */
+  function redraft(postId: string, note: string): { postIds: string[] } {
+    const post = posts.get(postId);
+    if (post?.status === "drafting") {
       post.status = "pending";
-      post.reviewNote = job.note;
-      post.content = `${post.content ?? ""}<p>${escapeHtml(`Revised as requested: ${job.note}`)}</p>`;
+      post.reviewNote = note;
+      post.content = `${post.content ?? ""}<p>${escapeHtml(`Revised as requested: ${note}`)}</p>`;
       touch(post);
       refreshFindings(post);
       const twin = twinOf(post);
       if (twin) refreshFindings(twin);
     }
+    return { postIds: [postId] };
   }
 
   function guard(id: string, actor: string): MockOutcome<Post> {
@@ -244,8 +262,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const post = guarded.data;
     if (post.status !== "pending") return fail(422, "invalid_input", "Changes can only be requested for posts waiting for review.");
     if (!note.trim()) return fail(400, "invalid_input", "Say what should change.", { fields: { note: "Required" } });
-    const jobId = `j_${++sequence}`;
-    jobs.set(jobId, { id: jobId, postId: id, note: note.trim(), startedAt: now(), durationMs: jobDurationMs, done: false });
+    const jobId = startJob(() => redraft(id, note.trim()));
     post.status = "drafting";
     touch(post);
     return ok({ jobId, status: "queued", postIds: [id] }, 202);
@@ -529,6 +546,198 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok(structuredClone(suggestion));
   }
 
+  const isDraftLanguage = (value: unknown): value is string => typeof value === "string" && (value === "both" || siteLanguages.includes(value));
+
+  function draftPost(input: DraftInput, actor: string): Post {
+    const at = iso(now());
+    return {
+      id: `p_${++postSequence}`,
+      kind: input.kind,
+      platform: input.platform,
+      origin: "ai",
+      language: input.language,
+      status: "drafting",
+      topic: input.topic,
+      title: input.topic,
+      keywords: input.keywords,
+      content: null,
+      hashtags: input.kind === "social" ? ["#UAELaw"] : [],
+      sources: [],
+      linkSuggestions: [],
+      findings: [],
+      actions: [],
+      requestedBy: actor,
+      createdAt: at,
+      updatedAt: at,
+      version: 1,
+    };
+  }
+
+  /**
+   * New drafts are "drafting" posts at once and come back "pending" when their job is done (spec v1.1 §2, §5).
+   * "both" drafts a linked English–Arabic pair (spec v1.1 §10).
+   */
+  function startDrafts(inputs: DraftInput[], actor: string, onDone: () => void = () => {}) {
+    const created: Post[] = [];
+    for (const input of inputs) {
+      const group = (input.language === "both" ? siteLanguages : [input.language]).map((language) => draftPost({ ...input, language }, actor));
+      if (group.length === 2) {
+        group[0].pairId = group[1].id;
+        group[1].pairId = group[0].id;
+      }
+      created.push(...group);
+    }
+    for (const post of created) posts.set(post.id, post);
+    const postIds = created.map((post) => post.id);
+    const jobId = startJob(() => {
+      for (const id of postIds) {
+        const post = posts.get(id);
+        if (!post || post.status !== "drafting") continue;
+        post.status = "pending";
+        post.content = draftedContent(post.title, post.kind, post.language);
+        touch(post);
+      }
+      for (const id of postIds) {
+        const post = posts.get(id);
+        if (post) refreshFindings(post);
+      }
+      onDone();
+      return { postIds };
+    });
+    return ok({ jobId, status: "queued", postIds }, 202);
+  }
+
+  /** Checks a draft request the way the engine would (spec v1.1 §7 POST …/drafts). */
+  function draftRefusal(input: Record<string, unknown>): MockFail | null {
+    const meta = mockMeta();
+    const fields: Record<string, string> = {};
+    if (typeof input.topic !== "string" || !input.topic.trim() || input.topic.length > 200) fields.topic = "Write a topic of up to 200 characters.";
+    if (typeof input.kind !== "string" || !meta.kinds.includes(input.kind)) fields.kind = "Choose a type.";
+    if (typeof input.platform !== "string" || !meta.platforms.includes(input.platform)) fields.platform = "Choose a platform.";
+    else if (input.kind === "blog" && input.platform !== "website") fields.platform = "Articles go to the website.";
+    else if (input.kind === "social" && input.platform === "website") fields.platform = "Social posts go to a social platform.";
+    if (!isDraftLanguage(input.language)) fields.language = "Choose a language, or both.";
+    return Object.keys(fields).length > 0 ? fail(400, "invalid_input", "Some fields aren't valid.", { fields }) : null;
+  }
+
+  function createDrafts(body: Record<string, unknown>, actor: string) {
+    const refusal = draftRefusal(body);
+    if (refusal) return refusal;
+    const given = Array.isArray(body.keywords) ? body.keywords.map(String).filter(Boolean) : [];
+    // No keywords given: the engine proposes them (spec v1.1 §6); the mock takes the first keyword in use.
+    const proposed = [...keywords.values()].filter((keyword) => keyword.status === "approved").slice(0, 1).map((keyword) => keyword.phrase);
+    const input = { topic: String(body.topic).trim(), kind: String(body.kind), platform: String(body.platform), language: String(body.language) };
+    return startDrafts([{ ...input, keywords: given.length > 0 ? given : proposed }], actor);
+  }
+
+  function proposeKeywords(language: unknown) {
+    if (language !== undefined && (typeof language !== "string" || !siteLanguages.includes(language))) {
+      return fail(400, "invalid_input", "Choose one of the site's languages.", { fields: { language: "Unknown language" } });
+    }
+    const languages = typeof language === "string" ? [language] : siteLanguages;
+    const jobId = startJob(() => {
+      const keywordIds: string[] = [];
+      for (const lang of languages) {
+        const known = new Set([...keywords.values()].filter((keyword) => keyword.language === lang).map((keyword) => normalizePhrase(keyword.phrase)));
+        for (const phrase of PROPOSALS[lang] ?? []) {
+          if (known.has(normalizePhrase(phrase))) continue;
+          const at = iso(now());
+          const keyword: Keyword = {
+            id: `kw_${++keywordSequence}`,
+            phrase,
+            language: lang,
+            source: "ai",
+            status: "new",
+            rationale: "Proposed from the site's profile and searches",
+            uses: 0,
+            addedBy: null,
+            createdAt: at,
+            updatedAt: at,
+          };
+          keywords.set(keyword.id, keyword);
+          keywordIds.push(keyword.id);
+        }
+      }
+      return { keywordIds };
+    });
+    return ok({ jobId, status: "queued", postIds: [] as string[] }, 202);
+  }
+
+  /** Keywords that can feed topics and drafts: anything not dismissed or off strategy, and not already covered for drafts. */
+  function usableKeywords(ids: string[], statuses: string[]): Keyword[] | null {
+    const chosen = ids.map((id) => keywords.get(id));
+    return ids.length > 0 && chosen.every((keyword) => keyword && statuses.includes(keyword.status)) ? (chosen as Keyword[]) : null;
+  }
+
+  function keywordTopics(ids: string[]) {
+    const chosen = usableKeywords(ids, ["new", "approved", "covered"]);
+    if (!chosen) return fail(422, "invalid_input", "Topics can be proposed only for keywords that aren't dismissed.");
+    const sources = chosen.map((keyword) => ({ phrase: keyword.phrase, language: keyword.language }));
+    const jobId = startJob(() => {
+      const suggestionIds = sources.map(({ phrase, language }) => {
+        const suggestion: Suggestion = {
+          id: `sg_${++suggestionSequence}`,
+          title: ideaTitleFor(phrase, language),
+          kind: "blog",
+          language,
+          keywords: [phrase],
+          why: `Proposed from the keyword “${phrase}”`,
+          status: "new",
+          postIds: [],
+          createdAt: iso(now()),
+        };
+        suggestions.set(suggestion.id, suggestion);
+        return suggestion.id;
+      });
+      return { suggestionIds };
+    });
+    return ok({ jobId, status: "queued", postIds: [] as string[] }, 202);
+  }
+
+  function draftKeywordArticles(ids: string[], language: unknown, actor: string) {
+    if (!isDraftLanguage(language)) return fail(400, "invalid_input", "Choose a language, or both.", { fields: { language: "Unknown language" } });
+    const chosen = usableKeywords(ids, ["new", "approved"]);
+    if (!chosen) return fail(422, "invalid_input", "Articles can be drafted only from new or in-use keywords.");
+    const inputs = chosen.map((keyword) => {
+      keyword.uses = (keyword.uses ?? 0) + 1;
+      const topicLanguage = language === "both" ? keyword.language : language;
+      return { topic: topicFor(keyword.phrase, topicLanguage), kind: "blog", platform: "website", language, keywords: [keyword.phrase] };
+    });
+    return startDrafts(inputs, actor);
+  }
+
+  function draftSuggestion(id: string, language: unknown, actor: string) {
+    const suggestion = suggestions.get(id);
+    if (!suggestion) return fail(404, "not_found", "This topic idea no longer exists.");
+    if (suggestion.status !== "new") return fail(422, "invalid_input", "Only new topic ideas can be drafted.");
+    if (!isDraftLanguage(language)) return fail(400, "invalid_input", "Choose a language, or both.", { fields: { language: "Unknown language" } });
+    const platform = suggestion.kind === "blog" ? "website" : "linkedin";
+    const started = startDrafts([{ topic: suggestion.title, kind: suggestion.kind, platform, language, keywords: suggestion.keywords }], actor, () => {
+      suggestion.status = "drafted";
+    });
+    if (started.ok) {
+      suggestion.status = "drafting";
+      suggestion.postIds = started.data.postIds;
+    }
+    return started;
+  }
+
+  function bulkSuggestions(action: string, ids: string[], language: unknown, actor: string): MockOutcome<BulkResult> {
+    const handlers: Record<string, (id: string) => MockOutcome<unknown>> = {
+      draft: (id) => draftSuggestion(id, language, actor),
+      dismiss: (id) => dismissSuggestion(id),
+    };
+    const apply = Object.hasOwn(handlers, action) ? handlers[action] : undefined;
+    if (!apply) return fail(400, "invalid_input", `Unknown topic idea action: ${action}.`, { fields: { action: "Unknown" } });
+    const result: BulkResult = { done: [], failed: [] };
+    for (const id of ids) {
+      const outcome = apply(id);
+      if (outcome.ok) result.done.push(id);
+      else result.failed.push({ id, code: outcome.code, message: outcome.message });
+    }
+    return ok(result);
+  }
+
   function bulk(action: string, ids: string[], note: string | undefined, actor: string): MockOutcome<BulkResult> {
     const handlers: Record<string, (id: string) => MockOutcome<unknown>> = {
       approve: (id) => approve(id, undefined, actor),
@@ -560,7 +769,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
       id,
       status,
       progress: Math.round(progress * 100) / 100,
-      result: found.done ? { postIds: [found.postId] } : null,
+      result: found.done ? found.result : null,
       error: null,
     });
   }
@@ -573,14 +782,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   for (const id of SEED_FAILING_PUBLISH) failNextPublish.add(id);
   for (const seeded of seedKeywords()) keywords.set(seeded.id, seeded);
   for (const seeded of seedSuggestions()) suggestions.set(seeded.id, seeded);
-  jobs.set("j_seed", {
-    id: "j_seed",
-    postId: SEED_DRAFTING_POST_ID,
-    note: "",
-    startedAt: now(),
-    durationMs: Number.POSITIVE_INFINITY,
-    done: false,
-  });
+  jobs.set("j_seed", { id: "j_seed", startedAt: now(), durationMs: Number.POSITIVE_INFINITY, done: false, result: null, complete: () => ({ postIds: [SEED_DRAFTING_POST_ID] }) });
 
   return {
     idempotency,
@@ -607,6 +809,12 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     bulkKeywords,
     listSuggestions,
     dismissSuggestion,
+    proposeKeywords,
+    keywordTopics,
+    draftKeywordArticles,
+    draftSuggestion,
+    bulkSuggestions,
+    createDrafts,
     bulk,
     job,
     categories,
