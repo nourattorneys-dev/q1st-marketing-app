@@ -10,7 +10,7 @@ export default function GlobalError({ retry }: { error: unknown; retry: () => vo
       <body style={{ fontFamily: "system-ui, sans-serif", lineHeight: 1.5, maxWidth: "36rem", margin: "0 auto", padding: "2rem" }}>
         <div role="alert" data-testid="global-error">
           <h1>Something went wrong</h1>
-          <p>This page couldn't be shown. Try again; if it keeps happening, contact your admin.</p>
+          <p>{"This page couldn't be shown. Try again; if it keeps happening, contact your admin."}</p>
           <h1 dir="rtl" lang="ar">
             حدث خطأ
           </h1>
