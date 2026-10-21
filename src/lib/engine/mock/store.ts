@@ -12,6 +12,7 @@ import { computeFindings, seoScore, toNeutralHtml } from "./rules";
 import { slotTimes } from "./schedule";
 import { MOCK_CATEGORIES } from "./settings-fixtures";
 import { createSettingsStore } from "./settings-store";
+import { createSiteHealthStore } from "./site-health";
 
 export type { MockFail, MockOk, MockOutcome, UploadedFile } from "./outcome";
 export type ExportFile = { body: string; contentType: string; filename: string };
@@ -72,6 +73,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   let postSequence = 600;
   const iso = (ms: number) => new Date(ms).toISOString();
   const settings = createSettingsStore({ now, firstRun: options.firstRun });
+  const siteHealth = createSiteHealthStore();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
 
@@ -748,6 +750,30 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok({ jobId: startJob(() => settings.seoProposal()), status: "queued", postIds: [] as string[] });
   }
 
+  /** GET …/site/findings, after any finished scan or fix job has landed. */
+  function listFindings(statuses: string[] | null, levels: string[] | null, page: number, pageSize: number) {
+    tick();
+    return siteHealth.list(statuses, levels, page, pageSize);
+  }
+
+  /** POST …/site/scan: a job; the scan's findings land when it's done (spec v1.1 §6 "Scan site (starts a job)"). */
+  function scanSite() {
+    tick();
+    return ok({ jobId: startJob(() => siteHealth.scanned()), status: "queued", postIds: [] as string[] });
+  }
+
+  /** POST …/site/fixes: a job that prepares a fix for each open finding chosen; the findings become prepared. */
+  function prepareFixes(ids: string[]) {
+    tick();
+    if (siteHealth.preparable(ids).length === 0) return fail(422, "invalid_input", "Choose findings that are still open.");
+    return ok({ jobId: startJob(() => siteHealth.prepare(ids)), status: "queued", postIds: [] as string[] });
+  }
+
+  function bulkFindings(action: string, ids: string[]) {
+    tick();
+    return siteHealth.bulk(action, ids);
+  }
+
   function job(id: string): MockOutcome<Job> {
     tick();
     const found = jobs.get(id);
@@ -778,6 +804,10 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     idempotency,
     settings,
     proposeSeo,
+    listFindings,
+    scanSite,
+    prepareFixes,
+    bulkFindings,
     listPosts,
     getPost,
     updatePost,

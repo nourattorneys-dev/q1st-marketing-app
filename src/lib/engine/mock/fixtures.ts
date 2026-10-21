@@ -78,6 +78,8 @@ export function mockPlan(): Plan {
       { metric: "articles", limit: 40, used: 31, scope: "account", mode: "hard", warnAt: 0.8 },
       { metric: "socialPosts", limit: 120, used: 110, scope: "account", mode: "soft", warnAt: 0.8 },
       { metric: "photos", limit: null, used: 60 },
+      { metric: "siteScans", limit: 4, used: 2, scope: "account", mode: "hard", warnAt: 0.75 },
+      { metric: "aiTokens", limit: 2_000_000, used: 812_000, scope: "account", mode: "hard", warnAt: 0.8 },
       // A metric the interface has no label for: it must still show, using its raw name (Review Focus 5).
       { metric: "videoMinutes", limit: 10, used: 2, scope: "account", mode: "soft", warnAt: 0.8 },
     ],

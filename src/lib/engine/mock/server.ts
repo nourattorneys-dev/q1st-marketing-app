@@ -1,10 +1,11 @@
 import type { FetchLike } from "../client";
 import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "./fixtures";
 import { createMockStore, type ExportFile, type MockOutcome, type MockStore, type UploadedFile } from "./store";
+import { mockUsage } from "./usage";
 
 /**
  * normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off)
- * · crash (a non-engine error) · quota (the monthly article limit is reached)
+ * · crash (a non-engine error) · quota (monthly limits reached: articles for drafting, aiTokens for AI proposals, siteScans for scans)
  * · firstrun (a store created with no website or social connection) · performance (the feature, with Search Console).
  */
 export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash" | "quota" | "firstrun" | "performance";
@@ -77,15 +78,19 @@ const DRIFTED_POST = { id: "p_drift", title: 42 };
 /** Requests that draft with AI, refused with 429 in the "quota" scenario (design §9). */
 const DRAFTING_ROUTE = /^\/(keywords\/draft-articles|drafts|suggestions\/bulk|suggestions\/[^/]+\/draft)$/;
 
-const QUOTA_EXCEEDED: Reply = {
-  status: 429,
-  json: { ok: false, error: { code: "quota_exceeded", message: "Monthly limit reached for articles.", details: { metric: "articles", used: 40, limit: 40 } } },
-};
+/** A 429 for a metered request in the "quota" scenario: the metric's limit is reached (design §9). */
+function quotaRefusal(metric: string): Reply {
+  const limit = mockPlan().quotas.find((quota) => quota.metric === metric)?.limit ?? 0;
+  return {
+    status: 429,
+    json: { ok: false, error: { code: "quota_exceeded", message: `Monthly limit reached for ${metric}.`, details: { metric, used: limit, limit } } },
+  };
+}
 
-/** The plan as it looks when the article limit is reached. */
+/** The plan as it looks in the "quota" scenario: every hard quota is at its limit. */
 function planAtLimit() {
   const plan = mockPlan();
-  return { ...plan, quotas: plan.quotas.map((quota) => (quota.metric === "articles" && quota.limit !== null ? { ...quota, used: quota.limit } : quota)) };
+  return { ...plan, quotas: plan.quotas.map((quota) => (quota.mode === "hard" && quota.limit !== null ? { ...quota, used: quota.limit } : quota)) };
 }
 
 /** The site, with the connections the settings store has (spec v1.1 §4 Site.connections). */
@@ -106,6 +111,10 @@ function route(
   if (method === "GET" && path === "/sites") return ok([scenario === "drift" ? driftedSite() : siteOf(store, scenario)]);
   if (method === "GET" && path === "/account/plan") return ok(scenario === "quota" ? planAtLimit() : mockPlan());
   if (method === "POST" && path === "/account/upgrade-request") return ok({ requested: true });
+  if (method === "GET" && path === "/account/usage") {
+    const usage = mockUsage(url.searchParams.get("from") ?? "", url.searchParams.get("to") ?? "");
+    return usage ? ok(usage) : fail(400, "invalid_input", "Use months like 2026-05, with from no later than to.");
+  }
 
   const jobRoute = /^\/jobs\/([^/]+)$/.exec(path);
   if (jobRoute && method === "GET") return outcome(store.job(decodeURIComponent(jobRoute[1])));
@@ -134,6 +143,18 @@ function route(
   });
   const idsOf = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
+  // The "quota" scenario: scans and AI proposals are metered too (spec v1.1 §4 metrics).
+  if (scenario === "quota" && method === "POST" && rest === "/site/scan") return quotaRefusal("siteScans");
+  if (scenario === "quota" && method === "POST" && (rest === "/keywords/propose" || rest === "/settings/seo/propose")) return quotaRefusal("aiTokens");
+  if (rest === "/site/findings" && method === "GET") {
+    const levels = url.searchParams.get("level")?.split(",").filter(Boolean) ?? null;
+    const { page, pageSize } = pageOf();
+    const listed = store.listFindings(statusesOf(), levels, page, pageSize);
+    return listed.ok ? { status: 200, json: { ok: true, data: listed.data.items, meta: listed.data.meta } } : outcome(listed);
+  }
+  if (rest === "/site/scan" && method === "POST") return outcome(store.scanSite());
+  if (rest === "/site/fixes" && method === "POST") return outcome(store.prepareFixes(idsOf(body.ids)));
+  if (rest === "/site/findings/bulk" && method === "POST") return outcome(store.bulkFindings(String(body.action ?? ""), idsOf(body.ids)));
   if (rest === "/settings/seo" && method === "GET") return outcome(store.settings.seo());
   if (rest === "/settings/seo" && method === "PUT") return outcome(store.settings.saveSeo(body));
   if (rest === "/settings/seo/propose" && method === "POST") return outcome(store.proposeSeo());
@@ -170,7 +191,7 @@ function route(
     return { status: 200, json: { ok: true, data: items, meta: { page, pageSize, total: listed.data.length } } };
   }
   const draftingRequest = method === "POST" && DRAFTING_ROUTE.test(rest) && !(rest === "/suggestions/bulk" && body.action !== "draft");
-  if (scenario === "quota" && draftingRequest) return QUOTA_EXCEEDED;
+  if (scenario === "quota" && draftingRequest) return quotaRefusal("articles");
   if (rest === "/keywords/propose" && method === "POST") return outcome(store.proposeKeywords(body.language));
   if (rest === "/keywords/topics" && method === "POST") return outcome(store.keywordTopics(idsOf(body.ids)));
   if (rest === "/keywords/draft-articles" && method === "POST") return outcome(store.draftKeywordArticles(idsOf(body.ids), body.language, actor));
