@@ -31,3 +31,14 @@ test("the no-access page has the language switch (M1 follow-up)", async ({ page,
   await page.goto("/en/no-access");
   await expect(page.getByTestId("locale-switch")).toBeVisible();
 });
+
+test("when reading the session fails, the whole page shows the error page in the reader's language (M1/M2b follow-up)", async ({ page, context }) => {
+  await isolateMockStore(context);
+  await signInWithCookie(context, "dev_admin");
+  await setMockScenario(context, "auth_crash");
+  await page.goto("/ar");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByTestId("error-page")).toContainText("حدث خطأ");
+  await expect(page.getByTestId("error-retry")).toHaveText("حاول مرة أخرى");
+  await expect(page.getByText("Application error")).toHaveCount(0);
+});

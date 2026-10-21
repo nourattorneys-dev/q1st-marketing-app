@@ -5,10 +5,10 @@ import { tryEngine } from "@/lib/engine/result";
 
 /** Design §9: a revoked or missing key (401) shows one site-wide banner, above whatever each section says. */
 export async function ServiceBanner() {
-  const session = await getSession();
-  if (!session?.role) return null;
   let code: string | null = null;
   try {
+    const session = await getSession();
+    if (!session?.role) return null;
     const engine = await getEngine();
     const meta = await tryEngine(() => engine.meta());
     code = meta.ok ? null : meta.error.code;

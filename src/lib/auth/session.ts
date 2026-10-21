@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { MOCK_STORE_COOKIE } from "@/lib/engine/mock/registry";
+import { MOCK_SCENARIO_COOKIE } from "@/lib/engine/mock/server";
 import { serverEnv } from "@/lib/env";
 import { createMockDirectory } from "@/lib/users/mock-directory";
 import { roleFromClaims, sessionFromClerkUser } from "./clerk-session";
@@ -16,6 +17,8 @@ export const getSession = cache(async (): Promise<Session | null> => {
     // The cookie names a fixed test user; their current role and two-factor status come from the test directory,
     // so a change on /users takes effect on the person's next request, as it does with Clerk.
     const jar = await cookies();
+    // Test logins only: the "auth_crash" scenario stands in for a sign-in service that fails while reading the session.
+    if (jar.get(MOCK_SCENARIO_COOKIE)?.value === "auth_crash") throw new Error("Simulated sign-in outage (mock scenario auth_crash).");
     const user = decodeMockSession(jar.get(MOCK_SESSION_COOKIE)?.value);
     return user ? createMockDirectory(jar.get(MOCK_STORE_COOKIE)?.value).sessionOf(user.userId) : null;
   }
