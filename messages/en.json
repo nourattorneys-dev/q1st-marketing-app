@@ -9,7 +9,8 @@
       "dashboard": "Dashboard",
       "review": "Review",
       "scheduled": "Scheduled",
-      "history": "History"
+      "history": "History",
+      "keywords": "Keywords"
     },
     "role": {
       "admin": "Admin",
@@ -298,5 +299,67 @@
     "askAdmin": "Ask your admin to raise the limit.",
     "request": "Request upgrade",
     "requested": "Upgrade requested. Quantum1st will be in touch."
+  },
+  "Drafting": {
+    "language": "Language",
+    "both": "Both languages",
+    "cancel": "Cancel"
+  },
+  "Keywords": {
+    "title": "Keywords",
+    "tabs": {
+      "label": "Keyword lists",
+      "new": "New",
+      "inUse": "In use",
+      "covered": "Covered",
+      "dismissed": "Dismissed"
+    },
+    "columns": {
+      "phrase": "Phrase",
+      "language": "Language",
+      "source": "Source",
+      "rationale": "Why",
+      "uses": "Uses"
+    },
+    "sources": {
+      "ai": "AI",
+      "person": "Added by a person",
+      "search_console": "Search Console"
+    },
+    "offStrategy": "Outside the strategy",
+    "empty": "No keywords here.",
+    "select": "Select “{phrase}”",
+    "approve": "Approve",
+    "dismiss": "Dismiss",
+    "restore": "Restore",
+    "topics": "Propose topics",
+    "proposingTopics": "Proposing topics…",
+    "topicsReady": "New topic ideas are ready.",
+    "openIdeas": "Open Topic ideas",
+    "draft": "Draft articles",
+    "draftTitle": "Draft one article per keyword?",
+    "draftBody": "Each selected keyword gets its own article. Choose the language.",
+    "draftConfirm": "Start drafting",
+    "drafting": "Drafting…",
+    "draftsStarted": "{count, plural, one {Drafting {n} article. It will appear in Review.} other {Drafting {n} articles. They will appear in Review.}}",
+    "openReview": "Open Review",
+    "bulkFailed": "Not done:",
+    "add": {
+      "title": "Add keywords",
+      "hint": "Separate them with commas or new lines.",
+      "language": "Language",
+      "submit": "Add",
+      "added": "{count, plural, one {Added {n} keyword.} other {Added {n} keywords.}}",
+      "skipped": "Already in the list: {phrases}."
+    },
+    "propose": {
+      "title": "Propose keywords (AI)",
+      "hint": "The AI suggests keywords from the site's profile and searches.",
+      "language": "Language",
+      "all": "All languages",
+      "submit": "Propose",
+      "running": "Proposing keywords…",
+      "ready": "New keywords are in the New tab."
+    }
   }
 }
