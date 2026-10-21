@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createEngineApi } from "@/lib/engine/api";
 import { createEngineClient } from "@/lib/engine/client";
 import { EngineError } from "@/lib/engine/errors";
-import { MOCK_SITE_ID, mockMeta, mockPlan, mockScheduled, mockSite } from "@/lib/engine/mock/fixtures";
+import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "@/lib/engine/mock/fixtures";
+import { seedPosts } from "@/lib/engine/mock/post-fixtures";
 import { createMockFetch, isMockScenario, type MockScenario } from "@/lib/engine/mock/server";
 import { engineNoticeKey } from "@/lib/engine/notice";
 import { MetaSchema, PlanSchema, ScheduledSchema, SiteSchema } from "@/lib/engine/schemas";
@@ -34,13 +35,12 @@ describe("mock fixtures", () => {
   it("match the v1.1 schemas", () => {
     expect(MetaSchema.safeParse(mockMeta()).success).toBe(true);
     expect(SiteSchema.safeParse(mockSite()).success).toBe(true);
-    expect(ScheduledSchema.safeParse(mockScheduled()).success).toBe(true);
     expect(PlanSchema.safeParse(mockPlan()).success).toBe(true);
   });
 
   it("describe Fakher & Co as a legal consultancy, never a law firm", () => {
     expect(mockSite().category).toBe("legal consultancy");
-    expect(JSON.stringify([mockSite(), mockScheduled(), mockPlan()]).toLowerCase()).not.toContain("law firm");
+    expect(JSON.stringify([mockSite(), mockPlan(), seedPosts()]).toLowerCase()).not.toContain("law firm");
   });
 });
 

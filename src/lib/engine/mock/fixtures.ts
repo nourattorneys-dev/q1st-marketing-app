@@ -1,4 +1,4 @@
-import type { Meta, Plan, PostSummary, Scheduled, Site } from "../schemas";
+import type { Meta, Plan, Site } from "../schemas";
 
 export const MOCK_SITE_ID = "site_fakher";
 
@@ -67,52 +67,6 @@ export function mockSite(): Site {
     },
     counts: { suggestions: 8, pending: 3, approved: 5, scheduled: 5, published: 41, failed: 1, keywordsNew: 12 },
     createdAt: "2026-10-20T18:29:00+04:00",
-  };
-}
-
-const SCHEDULED_POSTS: readonly PostSummary[] = [
-  {
-    id: "p_101",
-    kind: "blog",
-    platform: "website",
-    language: "en",
-    status: "approved",
-    title: "When does a commission become payable under UAE Labour Law?",
-    schedule: { hold: false, scheduledAt: "2026-10-22T10:00:00+04:00", position: 1 },
-    updatedAt: "2026-10-21T09:12:00+04:00",
-    actions: [],
-  },
-  {
-    id: "p_102",
-    kind: "blog",
-    platform: "website",
-    language: "ar",
-    status: "approved",
-    title: "متى تستحق العمولة وفق قانون العمل الإماراتي؟",
-    schedule: { hold: false, scheduledAt: "2026-10-22T13:00:00+04:00", position: 2 },
-    updatedAt: "2026-10-21T09:12:00+04:00",
-    actions: [],
-  },
-  {
-    id: "p_103",
-    kind: "social",
-    platform: "linkedin",
-    language: "en",
-    status: "approved",
-    title: "Commission rights after resignation",
-    schedule: { hold: true, scheduledAt: null, position: 3 },
-    updatedAt: "2026-10-21T08:40:00+04:00",
-    actions: [],
-  },
-];
-
-export function mockScheduled(): Scheduled {
-  return {
-    autoPublish: true,
-    nextSlotAt: "2026-10-22T10:00:00+04:00",
-    waitingReason: null,
-    posts: SCHEDULED_POSTS.map((post) => ({ ...post, schedule: post.schedule ? { ...post.schedule } : post.schedule })),
-    skipped: 0,
   };
 }
 

@@ -1,9 +1,10 @@
 import type { FetchLike } from "../client";
-import { MOCK_SITE_ID, mockMeta, mockPlan, mockScheduled, mockSite } from "./fixtures";
+import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "./fixtures";
 import { createMockStore, type MockOutcome, type MockStore } from "./store";
 
-export type MockScenario = "normal" | "unauthorized" | "down" | "drift";
-const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift"];
+/** normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off). */
+export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual";
+const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual"];
 export const MOCK_SCENARIO_COOKIE = "mock_scenario";
 
 export function isMockScenario(value: unknown): value is MockScenario {
@@ -84,9 +85,8 @@ function route(
 
   if (method === "GET" && rest === "") return ok(scenario === "drift" ? driftedSite() : mockSite());
   if (method === "GET" && rest === "/scheduled") {
-    const scheduled = mockScheduled();
-    const pageSize = Number(url.searchParams.get("pageSize") ?? scheduled.posts.length);
-    return ok({ ...scheduled, posts: scheduled.posts.slice(0, pageSize) });
+    const pageSize = Number(url.searchParams.get("pageSize")) || null;
+    return outcome(store.scheduled(scenario !== "manual", pageSize));
   }
   if (method === "GET" && rest === "/website/categories") return outcome(store.categories());
 
@@ -94,7 +94,7 @@ function route(
     const statuses = url.searchParams.get("status")?.split(",").filter(Boolean) ?? null;
     const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get("pageSize")) || 25));
-    const listed = store.listPosts(statuses, page, pageSize);
+    const listed = store.listPosts(statuses, page, pageSize, url.searchParams.get("sort"));
     return listed.ok ? { status: 200, json: { ok: true, data: listed.data.items, meta: listed.data.meta } } : outcome(listed);
   }
   if (rest === "/posts/bulk" && method === "POST") {
@@ -102,7 +102,7 @@ function route(
     return outcome(store.bulk(String(body.action ?? ""), ids, optionalText(body.note), actor));
   }
 
-  const postRoute = /^\/posts\/([^/]+)(\/[a-z]+)?$/.exec(rest);
+  const postRoute = /^\/posts\/([^/]+)(\/.*)?$/.exec(rest);
   if (postRoute) {
     const id = decodeURIComponent(postRoute[1]);
     const action = postRoute[2] ?? "";
@@ -115,6 +115,8 @@ function route(
     if (action === "/lock" && method === "POST") return outcome(store.lock(id, actor));
     if (action === "/lock" && method === "DELETE") return outcome(store.unlock(id, actor));
     if (action === "/takeover" && method === "POST") return outcome(store.takeover(id, actor));
+    if (action === "/publish" && method === "POST") return outcome(store.publish(id, actor));
+    if (action === "/hold" && method === "POST") return outcome(store.hold(id, body.hold === true, actor));
   }
 
   return fail(404, "not_found", `No mock route for ${method} ${path}.`);

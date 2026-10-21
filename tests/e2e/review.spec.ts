@@ -8,7 +8,7 @@ test.beforeEach(async ({ context }) => {
 
 test("lists posts waiting for review with pairs, findings and drafting state", async ({ page }) => {
   await page.goto("/en/review");
-  await expect(page.getByTestId("review-count")).toHaveText("8 of 8 posts");
+  await expect(page.getByTestId("review-count")).toHaveText("9 of 9 posts");
   await expect(page.getByTestId("card-twin-p_201")).toHaveText("Pair: Arabic");
   await expect(page.getByTestId("card-critical-p_203")).toHaveText("1 critical");
   await expect(page.getByTestId("card-drafting-p_207")).toBeVisible();

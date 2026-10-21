@@ -45,9 +45,9 @@ describe("section signature", () => {
 describe("seeded posts and findings", () => {
   it("lists posts without their content, with paging meta", () => {
     const page = data(store.listPosts(["pending", "drafting"], 1, 25));
-    expect(page.items.map((p) => p.id)).toEqual(["p_201", "p_202", "p_203", "p_204", "p_205", "p_206", "p_207", "p_208"]);
+    expect(page.items.map((p) => p.id)).toEqual(["p_201", "p_202", "p_203", "p_204", "p_205", "p_206", "p_207", "p_208", "p_209"]);
     expect(page.items[0].content).toBeUndefined();
-    expect(page.meta).toEqual({ page: 1, pageSize: 25, total: 8 });
+    expect(page.meta).toEqual({ page: 1, pageSize: 25, total: 9 });
   });
 
   it("computes findings from the rules", () => {
@@ -59,7 +59,7 @@ describe("seeded posts and findings", () => {
 
   it("returns allowed actions and the twin summary", () => {
     const post = data(store.getPost("p_201"));
-    expect(post.actions).toEqual(["edit", "approve", "changes", "reject", "delete"]);
+    expect(post.actions).toEqual(["edit", "approve", "changes", "reject", "delete", "publishNow"]);
     expect(post.twin).toEqual({ id: "p_202", language: "ar", status: "pending" });
   });
 });
@@ -119,7 +119,7 @@ describe("approval", () => {
     const post = data(store.approve("p_201", undefined, ME));
     expect(post.status).toBe("approved");
     expect(post.reviewedBy).toBe(ME);
-    expect(post.actions).toEqual(["delete"]);
+    expect(post.actions).toEqual(["hold", "publishNow", "delete"]);
   });
 
   it("needs a reason to override a critical finding", () => {
@@ -166,5 +166,90 @@ describe("changes, reject, delete, bulk", () => {
     const result = data(store.bulk("approve", ["p_201", "p_203"], undefined, ME));
     expect(result.done).toEqual(["p_201"]);
     expect(result.failed).toEqual([expect.objectContaining({ id: "p_203", code: "framework_blocked" })]);
+  });
+});
+
+describe("the publishing queue (spec v1.1 §6 /scheduled)", () => {
+  const queue = (autoPublish = true) =>
+    data(store.scheduled(autoPublish, null)).posts.map((post) => [post.id, post.schedule?.position, post.schedule?.hold, post.schedule?.scheduledAt]);
+
+  it("lists approved posts in queue order with Dubai times; a held post keeps its place without a time", () => {
+    expect(queue()).toEqual([
+      ["p_101", 1, false, "2026-10-22T10:00:00+04:00"],
+      ["p_102", 2, false, "2026-10-22T13:00:00+04:00"],
+      ["p_103", 3, true, null],
+    ]);
+    expect(data(store.scheduled(true, null))).toMatchObject({ autoPublish: true, nextSlotAt: "2026-10-22T10:00:00+04:00", waitingReason: null });
+  });
+
+  it("with auto-publish off, nothing has a time and there is no next slot", () => {
+    expect(queue(false).map((row) => row[3])).toEqual([null, null, null]);
+    expect(data(store.scheduled(false, null))).toMatchObject({ autoPublish: false, nextSlotAt: null });
+  });
+
+  it("approving puts a post at the end of the queue", () => {
+    data(store.approve("p_201", undefined, ME));
+    expect(queue().at(-1)).toEqual(["p_201", 4, false, "2026-10-25T10:00:00+04:00"]);
+  });
+
+  it("holding a post moves the next one up; resuming puts it back", () => {
+    data(store.hold("p_101", true, ME));
+    expect(queue().slice(0, 2)).toEqual([
+      ["p_101", 1, true, null],
+      ["p_102", 2, false, "2026-10-22T10:00:00+04:00"],
+    ]);
+    data(store.hold("p_101", false, ME));
+    expect(queue()[0]).toEqual(["p_101", 1, false, "2026-10-22T10:00:00+04:00"]);
+  });
+
+  it("only approved posts can be held", () => {
+    expect(store.hold("p_201", true, ME)).toMatchObject({ ok: false, status: 422, code: "invalid_input" });
+  });
+});
+
+describe("publishing (spec v1.1 §5: approved → published, publish error → failed)", () => {
+  it("publish now publishes an approved post, takes it out of the queue and leaves its twin alone", () => {
+    const published = data(store.publish("p_101", ME));
+    expect(published).toMatchObject({
+      status: "published",
+      published: { target: "wordpress", url: "https://fakhernco.com/commission-payable-uae-labour-law-guide/" },
+      actions: [],
+    });
+    expect(data(store.scheduled(true, null)).posts.map((post) => post.id)).toEqual(["p_102", "p_103"]);
+    expect(data(store.getPost("p_102")).status).toBe("approved");
+  });
+
+  it("publishing straight from review needs what approval needs", () => {
+    expect(store.publish("p_203", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
+    expect(store.publish("p_205", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
+    expect(data(store.publish("p_201", ME)).status).toBe("published");
+  });
+
+  it("an Instagram post can't be approved or published without a photo", () => {
+    for (const outcome of [store.approve("p_209", undefined, ME), store.publish("p_209", ME)]) {
+      expect(outcome).toMatchObject({ ok: false, status: 400, code: "invalid_input", fields: { image: expect.any(String) } });
+    }
+  });
+
+  it("a publish the website refuses marks the post failed; the next attempt goes through", () => {
+    expect(store.publish("p_303", ME)).toMatchObject({ ok: false, status: 502, code: "publish_failed" });
+    expect(data(store.getPost("p_303"))).toMatchObject({ status: "failed", actions: ["retry", "delete"] });
+    expect(data(store.publish("p_303", ME))).toMatchObject({ status: "published", error: null });
+  });
+
+  it("bulk publish, hold and resume report what they couldn't do", () => {
+    expect(data(store.bulk("publishNow", ["p_101", "p_203"], undefined, ME))).toEqual({
+      done: ["p_101"],
+      failed: [{ id: "p_203", code: "framework_blocked", message: expect.any(String) }],
+    });
+    expect(data(store.bulk("hold", ["p_102"], undefined, ME)).done).toEqual(["p_102"]);
+    expect(data(store.bulk("resume", ["p_102"], undefined, ME)).done).toEqual(["p_102"]);
+  });
+
+  it("history lists published, failed and rejected posts, newest first", () => {
+    const ids = () => data(store.listPosts(["published", "failed", "rejected"], 1, 25, "-updated_at")).items.map((post) => post.id);
+    expect(ids()).toEqual(["p_303", "p_302", "p_301", "p_304"]);
+    data(store.publish("p_201", ME));
+    expect(ids()[0]).toBe("p_201");
   });
 });

@@ -162,3 +162,36 @@ describe("ids in engine URLs (final review: path traversal)", () => {
     expect(requested).toEqual([]);
   });
 });
+
+describe("publishing over the mock engine (spec v1.1 §10: one publication per key)", () => {
+  it("publishing again with the same key returns the first result instead of publishing twice", async () => {
+    const { engine } = setup();
+    const key = { actingUser: "reviewer@example.com", idempotencyKey: "publish-p_101-once" };
+    const first = await engine.publishPost("p_101", key);
+    const again = await engine.publishPost("p_101", key);
+    expect(again).toEqual(first);
+    expect((await engine.post("p_101")).version).toBe(first.version);
+    const published = await engine.listPosts({ statuses: ["published"] });
+    expect(published.posts.filter((post) => post.id === "p_101")).toHaveLength(1);
+  });
+
+  it("after publish_failed the same key replays the failure; a new key tries again (design §9)", async () => {
+    const { engine } = setup();
+    const key = ctx();
+    expect((await failure(engine.publishPost("p_303", key))).code).toBe("publish_failed");
+    expect((await failure(engine.publishPost("p_303", key))).code).toBe("publish_failed");
+    expect((await engine.publishPost("p_303", ctx())).status).toBe("published");
+  });
+
+  it("serves the queue from the store, with hold", async () => {
+    const { engine } = setup();
+    await engine.holdPost("p_101", true, ctx());
+    const queue = await engine.scheduled();
+    expect(queue.posts.map((post) => [post.id, post.schedule?.hold, post.schedule?.scheduledAt])).toEqual([
+      ["p_101", true, null],
+      ["p_102", false, "2026-10-22T10:00:00+04:00"],
+      ["p_103", true, null],
+    ]);
+    expect(queue.skipped).toBe(0);
+  });
+});

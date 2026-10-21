@@ -1,8 +1,9 @@
 import { approvalMode } from "@/lib/posts/rules";
 import type { BulkResult, Category, Job, Post } from "../schemas";
 import { mockMeta } from "./fixtures";
-import { SEED_DRAFTING_POST_ID, seedPosts } from "./post-fixtures";
+import { SEED_DRAFTING_POST_ID, SEED_FAILING_PUBLISH, SEED_QUEUE, seedPosts } from "./post-fixtures";
 import { computeFindings, seoScore, toNeutralHtml } from "./rules";
+import { slotTimes } from "./schedule";
 
 export type MockOk<T> = { ok: true; status: number; data: T };
 export type MockFail = {
@@ -18,14 +19,23 @@ export type StoredResponse = { fingerprint: string; status: number; json: unknow
 
 type MockJob = { id: string; postId: string; note: string; startedAt: number; durationMs: number; done: boolean };
 
-const ACTIONS_BY_STATUS: Record<string, string[]> = {
-  drafting: [],
-  pending: ["edit", "approve", "changes", "reject", "delete"],
-  approved: ["delete"],
-  rejected: ["delete"],
-  failed: ["delete"],
-  published: [],
-};
+/** What a post's buttons may do (spec v1.1 §5: the API returns post.actions; the portal never works it out). */
+function actionsFor(post: Post): string[] {
+  switch (post.status) {
+    case "pending":
+      return ["edit", "approve", "changes", "reject", "delete", "publishNow"];
+    case "approved":
+      return [post.schedule?.hold ? "resume" : "hold", "publishNow", "delete"];
+    case "failed":
+      return ["retry", "delete"];
+    case "rejected":
+      return ["delete"];
+    default:
+      return [];
+  }
+}
+
+type QueueEntry = { hold: boolean; scheduledAt: string | null; position: number };
 
 /** Lowercase letters (any script), digits and single hyphens, as WordPress and Strapi slugs allow. */
 const SLUG = /^[\p{Ll}\p{Lo}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{N}]+)*$/u;
@@ -58,6 +68,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   const jobs = new Map<string, MockJob>();
   const idempotency = new Map<string, StoredResponse>();
   let sequence = 0;
+  const queue: string[] = [];
+  const failNextPublish = new Set<string>();
   const iso = (ms: number) => new Date(ms).toISOString();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
@@ -72,8 +84,48 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return structuredClone({
       ...post,
       twin: twin ? { id: twin.id, language: twin.language, status: twin.status } : null,
-      actions: ACTIONS_BY_STATUS[post.status] ?? [],
+      schedule: post.status === "approved" ? (queueSchedule(true).get(post.id) ?? null) : null,
+      actions: actionsFor(post),
     });
+  }
+
+  /** Positions and expected times of the approved queue: a held post keeps its place but gets no time. */
+  function queueSchedule(autoPublish: boolean): Map<string, QueueEntry> {
+    const queued = queue.map((id) => posts.get(id)).filter((post): post is Post => post?.status === "approved");
+    const times = autoPublish ? slotTimes(queued.filter((post) => !post.schedule?.hold).length) : [];
+    const plan = new Map<string, QueueEntry>();
+    let slot = 0;
+    queued.forEach((post, index) => {
+      const hold = post.schedule?.hold ?? false;
+      plan.set(post.id, { hold, scheduledAt: hold ? null : (times[slot++] ?? null), position: index + 1 });
+    });
+    return plan;
+  }
+
+  function dequeue(id: string): void {
+    const index = queue.indexOf(id);
+    if (index >= 0) queue.splice(index, 1);
+  }
+
+  /** Spec v1.1 §4 Post.image: an Instagram post can't be approved or published without a photo. */
+  function missingPhoto(post: Post): MockFail | null {
+    return post.platform === "instagram" && !post.image
+      ? fail(400, "invalid_input", "An Instagram post needs a photo.", { fields: { image: "Add a photo first." } })
+      : null;
+  }
+
+  /** Why a post can't be approved (or published straight from review), or null. */
+  function approvalRefusal(post: Post, overrideReason: string | undefined): MockFail | null {
+    const critical = post.findings.filter((f) => f.level === "critical");
+    const mode = approvalMode(post.findings);
+    if (mode === "blocked") {
+      const locked = critical.filter((f) => f.overridable === false);
+      return fail(422, "framework_blocked", `Not approved — ${locked.length} rule(s) can't be overridden.`, { details: { findings: locked } });
+    }
+    if (mode === "override" && !overrideReason?.trim()) {
+      return fail(422, "framework_blocked", `Not approved — ${critical.length} framework rule(s) to fix.`, { details: { findings: critical } });
+    }
+    return missingPhoto(post);
   }
 
   function touch(post: Post): void {
@@ -109,9 +161,10 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok(post);
   }
 
-  function listPosts(statuses: string[] | null, page: number, pageSize: number) {
+  function listPosts(statuses: string[] | null, page: number, pageSize: number, sort: string | null = null) {
     tick();
-    const all = [...posts.values()].filter((post) => !statuses || statuses.includes(post.status));
+    let all = [...posts.values()].filter((post) => !statuses || statuses.includes(post.status));
+    if (sort === "-updated_at") all = [...all].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
     const start = (page - 1) * pageSize;
     const items = all.slice(start, start + pageSize).map((post) => {
       const item = view(post);
@@ -131,7 +184,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const guarded = guard(id, actor);
     if (!guarded.ok) return guarded;
     const post = guarded.data;
-    if (!(ACTIONS_BY_STATUS[post.status] ?? []).includes("edit")) {
+    if (!actionsFor(post).includes("edit")) {
       return fail(422, "invalid_input", "This post can't be edited in its current status.");
     }
     if (input.version !== post.version) {
@@ -155,23 +208,13 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     if (!guarded.ok) return guarded;
     const post = guarded.data;
     if (post.status !== "pending") return fail(422, "invalid_input", "Only posts waiting for review can be approved.");
-    const critical = post.findings.filter((f) => f.level === "critical");
-    const mode = approvalMode(post.findings);
-    if (mode === "blocked") {
-      const locked = critical.filter((f) => f.overridable === false);
-      return fail(422, "framework_blocked", `Not approved — ${locked.length} rule(s) can't be overridden.`, {
-        details: { findings: locked },
-      });
-    }
-    const reason = overrideReason?.trim() ?? "";
-    if (mode === "override" && !reason) {
-      return fail(422, "framework_blocked", `Not approved — ${critical.length} framework rule(s) to fix.`, {
-        details: { findings: critical },
-      });
-    }
+    const refusal = approvalRefusal(post, overrideReason);
+    if (refusal) return refusal;
     post.status = "approved";
     post.reviewedBy = actor;
-    post.overrideReason = mode === "override" ? reason : null;
+    post.overrideReason = approvalMode(post.findings) === "override" ? (overrideReason?.trim() ?? null) : null;
+    post.schedule = { hold: false, scheduledAt: null, position: null };
+    queue.push(id);
     touch(post);
     return ok(view(post));
   }
@@ -207,6 +250,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const post = guarded.data;
     if (post.status === "published") return fail(422, "invalid_input", "Published posts can't be deleted.");
     posts.delete(id);
+    dequeue(id);
     const twin = post.pairId ? posts.get(post.pairId) : undefined;
     if (twin) {
       twin.pairId = null;
@@ -239,10 +283,83 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok(view(post));
   }
 
+  /** Where the mock "publishes": the WordPress site (Arabic under /ar/, TranslatePress) or the LinkedIn page. */
+  function publication(post: Post): NonNullable<Post["published"]> {
+    const n = ++sequence;
+    const at = iso(now());
+    if (post.platform === "website") {
+      const path = `${post.language === "ar" ? "/ar" : ""}/${post.slug ?? post.id}/`;
+      return { target: "wordpress", url: `https://fakhernco.com${path}`, externalId: String(9000 + n), at };
+    }
+    const share = `urn:li:share:${7000 + n}`;
+    return { target: post.platform, url: `https://www.linkedin.com/feed/update/${share}`, externalId: share, at };
+  }
+
+  function publish(id: string, actor: string): MockOutcome<Post> {
+    const guarded = guard(id, actor);
+    if (!guarded.ok) return guarded;
+    const post = guarded.data;
+    const allowed = actionsFor(post);
+    if (!allowed.includes("publishNow") && !allowed.includes("retry")) {
+      return fail(422, "invalid_input", "This post can't be published in its current status.");
+    }
+    const refusal = post.status === "pending" ? approvalRefusal(post, undefined) : missingPhoto(post);
+    if (refusal) return refusal;
+    if (post.platform === "instagram") return fail(422, "not_connected", "Instagram isn't connected. An admin can connect it in Settings.");
+    if (failNextPublish.delete(id)) {
+      post.status = "failed";
+      post.error = "WordPress refused the request: 503 Service Unavailable.";
+      touch(post);
+      return fail(502, "publish_failed", post.error);
+    }
+    post.status = "published";
+    post.error = null;
+    post.reviewedBy ??= actor;
+    post.schedule = null;
+    post.published = publication(post);
+    dequeue(id);
+    touch(post);
+    return ok(view(post));
+  }
+
+  function hold(id: string, held: boolean, actor: string): MockOutcome<Post> {
+    const guarded = guard(id, actor);
+    if (!guarded.ok) return guarded;
+    const post = guarded.data;
+    if (post.status !== "approved") return fail(422, "invalid_input", "Only approved posts in the queue can be held or resumed.");
+    post.schedule = { hold: held, scheduledAt: null, position: null };
+    touch(post);
+    return ok(view(post));
+  }
+
+  /** GET …/scheduled: the queue with positions and times; with auto-publish off, nothing has a time. */
+  function scheduled(autoPublish: boolean, pageSize: number | null) {
+    tick();
+    const plan = queueSchedule(autoPublish);
+    const items = [...plan].map(([id, schedule]) => {
+      const item = view(posts.get(id) as Post);
+      delete item.content;
+      return { ...item, schedule };
+    });
+    const next = [...plan.values()].find((entry) => entry.scheduledAt)?.scheduledAt ?? null;
+    return ok({
+      autoPublish,
+      nextSlotAt: next,
+      waitingReason: autoPublish && !next ? "queue_empty" : null,
+      posts: pageSize ? items.slice(0, pageSize) : items,
+    });
+  }
+
   function bulk(action: string, ids: string[], note: string | undefined, actor: string): MockOutcome<BulkResult> {
-    const apply = { approve: (id: string) => approve(id, undefined, actor), reject: (id: string) => reject(id, note, actor), delete: (id: string) => remove(id, actor) }[
-      action as "approve" | "reject" | "delete"
-    ];
+    const handlers: Record<string, (id: string) => MockOutcome<unknown>> = {
+      approve: (id) => approve(id, undefined, actor),
+      reject: (id) => reject(id, note, actor),
+      delete: (id) => remove(id, actor),
+      publishNow: (id) => publish(id, actor),
+      hold: (id) => hold(id, true, actor),
+      resume: (id) => hold(id, false, actor),
+    };
+    const apply = Object.hasOwn(handlers, action) ? handlers[action] : undefined;
     if (!apply) return fail(400, "invalid_input", `Unknown bulk action: ${action}.`, { fields: { action: "Unknown" } });
     const result: BulkResult = { done: [], failed: [] };
     for (const id of ids) {
@@ -273,6 +390,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
 
   for (const seeded of seedPosts()) posts.set(seeded.id, seeded);
   for (const seeded of posts.values()) refreshFindings(seeded);
+  queue.push(...SEED_QUEUE);
+  for (const id of SEED_FAILING_PUBLISH) failNextPublish.add(id);
   jobs.set("j_seed", {
     id: "j_seed",
     postId: SEED_DRAFTING_POST_ID,
@@ -294,6 +413,9 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     lock,
     unlock,
     takeover,
+    publish,
+    hold,
+    scheduled,
     bulk,
     job,
     categories,
