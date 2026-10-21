@@ -1,13 +1,25 @@
 export type BlockSummary = { tag: string; text: string };
 export type AlignedRow = { left: BlockSummary | null; right: BlockSummary | null; matches: boolean };
 
-/** Top-level blocks of an article (the units TranslatePress pairs by position). */
+const textOf = (element: Element) => (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
+
+/**
+ * The sections TranslatePress pairs by position (spec v1.1 §11: headings, paragraphs, list items, tables): each top-level
+ * block, with lists split into their items and tables into their rows. The mock's sectionSignature counts the same way.
+ */
 export function blockSummaries(html: string, parse: (html: string) => Document): BlockSummary[] {
-  const doc = parse(html);
-  return [...doc.body.children].map((element) => ({
-    tag: element.tagName.toLowerCase(),
-    text: (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 160),
-  }));
+  const blocks: BlockSummary[] = [];
+  for (const element of parse(html).body.children) {
+    const tag = element.tagName.toLowerCase();
+    if (tag === "ul" || tag === "ol") {
+      for (const item of element.querySelectorAll("li")) blocks.push({ tag: "li", text: textOf(item) });
+    } else if (tag === "table") {
+      for (const row of element.querySelectorAll("tr")) blocks.push({ tag: "tr", text: [...row.children].map(textOf).join(" | ") });
+    } else {
+      blocks.push({ tag, text: textOf(element) });
+    }
+  }
+  return blocks;
 }
 
 /** Longest-common-subsequence alignment on tags: a missing block becomes one gap instead of shifting every row. */

@@ -98,7 +98,9 @@ export function seedPosts(): Post[] {
         "Deadlock between shareholders can stall a company for months. This guide explains buy-outs, mediation, court-ordered exits and what to put in your agreement now to avoid it later.",
       keywords: ["shareholder deadlock uae"],
       section: "corporate",
-      content: "<h2>What deadlock looks like</h2><p>Votes split evenly and nothing moves.</p>",
+      content:
+        "<h2>What deadlock looks like</h2><p>Votes split evenly and nothing moves.</p>" +
+        "<details><summary>Can the agreement prevent deadlock?</summary><p>Yes. It can set a casting vote or a buy-out formula in advance.</p></details>",
     }),
     post({
       id: "p_204",

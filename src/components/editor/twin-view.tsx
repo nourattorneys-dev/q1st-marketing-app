@@ -10,7 +10,7 @@ const parse = (html: string) => new DOMParser().parseFromString(html, "text/html
 
 type Props = { mineHtml: string; mineLanguage: string; twin: Post };
 
-/** English always on the left, Arabic on the right, aligned section by section (design §7). */
+/** English first and Arabic second (left to right in the English interface, right to left in the Arabic one), aligned section by section (design §7). */
 export function TwinView({ mineHtml, mineLanguage, twin }: Props) {
   const t = useTranslations("Editor");
   const mineIsEnglish = mineLanguage !== "ar";

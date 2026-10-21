@@ -2,7 +2,7 @@ import { approvalMode } from "@/lib/posts/rules";
 import type { BulkResult, Category, Job, Post } from "../schemas";
 import { mockMeta } from "./fixtures";
 import { SEED_DRAFTING_POST_ID, seedPosts } from "./post-fixtures";
-import { computeFindings, seoScore } from "./rules";
+import { computeFindings, seoScore, toNeutralHtml } from "./rules";
 
 export type MockOk<T> = { ok: true; status: number; data: T };
 export type MockFail = {
@@ -27,6 +27,8 @@ const ACTIONS_BY_STATUS: Record<string, string[]> = {
   published: [],
 };
 
+/** Lowercase letters (any script), digits and single hyphens, as WordPress and Strapi slugs allow. */
+const SLUG = /^[\p{Ll}\p{Lo}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{N}]+)*$/u;
 const EDITABLE_FIELDS = ["title", "subtitle", "slug", "metaTitle", "metaDescription", "keywords", "content", "hashtags", "section"] as const;
 
 const CATEGORIES: Category[] = [
@@ -135,8 +137,12 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     if (input.version !== post.version) {
       return fail(409, "version_conflict", "Someone saved this post first. Reload to see their changes.");
     }
+    if (typeof input.slug === "string" && !SLUG.test(input.slug)) {
+      return fail(400, "invalid_input", "Some fields aren't valid.", { fields: { slug: "Use lowercase letters, numbers and hyphens." } });
+    }
     const target = post as Record<string, unknown>;
     for (const field of EDITABLE_FIELDS) if (field in input) target[field] = input[field];
+    if (post.kind === "blog" && post.content) post.content = toNeutralHtml(post.content);
     touch(post);
     refreshFindings(post);
     const twin = twinOf(post);

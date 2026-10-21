@@ -6,12 +6,22 @@ const parse = (html: string) => new new Window().DOMParser().parseFromString(htm
 const blocks = (...tags: string[]): BlockSummary[] => tags.map((tag, i) => ({ tag, text: `${tag}${i}` }));
 
 describe("blockSummaries", () => {
-  it("lists top-level blocks with their text, ignoring nested elements", () => {
-    expect(blockSummaries("<h2>Title</h2><p>Text <a href='x'>link</a></p><ul><li>One</li></ul>", parse)).toEqual([
+  it("lists blocks with their text, one row per list item and table row (spec v1.1 §11)", () => {
+    expect(
+      blockSummaries("<h2>Title</h2><p>Text <a href='x'>link</a></p><ul><li>One</li><li><p>Two</p></li></ul><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>", parse),
+    ).toEqual([
       { tag: "h2", text: "Title" },
       { tag: "p", text: "Text link" },
-      { tag: "ul", text: "One" },
+      { tag: "li", text: "One" },
+      { tag: "li", text: "Two" },
+      { tag: "tr", text: "A | B" },
+      { tag: "tr", text: "1 | 2" },
     ]);
+  });
+
+  it("shows a missing list item as a difference", () => {
+    const rows = alignBlocks(blockSummaries("<ul><li>a</li><li>b</li><li>c</li></ul>", parse), blockSummaries("<ul><li>a</li><li>b</li></ul>", parse));
+    expect(rows.filter((row) => !row.matches)).toHaveLength(1);
   });
 });
 

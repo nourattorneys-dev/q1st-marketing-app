@@ -23,12 +23,21 @@ beforeEach(() => {
 });
 
 describe("section signature", () => {
-  it("lists top-level block tags only", () => {
-    expect(sectionSignature("<h2>a</h2><p>b <a href='x'>c</a></p><ul><li>d</li></ul><table><tr><th>e</th></tr></table>")).toEqual([
+  it("lists blocks, one entry per list item and table row (spec v1.1 §11)", () => {
+    expect(sectionSignature("<h2>a</h2><p>b <a href='x'>c</a></p><ul><li>d</li><li>e</li></ul><table><tr><th>e</th></tr></table>")).toEqual([
       "h2",
       "p",
-      "ul",
-      "table",
+      "li",
+      "li",
+      "tr",
+    ]);
+  });
+
+  it("doesn't count paragraphs inside list items, cells or quotes", () => {
+    expect(sectionSignature("<ul><li><p>d</p></li></ul><table><tbody><tr><td><p>e</p></td></tr></tbody></table><blockquote><p>q</p></blockquote>")).toEqual([
+      "li",
+      "tr",
+      "blockquote",
     ]);
   });
 });
@@ -66,6 +75,16 @@ describe("saving", () => {
     const saved = data(update("p_203", { metaDescription: "Short and clear." }));
     expect(saved.version).toBe(before.version + 1);
     expect(saved.findings.some((f) => f.level === "critical")).toBe(false);
+  });
+
+  it("stores an article in the engine's neutral form, not the editor's (spec v1.1 §11)", () => {
+    const saved = data(update("p_203", { content: "<ul><li><p>One</p></li></ul><table><colgroup><col style=\"min-width: 25px\"></colgroup><tbody><tr><td colspan=\"1\" rowspan=\"1\"><p>Cell</p></td></tr></tbody></table>" }));
+    expect(saved.content).toBe("<ul><li>One</li></ul><table><tbody><tr><td>Cell</td></tr></tbody></table>");
+  });
+
+  it("refuses a malformed slug with a field error (spec v1.1 §9)", () => {
+    const outcome = update("p_203", { slug: "Bad Slug!" });
+    expect(outcome).toMatchObject({ ok: false, status: 400, code: "invalid_input", fields: { slug: expect.any(String) } });
   });
 
   it("clears the Arabic structure mismatch once the structures match", () => {

@@ -138,3 +138,27 @@ describe("mock store registry", () => {
     expect(mockStoreFor("../etc")).toBe(mockStoreFor(undefined));
   });
 });
+
+describe("ids in engine URLs (final review: path traversal)", () => {
+  it("refuses an id that would address another endpoint, before any request", async () => {
+    const requested: string[] = [];
+    const store = createMockStore({ now: () => t, jobDurationMs: 1000 });
+    const mock = createMockFetch({ baseUrl: BASE, apiKey: "mock-key", store });
+    const client = createEngineClient({
+      baseUrl: BASE,
+      apiKey: "mock-key",
+      retryDelaysMs: [0, 0],
+      fetch: (input, init) => {
+        requested.push(String(input));
+        return mock(input, init);
+      },
+    });
+    const engine = createEngineApi(client);
+    for (const id of ["..", ".", "a/b"]) {
+      expect((await failure(engine.post(id))).code).toBe("not_found");
+      expect((await failure(engine.deletePost(id, ctx()))).code).toBe("not_found");
+    }
+    expect((await failure(engine.job(".."))).code).toBe("not_found");
+    expect(requested).toEqual([]);
+  });
+});

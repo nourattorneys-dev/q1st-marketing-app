@@ -10,7 +10,7 @@ test("shows an English article and its Arabic version side by side", async ({ pa
   await page.goto("/en/review/p_201");
   await page.getByTestId("compare-toggle").click();
   await expect(page.getByTestId("twin-view")).toBeVisible();
-  await expect(page.getByTestId("twin-summary")).toHaveText("The structure matches (7 sections).");
+  await expect(page.getByTestId("twin-summary")).toHaveText("The structure matches (10 sections).");
   await expect(page.getByTestId("twin-left")).toHaveAttribute("dir", "ltr");
   await expect(page.getByTestId("twin-right")).toHaveAttribute("dir", "rtl");
 });

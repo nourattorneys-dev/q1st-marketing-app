@@ -15,13 +15,15 @@ import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import { changedFields, toEditable, type EditableFields } from "@/lib/editor/changed-fields";
+import { afterSave, draftOf, edit, rebase, unsavedFields, withMyChanges, type Draft } from "@/lib/editor/draft";
+import { fieldErrors } from "@/lib/editor/field-errors";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { Category, Post } from "@/lib/engine/schemas";
 import { ChecksPanel } from "./checks-panel";
 import { ConflictPanel } from "./conflict-panel";
 import { EditorBody } from "./editor-body";
 import { EditorFooter } from "./editor-footer";
-import { FieldCounter } from "./field-counter";
+import { FieldCounter, FieldError } from "./field-counter";
 import { KeywordChips } from "./keyword-chips";
 import { LockBanner } from "./lock-banner";
 import { SourcesList } from "./sources-list";
@@ -41,9 +43,11 @@ const parseHashtags = (text: string) => text.split(",").map((tag) => tag.trim())
 export function PostEditor({ locale, post, twin, limits, categories, lockMinutes, pollSeconds }: Props) {
   const t = useTranslations("Editor");
   const [saved, setSaved] = useState<Post | null>(null);
-  // The newest version wins: my last save, or what the server re-rendered after refresh().
+  // The newest version wins for status, checks and actions: my last save, or what the server re-rendered after refresh().
   const current = saved && saved.version >= post.version ? saved : post;
-  const [form, setForm] = useState<EditableFields>(() => toEditable(post));
+  const [draft, setDraft] = useState<Draft>(() => draftOf(post));
+  const form = draft.form;
+  const [seenPost, setSeenPost] = useState(post);
   const [hashtagText, setHashtagText] = useState(() => post.hashtags.join(", "));
   const [bodyKey, setBodyKey] = useState(0);
   const [lockedBy, setLockedBy] = useState<string | null>(null);
@@ -56,8 +60,24 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
 
   const canEdit = current.actions.includes("edit");
   const editable = canEdit && lockedBy === null;
-  const dirty = changedFields(form, toEditable(current)).length > 0;
+  const dirty = unsavedFields(draft).length > 0;
   const dir = current.language === "ar" ? "rtl" : "ltr";
+  const errors = fieldErrors(error);
+
+  /** Show fields that came from the server rather than from typing: the body and the hashtag text reload too. */
+  function show(next: Draft) {
+    setDraft(next);
+    setHashtagText(next.form.hashtags.join(", "));
+    setBodyKey((key) => key + 1);
+  }
+
+  // A newer version arrived (a refresh after an action, or Next kept this page alive while someone else saved). It's
+  // shown if nothing is unsaved; otherwise the edits stay on their old version, so saving them reports a conflict.
+  if (post !== seenPost) {
+    setSeenPost(post);
+    const next = rebase(draft, post);
+    if (next !== draft) show(next);
+  }
 
   // Spec v1.1 §3: take the lock on open, renew it while editing, release it on leaving.
   useEffect(() => {
@@ -80,16 +100,19 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
   function set<K extends keyof EditableFields>(key: K) {
     return (value: EditableFields[K]) => {
       setSavedNow(false);
-      setForm((previous) => ({ ...previous, [key]: value }));
+      setDraft((previous) => edit(previous, key, value));
     };
   }
 
-  async function persist(version: number) {
+  /** Saves with the version the fields started from, so a newer save by someone else comes back as a conflict. */
+  async function persist(toSave: Draft) {
     setError(null);
     setSavedNow(false);
-    const result = await save.run({ locale, postId: post.id, update: { ...form, version } });
+    const sent = toSave.form;
+    const result = await save.run({ locale, postId: post.id, update: { ...sent, version: toSave.version } });
     if (result.ok) {
       setSaved(result.data);
+      setDraft((latest) => afterSave(latest, sent, result.data.version));
       setSavedNow(true);
       return;
     }
@@ -109,18 +132,17 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
   function loadTheirs() {
     if (!conflict) return;
     setSaved(conflict);
-    setForm(toEditable(conflict));
-    setHashtagText(conflict.hashtags.join(", "));
-    setBodyKey((key) => key + 1);
+    show(draftOf(conflict));
     setConflict(null);
   }
 
   async function keepMine() {
     if (!conflict) return;
-    const version = conflict.version;
+    const next = withMyChanges(draft, conflict);
     setSaved(conflict);
     setConflict(null);
-    await persist(version);
+    show(next);
+    await persist(next);
   }
 
   async function takeOver() {
@@ -128,6 +150,9 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
     if (result.ok) {
       setLockedBy(null);
       setSaved(result.data);
+      // Whatever the previous holder saved replaces this page's copy (nothing could be edited while locked out).
+      const next = rebase(draft, result.data);
+      if (next !== draft) show(next);
     } else {
       setError(result.error);
     }
@@ -153,18 +178,34 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
 
       {lockedBy !== null && <LockBanner name={lockedBy || "?"} pending={takeover.pending} onTakeover={takeOver} />}
       {conflict && (
-        <ConflictPanel fields={changedFields(form, toEditable(conflict))} pending={save.pending} onLoadTheirs={loadTheirs} onKeepMine={keepMine} />
+        <ConflictPanel
+          fields={changedFields(form, toEditable(conflict))}
+          mine={form}
+          theirs={toEditable(conflict)}
+          pending={save.pending}
+          onLoadTheirs={loadTheirs}
+          onKeepMine={keepMine}
+        />
       )}
       {current.reviewNote && (
         <p className="rounded-md bg-info-bg px-3 py-2 text-sm text-info-fg">{t("reviewNote", { note: current.reviewNote })}</p>
       )}
       {error && <ActionError error={error} />}
+      {errors.other.length > 0 && (
+        <ul className="list-disc ps-5 text-sm text-bad-fg">
+          {errors.other.map((item) => (
+            <li key={item.field}>
+              {item.field}: {item.message}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-4" lang={current.language}>
-          <FieldCounter id="title" testId="field-title" label={t("fields.title")} value={form.title} onChange={set("title")} disabled={!editable} dir={dir} />
+          <FieldCounter id="title" error={errors.byField.title} testId="field-title" label={t("fields.title")} value={form.title} onChange={set("title")} disabled={!editable} dir={dir} />
           <FieldCounter
-            id="subtitle"
+            id="subtitle" error={errors.byField.subtitle}
             testId="field-subtitle"
             label={t("fields.subtitle")}
             value={form.subtitle ?? ""}
@@ -181,9 +222,10 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
             bodyKey={bodyKey}
             twin={twin}
           />
+          {errors.byField.content && <FieldError testId="field-content-error" message={errors.byField.content} />}
           {current.kind === "social" ? (
             <FieldCounter
-              id="hashtags"
+              id="hashtags" error={errors.byField.hashtags}
               testId="field-hashtags"
               label={t("fields.hashtags")}
               hint={t("hashtagsHint")}
@@ -196,9 +238,9 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
             />
           ) : (
             <>
-              <FieldCounter id="slug" testId="field-slug" label={t("fields.slug")} value={form.slug ?? ""} onChange={(value) => set("slug")(value || null)} disabled={!editable} dir="ltr" />
+              <FieldCounter id="slug" error={errors.byField.slug} testId="field-slug" label={t("fields.slug")} value={form.slug ?? ""} onChange={(value) => set("slug")(value || null)} disabled={!editable} dir="ltr" />
               <FieldCounter
-                id="meta-title"
+                id="meta-title" error={errors.byField.metaTitle}
                 testId="field-meta-title"
                 label={t("fields.metaTitle")}
                 value={form.metaTitle ?? ""}
@@ -208,7 +250,7 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
                 dir={dir}
               />
               <FieldCounter
-                id="meta-description"
+                id="meta-description" error={errors.byField.metaDescription}
                 testId="field-meta-description"
                 label={t("fields.metaDescription")}
                 value={form.metaDescription ?? ""}
@@ -219,6 +261,7 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
                 dir={dir}
               />
               <KeywordChips value={form.keywords} onChange={set("keywords")} disabled={!editable} />
+              {errors.byField.keywords && <FieldError testId="field-keywords-error" message={errors.byField.keywords} />}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="section">{t("fields.section")}</Label>
                 <select
@@ -236,6 +279,7 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
                     </option>
                   ))}
                 </select>
+                {errors.byField.section && <FieldError testId="field-section-error" message={errors.byField.section} />}
               </div>
             </>
           )}
@@ -252,7 +296,7 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
         dirty={dirty}
         editable={editable}
         saving={save.pending}
-        onSave={() => void persist(current.version)}
+        onSave={() => void persist(draft)}
         pollSeconds={pollSeconds}
       />
     </div>

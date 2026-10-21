@@ -152,7 +152,7 @@
     "lockedBy": "Being edited by {name}. You can read it, or take over to edit.",
     "takeover": "Take over",
     "conflictTitle": "Someone saved first",
-    "conflictBody": "These fields are different in the version they saved:",
+    "conflictBody": "They saved these fields differently. Keep mine saves your changes on top of their version; fields you didn't change keep theirs.",
     "loadTheirs": "Load their version",
     "keepMine": "Keep mine and save",
     "checks": "Checks",
@@ -195,6 +195,9 @@
     "structureMatches": "The structure matches ({count} sections).",
     "structureMismatchOne": "1 section doesn't line up. TranslatePress needs both versions to have the same structure.",
     "structureMismatchMany": "{count} sections don't line up. TranslatePress needs both versions to have the same structure.",
-    "missingBlock": "— missing —"
+    "missingBlock": "— missing —",
+    "conflictTheirs": "Theirs",
+    "conflictMine": "Yours",
+    "bodyUnsupported": "The body contains content the editor can't keep ({elements}), so it's read-only here and will be saved exactly as it is. The other fields can still be edited."
   }
 }

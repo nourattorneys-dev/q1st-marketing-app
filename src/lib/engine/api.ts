@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { EngineClient } from "./client";
 import { EngineError } from "./errors";
+import { ENGINE_ID } from "./ids";
 import {
   BulkResultSchema,
   CategoriesSchema,
@@ -27,6 +28,12 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 
 /** Who made a change (audit log) and the key that makes a retried change safe (spec v1.1 §3). */
 export type ChangeContext = { actingUser: string; idempotencyKey: string };
+
+/** Ids become URL path segments; anything but an engine id (e.g. "..") would address a different endpoint. */
+function idSegment(id: string): string {
+  if (!ENGINE_ID.test(id)) throw new EngineError({ status: 404, code: "not_found", message: "No such item." });
+  return id;
+}
 
 export function createEngineApi(client: EngineClient) {
   const siteId = once(async () => {
@@ -72,7 +79,10 @@ export function createEngineApi(client: EngineClient) {
     return data;
   }
 
-  const postPath = async (id: string, suffix = "") => `${await sitePath()}/posts/${encodeURIComponent(id)}${suffix}`;
+  const postPath = async (id: string, suffix = "") => {
+    const segment = idSegment(id);
+    return `${await sitePath()}/posts/${segment}${suffix}`;
+  };
 
   async function listPosts(options: { statuses: string[]; page?: number; pageSize?: number }) {
     const { data, meta } = await client.request({
@@ -123,7 +133,7 @@ export function createEngineApi(client: EngineClient) {
     ).data;
 
   const job = async (id: string) =>
-    (await client.request({ method: "GET", path: `/jobs/${encodeURIComponent(id)}`, schema: JobSchema })).data;
+    (await client.request({ method: "GET", path: `/jobs/${idSegment(id)}`, schema: JobSchema })).data;
 
   const categories = once(
     async () => (await client.request({ method: "GET", path: `${await sitePath()}/website/categories`, schema: CategoriesSchema })).data,

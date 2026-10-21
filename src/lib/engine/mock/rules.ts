@@ -2,9 +2,45 @@ import type { Finding, Post } from "../schemas";
 
 type Limits = { metaTitle: number; metaDescription: number };
 
-/** Top-level block tags in order. The mock's content keeps lists and tables free of nested <p>, so a regex is enough. */
+const VOID = new Set(["area", "br", "col", "embed", "hr", "img", "input", "source", "track", "wbr"]);
+
+/**
+ * Sections in order, counted like the side-by-side view's blockSummaries: each top-level block, with lists split into
+ * items and tables into rows. A tag scan, because the mock runs on the server without a DOM.
+ */
 export function sectionSignature(html: string): string[] {
-  return [...html.matchAll(/<(h[1-6]|p|ul|ol|table|blockquote)\b/gi)].map((match) => match[1].toLowerCase());
+  const signature: string[] = [];
+  const open: string[] = [];
+  for (const [whole, closing, name] of html.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g)) {
+    const tag = name.toLowerCase();
+    if (closing) {
+      const at = open.lastIndexOf(tag);
+      if (at >= 0) open.length = at;
+      continue;
+    }
+    const top = open[0];
+    if (top === undefined) {
+      if (tag !== "ul" && tag !== "ol" && tag !== "table") signature.push(tag);
+    } else if ((top === "ul" || top === "ol") && tag === "li") {
+      signature.push("li");
+    } else if (top === "table" && tag === "tr") {
+      signature.push("tr");
+    }
+    if (!VOID.has(tag) && !whole.endsWith("/>")) open.push(tag);
+  }
+  return signature;
+}
+
+/**
+ * The engine stores articles in its neutral form (spec v1.1 §11), not in the editor's HTML: no paragraph wrapped
+ * around a list item's or cell's text, no table sizing. Saving through the mock does the same, so the portal can't
+ * rely on getting its own HTML back.
+ */
+export function toNeutralHtml(html: string): string {
+  return html
+    .replace(/<colgroup>[\s\S]*?<\/colgroup>/g, "")
+    .replace(/\s(?:style="min-width:[^"]*"|colspan="1"|rowspan="1")/g, "")
+    .replace(/<(li|td|th)([^>]*)><p>((?:(?!<\/?p\b)[\s\S])*)<\/p><\/\1>/g, "<$1$2>$3</$1>");
 }
 
 /** A stand-in for Quantum1st's article checks; codes follow spec v1.1 §4 Finding. */

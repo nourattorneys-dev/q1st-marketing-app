@@ -17,12 +17,14 @@ type Props = {
   multiline?: boolean;
   dir?: "ltr" | "rtl";
   hint?: string;
+  error?: string;
 };
 
-export function FieldCounter({ id, testId, label, value, onChange, disabled, limit, multiline, dir, hint }: Props) {
+export function FieldCounter({ id, testId, label, value, onChange, disabled, limit, multiline, dir, hint, error }: Props) {
   const t = useTranslations("Editor");
   const over = limit !== undefined && value.length > limit;
-  const shared = { id, "data-testid": testId, value, dir, disabled, "aria-invalid": over || undefined };
+  const errorId = `${id}-error`;
+  const shared = { id, "data-testid": testId, value, dir, disabled, "aria-invalid": over || Boolean(error) || undefined, "aria-describedby": error ? errorId : undefined };
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2">
@@ -39,6 +41,16 @@ export function FieldCounter({ id, testId, label, value, onChange, disabled, lim
         <Input {...shared} onChange={(event) => onChange(event.target.value)} />
       )}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {error && <FieldError id={errorId} testId={`${testId}-error`} message={error} />}
     </div>
+  );
+}
+
+/** A message from the engine about one field (spec v1.1 §9 invalid_input). */
+export function FieldError({ id, testId, message }: { id?: string; testId: string; message: string }) {
+  return (
+    <p id={id} data-testid={testId} className="text-xs text-bad-fg">
+      {message}
+    </p>
   );
 }
