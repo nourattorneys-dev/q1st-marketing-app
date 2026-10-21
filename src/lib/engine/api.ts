@@ -8,6 +8,7 @@ import {
   DeletedSchema,
   JobSchema,
   JobStartSchema,
+  KeywordSchema,
   LockSchema,
   MetaSchema,
   parseItems,
@@ -20,6 +21,8 @@ import {
   ScheduledSchema,
   SiteRefsSchema,
   SiteSchema,
+  SuggestionSchema,
+  UpgradeRequestedSchema,
   type PostUpdate,
 } from "./schemas";
 
@@ -41,6 +44,17 @@ const SLOW_CHANGE_MS = 120_000;
 /** Bulk actions on posts (spec v1.1 §3 Bulk actions, §7 POST …/posts/bulk). */
 export const BULK_ACTIONS = ["approve", "reject", "delete", "publishNow", "hold", "resume"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
+
+/** Keyword bulk actions (spec v1.1 §7 POST …/keywords/bulk). */
+export const KEYWORD_BULK_ACTIONS = ["approve", "dismiss", "restore"] as const;
+export type KeywordBulkAction = (typeof KEYWORD_BULK_ACTIONS)[number];
+
+/** Suggestion bulk actions (spec v1.1 §7 POST …/suggestions/bulk). */
+export const SUGGESTION_BULK_ACTIONS = ["draft", "dismiss"] as const;
+export type SuggestionBulkAction = (typeof SUGGESTION_BULK_ACTIONS)[number];
+
+/** A new draft (spec v1.1 §6 "New request", §7 POST …/drafts). `language` is a site language or "both". */
+export type DraftRequest = { topic: string; kind: string; platform: string; language: string; tone?: string; keywords?: string[] };
 
 /** Ids become URL path segments; anything but an engine id (e.g. "..") would address a different endpoint. */
 function idSegment(id: string): string {
@@ -178,6 +192,80 @@ export function createEngineApi(client: EngineClient) {
   const job = async (id: string) =>
     (await client.request({ method: "GET", path: `/jobs/${idSegment(id)}`, schema: JobSchema })).data;
 
+  async function listKeywords(options: { statuses: string[]; page?: number; pageSize?: number }) {
+    const { data, meta } = await client.request({
+      method: "GET",
+      path: `${await sitePath()}/keywords`,
+      schema: z.array(z.unknown()),
+      query: { status: options.statuses.join(","), page: options.page, pageSize: options.pageSize },
+    });
+    const { items, skipped } = parseItems(data, KeywordSchema);
+    return { keywords: items, skipped, meta };
+  }
+
+  const addKeywords = async (phrases: string[], language: string, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/keywords`, schema: z.array(KeywordSchema), body: { phrases, language }, ...ctx }))
+      .data;
+
+  const bulkKeywords = async (action: KeywordBulkAction, ids: string[], ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/keywords/bulk`, schema: BulkResultSchema, body: { action, ids }, ...ctx })).data;
+
+  const proposeKeywords = async (language: string | undefined, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/keywords/propose`, schema: JobStartSchema, body: { language }, ...ctx })).data;
+
+  const keywordTopics = async (ids: string[], ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/keywords/topics`, schema: JobStartSchema, body: { ids }, ...ctx })).data;
+
+  const draftKeywordArticles = async (ids: string[], language: string, ctx: ChangeContext) =>
+    (
+      await client.request({
+        method: "POST",
+        path: `${await sitePath()}/keywords/draft-articles`,
+        schema: JobStartSchema,
+        body: { ids, language },
+        ...ctx,
+      })
+    ).data;
+
+  async function listSuggestions(options: { statuses: string[] }) {
+    const { data } = await client.request({
+      method: "GET",
+      path: `${await sitePath()}/suggestions`,
+      schema: z.array(z.unknown()),
+      query: { status: options.statuses.join(",") },
+    });
+    const { items, skipped } = parseItems(data, SuggestionSchema);
+    return { suggestions: items, skipped };
+  }
+
+  const suggestionPath = async (id: string, suffix: string) => {
+    const segment = idSegment(id);
+    return `${await sitePath()}/suggestions/${segment}${suffix}`;
+  };
+
+  const draftSuggestion = async (id: string, language: string, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await suggestionPath(id, "/draft"), schema: JobStartSchema, body: { language }, ...ctx })).data;
+
+  const dismissSuggestion = async (id: string, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await suggestionPath(id, "/dismiss"), schema: SuggestionSchema, body: {}, ...ctx })).data;
+
+  const bulkSuggestions = async (action: SuggestionBulkAction, ids: string[], language: string | undefined, ctx: ChangeContext) =>
+    (
+      await client.request({
+        method: "POST",
+        path: `${await sitePath()}/suggestions/bulk`,
+        schema: BulkResultSchema,
+        body: { action, ids, language },
+        ...ctx,
+      })
+    ).data;
+
+  const createDrafts = async (request: DraftRequest, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/drafts`, schema: JobStartSchema, body: request, ...ctx })).data;
+
+  const requestUpgrade = async (metric: string | undefined, note: string | undefined, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: "/account/upgrade-request", schema: UpgradeRequestedSchema, body: { metric, note }, ...ctx })).data;
+
   const categories = once(
     async () => (await client.request({ method: "GET", path: `${await sitePath()}/website/categories`, schema: CategoriesSchema })).data,
   );
@@ -209,6 +297,18 @@ export function createEngineApi(client: EngineClient) {
     uploadPhoto,
     removePhoto,
     exportPost,
+    listKeywords,
+    addKeywords,
+    bulkKeywords,
+    proposeKeywords,
+    keywordTopics,
+    draftKeywordArticles,
+    listSuggestions,
+    draftSuggestion,
+    dismissSuggestion,
+    bulkSuggestions,
+    createDrafts,
+    requestUpgrade,
     job,
     categories,
   };

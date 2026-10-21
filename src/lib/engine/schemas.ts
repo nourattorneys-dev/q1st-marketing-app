@@ -278,3 +278,33 @@ export type Category = z.infer<typeof CategoriesSchema>[number];
 
 export const DeletedSchema = z.object({ deleted: z.literal(true) });
 export const ReleasedSchema = z.object({ released: z.literal(true) });
+
+// ── Keywords and suggestions (spec v1.1 §4 Keyword, Suggestion; §5 status flows) ───
+export const KeywordSchema = z.object({
+  id: z.string(),
+  phrase: z.string(),
+  language: z.string(),
+  source: z.string(), // known: ai | person | search_console
+  status: z.string(), // known: new | approved | covered | dismissed | off_strategy
+  rationale: z.string().nullish(),
+  uses: z.number().int().nullish(),
+  addedBy: z.object({ id: z.string(), name: z.string() }).nullish(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime.nullish(),
+});
+export type Keyword = z.infer<typeof KeywordSchema>;
+
+export const SuggestionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: z.string(),
+  language: z.string(),
+  keywords: list(z.string()),
+  why: z.string().nullish(),
+  status: z.string(), // known: new | drafting | drafted | dismissed
+  postIds: list(z.string()),
+  createdAt: isoDateTime,
+});
+export type Suggestion = z.output<typeof SuggestionSchema>;
+
+export const UpgradeRequestedSchema = z.object({ requested: z.literal(true) });
