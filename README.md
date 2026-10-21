@@ -28,11 +28,13 @@ One Clerk application per website copy (design §5).
 
 1. Create an application at https://dashboard.clerk.com and enable **Microsoft** and **Email code** sign-in.
 2. **Restrictions → Sign-up mode: Restricted.** Only people the Admin invites from `/users` can create an account.
+   - Also turn off **Allow users to delete their accounts**. Otherwise Clerk's account page on `/security` offers "Delete account", and the only Admin could delete themselves, which "nobody changes their own access" is meant to prevent.
+   - Invitation emails link to Clerk's hosted sign-up page (the Account Portal), because the portal has no sign-up page of its own. Keep the Account Portal on, and point its after-sign-up and after-sign-in redirects (**Paths**) at the dashboard's URL.
 3. **Multi-factor:** turn on **Authenticator application** and **Backup codes**. The portal sends an Admin without two-factor login to `/security` (Clerk's account page) until it's on.
 4. **Sessions → Customize session token:** `{ "metadata": "{{user.public_metadata}}" }`. `/api/jobs` then reads the role from the token instead of asking Clerk on every poll. Without it the portal still works, with one Clerk call per poll.
 5. Put the keys in `.env.local` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and set `AUTH_MODE=clerk`.
 6. Rebuild (`pnpm build`). `AUTH_MODE` is read at build time.
-7. Give the first person the Admin role: Clerk dashboard → Users → the user → Metadata → **Public** → `{ "role": "admin" }`. From then on the Admin invites people and sets roles on `/users`. Anyone without a role sees "No access yet".
+7. Create the first Admin in the Clerk Dashboard, because sign-up is restricted and nobody can sign up on their own: Users → **Create user** (or **Invite**). Then open the user → Metadata → **Public** → `{ "role": "admin" }`. From then on the Admin invites people and sets roles on `/users`. Anyone without a role sees "No access yet".
 
 Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then. Clerk mode is unit-tested against a fake client only: check these steps end to end with real keys before go-live (`docs/plans/2026-10-22-m4b-followups.md`).
 
