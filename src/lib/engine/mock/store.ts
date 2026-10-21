@@ -1,5 +1,7 @@
 import { approvalMode } from "@/lib/posts/rules";
-import type { BulkResult, Category, Job, Post } from "../schemas";
+import type { BulkResult, Category, Job, Photo, Post } from "../schemas";
+import { exportHtml, exportMarkdown } from "./export";
+import { searchMockPhotos } from "./photos";
 import { mockMeta } from "./fixtures";
 import { SEED_DRAFTING_POST_ID, SEED_FAILING_PUBLISH, SEED_QUEUE, seedPosts } from "./post-fixtures";
 import { computeFindings, seoScore, toNeutralHtml } from "./rules";
@@ -15,6 +17,15 @@ export type MockFail = {
   details?: Record<string, unknown>;
 };
 export type MockOutcome<T> = MockOk<T> | MockFail;
+/** A file from a multipart upload, as the mock server hands it to the store. */
+export type UploadedFile = { name: string; type: string; size: number; dataUrl: string };
+export type ExportFile = { body: string; contentType: string; filename: string };
+
+function isImageText(value: unknown): value is { alt: string | null; credit: string | null } {
+  if (typeof value !== "object" || value === null) return false;
+  const { alt, credit } = value as Record<string, unknown>;
+  return (typeof alt === "string" || alt === null) && (typeof credit === "string" || credit === null);
+}
 export type StoredResponse = { fingerprint: string; status: number; json: unknown };
 
 type MockJob = { id: string; postId: string; note: string; startedAt: number; durationMs: number; done: boolean };
@@ -70,6 +81,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   let sequence = 0;
   const queue: string[] = [];
   const failNextPublish = new Set<string>();
+  const photoCache = new Map<number, Photo>();
   const iso = (ms: number) => new Date(ms).toISOString();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
@@ -195,6 +207,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     }
     const target = post as Record<string, unknown>;
     for (const field of EDITABLE_FIELDS) if (field in input) target[field] = input[field];
+    if (isImageText(input.image) && post.image) post.image = { ...post.image, alt: input.image.alt, credit: input.image.credit };
     if (post.kind === "blog" && post.content) post.content = toNeutralHtml(post.content);
     touch(post);
     refreshFindings(post);
@@ -350,6 +363,82 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     });
   }
 
+  /** The photo endpoints change a post only while it can be edited. Like a save, a photo change bumps the version. */
+  function photoTarget(id: string, actor: string): MockOutcome<Post> {
+    const guarded = guard(id, actor);
+    if (!guarded.ok) return guarded;
+    if (!actionsFor(guarded.data).includes("edit")) {
+      return fail(422, "invalid_input", "The photo can't be changed in this post's current status.");
+    }
+    return guarded;
+  }
+
+  function setImage(post: Post, image: Post["image"]): void {
+    post.image = image;
+    touch(post);
+    refreshFindings(post);
+  }
+
+  function searchPhotos(query: string, page: number): MockOutcome<Photo[]> {
+    const photos = searchMockPhotos(query, page);
+    for (const photo of photos) photoCache.set(photo.pexelsId, photo);
+    return ok(photos);
+  }
+
+  function pickPhoto(id: string, pexelsId: number, alt: string | undefined, actor: string): MockOutcome<NonNullable<Post["image"]>> {
+    const target = photoTarget(id, actor);
+    if (!target.ok) return target;
+    const photo = photoCache.get(pexelsId);
+    if (!photo) return fail(404, "not_found", "That photo is no longer available. Search again.");
+    const image = {
+      url: photo.full,
+      alt: alt?.trim() || photo.alt || null,
+      credit: `Photo by ${photo.photographer} on Pexels`,
+      source: "pexels",
+      pexelsId,
+    };
+    setImage(target.data, image);
+    return ok(structuredClone(image));
+  }
+
+  function uploadPhoto(
+    id: string,
+    file: UploadedFile | null,
+    alt: string | undefined,
+    credit: string | undefined,
+    actor: string,
+  ): MockOutcome<NonNullable<Post["image"]>> {
+    const target = photoTarget(id, actor);
+    if (!target.ok) return target;
+    if (!file) return fail(400, "invalid_input", "Choose a photo to upload.", { fields: { file: "Required" } });
+    if (!limits.photoTypes.includes(file.type)) {
+      return fail(400, "invalid_input", "Only JPEG, PNG or WebP photos can be uploaded.", { fields: { file: "Unsupported type" } });
+    }
+    if (file.size > limits.photoMaxBytes) {
+      return fail(400, "invalid_input", `The photo is larger than ${limits.photoMaxBytes / 1_048_576} MB.`, { fields: { file: "Too large" } });
+    }
+    const image = { url: file.dataUrl, alt: alt?.trim() || null, credit: credit?.trim() || null, source: "upload", pexelsId: null };
+    setImage(target.data, image);
+    return ok(structuredClone(image));
+  }
+
+  function removePhoto(id: string, actor: string): MockOutcome<{ removed: true }> {
+    const target = photoTarget(id, actor);
+    if (!target.ok) return target;
+    setImage(target.data, null);
+    return ok({ removed: true as const });
+  }
+
+  function exportPost(id: string, format: string): MockOutcome<ExportFile> {
+    tick();
+    const post = posts.get(id);
+    if (!post) return fail(404, "not_found", "This post no longer exists.");
+    const name = post.slug || post.id;
+    if (format === "html") return ok({ body: exportHtml(post), contentType: "text/html; charset=utf-8", filename: `${name}.html` });
+    if (format === "md") return ok({ body: exportMarkdown(post), contentType: "text/markdown; charset=utf-8", filename: `${name}.md` });
+    return fail(404, "not_found", `There's no ${format} export.`);
+  }
+
   function bulk(action: string, ids: string[], note: string | undefined, actor: string): MockOutcome<BulkResult> {
     const handlers: Record<string, (id: string) => MockOutcome<unknown>> = {
       approve: (id) => approve(id, undefined, actor),
@@ -416,6 +505,11 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     publish,
     hold,
     scheduled,
+    searchPhotos,
+    pickPhoto,
+    uploadPhoto,
+    removePhoto,
+    exportPost,
     bulk,
     job,
     categories,

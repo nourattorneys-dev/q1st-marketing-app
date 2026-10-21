@@ -1,6 +1,6 @@
 import type { FetchLike } from "../client";
 import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "./fixtures";
-import { createMockStore, type MockOutcome, type MockStore } from "./store";
+import { createMockStore, type ExportFile, type MockOutcome, type MockStore, type UploadedFile } from "./store";
 
 /** normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off). */
 export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual";
@@ -12,7 +12,7 @@ export function isMockScenario(value: unknown): value is MockScenario {
 }
 
 type MockOptions = { baseUrl: string; apiKey: string; scenario?: MockScenario; store?: MockStore };
-type Reply = { status: number; json: unknown };
+type Reply = { status: number; json?: unknown; file?: ExportFile };
 
 /** An in-process stand-in for Quantum1st's API: same envelope, status codes, auth, acting-user and idempotency rules. */
 export function createMockFetch(options: MockOptions): FetchLike {
@@ -32,7 +32,8 @@ export function createMockFetch(options: MockOptions): FetchLike {
     if (!url.pathname.startsWith(basePath)) return send(fail(404, "not_found", "Not found."));
     const path = url.pathname.slice(basePath.length);
     const method = (init.method ?? "GET").toUpperCase();
-    const body = typeof init.body === "string" ? init.body : "";
+    const form = init.body instanceof FormData ? init.body : null;
+    const text = typeof init.body === "string" ? init.body : "";
 
     if (method === "GET") return send(route(method, path, url, {}, "", scenario, store));
 
@@ -41,7 +42,7 @@ export function createMockFetch(options: MockOptions): FetchLike {
     const key = headers.get("Idempotency-Key");
     if (!key) return send(fail(400, "invalid_input", "Idempotency-Key is required for changes."));
 
-    const fingerprint = `${method} ${path} ${body}`;
+    const fingerprint = `${method} ${path} ${form ? describeForm(form) : text}`;
     const seen = store.idempotency.get(key);
     if (seen) {
       return seen.fingerprint === fingerprint
@@ -50,10 +51,14 @@ export function createMockFetch(options: MockOptions): FetchLike {
     }
 
     let parsed: Record<string, unknown> = {};
-    try {
-      parsed = body ? (JSON.parse(body) as Record<string, unknown>) : {};
-    } catch {
-      return send(fail(400, "invalid_input", "The request body isn't valid JSON."));
+    if (form) {
+      parsed = await readForm(form);
+    } else {
+      try {
+        parsed = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      } catch {
+        return send(fail(400, "invalid_input", "The request body isn't valid JSON."));
+      }
     }
 
     const reply = route(method, path, url, parsed, actor, scenario, store);
@@ -89,6 +94,9 @@ function route(
     return outcome(store.scheduled(scenario !== "manual", pageSize));
   }
   if (method === "GET" && rest === "/website/categories") return outcome(store.categories());
+  if (method === "GET" && rest === "/photos/search") {
+    return outcome(store.searchPhotos(url.searchParams.get("q") ?? "", Math.max(1, Number(url.searchParams.get("page")) || 1)));
+  }
 
   if (rest === "/posts" && method === "GET") {
     const statuses = url.searchParams.get("status")?.split(",").filter(Boolean) ?? null;
@@ -117,6 +125,16 @@ function route(
     if (action === "/takeover" && method === "POST") return outcome(store.takeover(id, actor));
     if (action === "/publish" && method === "POST") return outcome(store.publish(id, actor));
     if (action === "/hold" && method === "POST") return outcome(store.hold(id, body.hold === true, actor));
+    if (action === "/image/pick" && method === "POST") return outcome(store.pickPhoto(id, Number(body.pexelsId), optionalText(body.alt), actor));
+    if (action === "/image" && method === "POST") {
+      return outcome(store.uploadPhoto(id, uploadedFile(body.file), optionalText(body.alt), optionalText(body.credit), actor));
+    }
+    if (action === "/image" && method === "DELETE") return outcome(store.removePhoto(id, actor));
+    const exportFormat = /^\/export\.([a-z]+)$/.exec(action);
+    if (exportFormat && method === "GET") {
+      const file = store.exportPost(id, exportFormat[1]);
+      return file.ok ? { status: 200, file: file.data } : outcome(file);
+    }
   }
 
   return fail(404, "not_found", `No mock route for ${method} ${path}.`);
@@ -141,7 +159,42 @@ function fail(status: number, code: string, message: string): Reply {
 }
 
 function send(reply: Reply): Response {
+  if (reply.file) {
+    const { body, contentType, filename } = reply.file;
+    const ascii = filename.replace(/[^\x20-\x7e]|"/g, "_");
+    return new Response(body, {
+      status: reply.status,
+      headers: { "Content-Type": contentType, "Content-Disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}` },
+    });
+  }
   return Response.json(reply.json, { status: reply.status });
+}
+
+/** Multipart fields as plain values; a file becomes its name, type, size and a data URL (the mock keeps uploads in memory). */
+async function readForm(form: FormData): Promise<Record<string, unknown>> {
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of form.entries()) {
+    if (typeof value === "string") {
+      fields[key] = value;
+    } else {
+      const base64 = Buffer.from(await value.arrayBuffer()).toString("base64");
+      fields[key] = { name: value.name, type: value.type, size: value.size, dataUrl: `data:${value.type || "application/octet-stream"};base64,${base64}` };
+    }
+  }
+  return fields;
+}
+
+/** What a multipart request asked for, for the idempotency check: the fields, and each file by name, type and size. */
+function describeForm(form: FormData): string {
+  return [...form.entries()].map(([key, value]) => (typeof value === "string" ? `${key}=${value}` : `${key}=${value.name}:${value.type}:${value.size}`)).join("&");
+}
+
+function uploadedFile(value: unknown): UploadedFile | null {
+  if (typeof value !== "object" || value === null) return null;
+  const file = value as Partial<UploadedFile>;
+  return typeof file.name === "string" && typeof file.type === "string" && typeof file.size === "number" && typeof file.dataUrl === "string"
+    ? (file as UploadedFile)
+    : null;
 }
 
 /** The site as an engine that changed its shape would send it: `counts` is gone. */

@@ -253,3 +253,62 @@ describe("publishing (spec v1.1 §5: approved → published, publish error → f
     expect(ids()[0]).toBe("p_201");
   });
 });
+
+describe("photos (spec v1.1 §6 photo panel)", () => {
+  it("search gives the same photos for the same words; picking one saves Pexels' credit", () => {
+    const first = data(store.searchPhotos("court building", 1));
+    expect(first).toHaveLength(6);
+    expect(data(store.searchPhotos("court building", 1))).toEqual(first);
+    const before = data(store.getPost("p_201")).version;
+    const image = data(store.pickPhoto("p_201", first[0].pexelsId, undefined, ME));
+    expect(image).toMatchObject({ credit: "Photo by Mock Photographer 1 on Pexels", source: "pexels", pexelsId: first[0].pexelsId });
+    expect(data(store.getPost("p_201")).version).toBe(before + 1);
+  });
+
+  it("refuses an upload of the wrong type with a readable message", () => {
+    const outcome = store.uploadPhoto("p_201", { name: "notes.txt", type: "text/plain", size: 5, dataUrl: "data:text/plain;base64,aGVsbG8=" }, undefined, undefined, ME);
+    expect(outcome).toMatchObject({ ok: false, status: 400, code: "invalid_input", message: "Only JPEG, PNG or WebP photos can be uploaded." });
+  });
+
+  it("refuses an upload over the size limit", () => {
+    const outcome = store.uploadPhoto("p_201", { name: "big.png", type: "image/png", size: 5_242_881, dataUrl: "data:image/png;base64," }, undefined, undefined, ME);
+    expect(outcome).toMatchObject({ ok: false, status: 400, message: "The photo is larger than 5 MB." });
+  });
+
+  it("uploads, takes alt text and credit through a save, and removes", () => {
+    data(store.uploadPhoto("p_201", { name: "p.png", type: "image/png", size: 68, dataUrl: "data:image/png;base64,iVBOR" }, undefined, undefined, ME));
+    const saved = data(update("p_201", { image: { alt: "A signed contract", credit: "Fakher & Co" } }));
+    expect(saved.image).toMatchObject({ alt: "A signed contract", credit: "Fakher & Co", source: "upload" });
+    expect(store.removePhoto("p_201", ME)).toMatchObject({ ok: true });
+    expect(data(store.getPost("p_201")).image).toBeNull();
+  });
+
+  it("a photo can only change while the post can be edited", () => {
+    expect(store.removePhoto("p_301", ME)).toMatchObject({ ok: false, status: 422 });
+  });
+});
+
+describe("export (spec v1.1 §7 export.html / .md)", () => {
+  it("exports Markdown with headings, lists, tables, quotes and links", () => {
+    const file = data(store.exportPost("p_201", "md"));
+    expect(file).toMatchObject({ contentType: "text/markdown; charset=utf-8", filename: "commission-payable-uae-labour-law.md" });
+    for (const line of [
+      "# When does a commission become payable under UAE Labour Law?",
+      "## When the commission is earned",
+      "- The employee's performance",
+      "| Contract value | Rate |",
+      "| Up to AED 1 million | 2% |",
+      "> Article 53 requires payment within fourteen days of the end of the contract.",
+      "[Labour Law](https://uaelegislation.gov.ae/en/legislations/1541)",
+    ]) {
+      expect(file.body).toContain(line);
+    }
+  });
+
+  it("exports a standalone HTML page that keeps the article's direction", () => {
+    expect(data(store.exportPost("p_201", "html")).body).toContain('<html lang="en" dir="ltr">');
+    const arabic = data(store.exportPost("p_202", "html"));
+    expect(arabic.body).toContain('<html lang="ar" dir="rtl">');
+    expect(arabic.filename).toBe("commission-payable-uae-labour-law-ar.html");
+  });
+});

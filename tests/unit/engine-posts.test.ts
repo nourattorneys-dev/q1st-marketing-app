@@ -195,3 +195,24 @@ describe("publishing over the mock engine (spec v1.1 §10: one publication per k
     expect(queue.skipped).toBe(0);
   });
 });
+
+// A 1×1 transparent PNG.
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
+describe("photos and export over the mock engine", () => {
+  it("uploads a photo as multipart; a wrong type comes back with the engine's message", async () => {
+    const { engine } = setup();
+    const refused = await failure(engine.uploadPhoto("p_201", { file: new File(["hello"], "notes.txt", { type: "text/plain" }) }, ctx()));
+    expect(refused).toMatchObject({ status: 400, code: "invalid_input", message: "Only JPEG, PNG or WebP photos can be uploaded." });
+    const image = await engine.uploadPhoto("p_201", { file: new File([PNG], "pixel.png", { type: "image/png" }), alt: "A pixel" }, ctx());
+    expect(image).toMatchObject({ source: "upload", alt: "A pixel" });
+    expect(image.url.startsWith("data:image/png;base64,")).toBe(true);
+  });
+
+  it("exports Markdown as a file with the post's name", async () => {
+    const { engine } = setup();
+    const file = await engine.exportPost("p_201", "md");
+    expect(file.filename).toBe("commission-payable-uae-labour-law.md");
+    expect(file.body).toContain("## When the commission is earned");
+  });
+});
