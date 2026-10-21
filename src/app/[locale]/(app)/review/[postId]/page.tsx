@@ -51,6 +51,7 @@ async function EditorLoader({ params }: { params: Promise<{ locale: string; post
       post={post.data}
       twin={twin?.ok ? twin.data : null}
       limits={{ metaTitle: meta.data.limits.metaTitle, metaDescription: meta.data.limits.metaDescription }}
+      photoLimits={{ photoTypes: meta.data.limits.photoTypes, photoMaxBytes: meta.data.limits.photoMaxBytes }}
       categories={categories.ok ? categories.data : []}
       lockMinutes={meta.data.limits.lockMinutes}
       pollSeconds={meta.data.pollSeconds}

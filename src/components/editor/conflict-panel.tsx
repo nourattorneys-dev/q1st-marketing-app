@@ -13,10 +13,11 @@ type Props = {
   onKeepMine: () => void;
 };
 
-/** A readable value: text for the body, lists joined, a dash for empty. Shown only in the browser, after a save. */
+/** A readable value: text for the body, lists joined, the photo's alt and credit, a dash for empty. Shown only in the browser. */
 function display(key: FieldKey, value: EditableFields[FieldKey]): string {
+  if (value === null || value === "") return "—";
   if (Array.isArray(value)) return value.join(", ") || "—";
-  if (!value) return "—";
+  if (typeof value === "object") return [value.alt, value.credit].filter(Boolean).join(" · ") || "—";
   if (key !== "content") return value;
   const text = new DOMParser().parseFromString(value, "text/html").body.textContent ?? "";
   const flat = text.replace(/\s+/g, " ").trim();

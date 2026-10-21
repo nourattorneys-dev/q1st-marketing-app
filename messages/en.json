@@ -129,7 +129,8 @@
       "keywords": "Keywords",
       "content": "Body",
       "hashtags": "Hashtags",
-      "section": "Section"
+      "section": "Section",
+      "image": "Photo alt text and credit"
     },
     "noSection": "No section",
     "focusKeyword": "focus",
@@ -198,6 +199,27 @@
     "missingBlock": "— missing —",
     "conflictTheirs": "Theirs",
     "conflictMine": "Yours",
-    "bodyUnsupported": "The body contains content the editor can't keep ({elements}), so it's read-only here and will be saved exactly as it is. The other fields can still be edited."
+    "bodyUnsupported": "The body contains content the editor can't keep ({elements}), so it's read-only here and will be saved exactly as it is. The other fields can still be edited.",
+    "photo": {
+      "title": "Photo",
+      "none": "No photo yet.",
+      "required": "Instagram posts need a photo before they can be approved or published.",
+      "suggested": "Suggested search: {idea}",
+      "find": "Find a photo",
+      "pickerTitle": "Find a photo on Pexels",
+      "pickerBody": "Search, then choose a photo. Its credit is saved with it.",
+      "searchLabel": "Search Pexels",
+      "search": "Search",
+      "noResults": "No photos found. Try other words.",
+      "by": "Photo by {name}",
+      "use": "Use this photo",
+      "more": "More photos",
+      "upload": "Upload a photo",
+      "uploadHint": "{types}, up to {size} MB.",
+      "tooLarge": "This file is {size} MB; the limit is {limit} MB.",
+      "remove": "Remove photo",
+      "alt": "Alt text",
+      "credit": "Credit"
+    }
   }
 }

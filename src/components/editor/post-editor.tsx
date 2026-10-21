@@ -14,8 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Link } from "@/i18n/navigation";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
-import { changedFields, toEditable, type EditableFields } from "@/lib/editor/changed-fields";
-import { afterSave, draftOf, edit, rebase, unsavedFields, withMyChanges, type Draft } from "@/lib/editor/draft";
+import { changedFields, toEditable, toUpdate, type EditableFields } from "@/lib/editor/changed-fields";
+import { afterSave, draftOf, edit, rebase, unsavedFields, withMyChanges, withServerImage, type Draft } from "@/lib/editor/draft";
 import { fieldErrors } from "@/lib/editor/field-errors";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { Category, Post } from "@/lib/engine/schemas";
@@ -26,6 +26,7 @@ import { EditorFooter } from "./editor-footer";
 import { FieldCounter, FieldError } from "./field-counter";
 import { KeywordChips } from "./keyword-chips";
 import { LockBanner } from "./lock-banner";
+import { PhotoPanel, type PhotoLimits } from "./photo-panel";
 import { SourcesList } from "./sources-list";
 
 type Props = {
@@ -33,6 +34,7 @@ type Props = {
   post: Post;
   twin: Post | null;
   limits: { metaTitle: number; metaDescription: number };
+  photoLimits: PhotoLimits;
   categories: Category[];
   lockMinutes: number;
   pollSeconds: number;
@@ -40,7 +42,7 @@ type Props = {
 
 const parseHashtags = (text: string) => text.split(",").map((tag) => tag.trim()).filter(Boolean);
 
-export function PostEditor({ locale, post, twin, limits, categories, lockMinutes, pollSeconds }: Props) {
+export function PostEditor({ locale, post, twin, limits, photoLimits, categories, lockMinutes, pollSeconds }: Props) {
   const t = useTranslations("Editor");
   const [saved, setSaved] = useState<Post | null>(null);
   // The newest version wins for status, checks and actions: my last save, or what the server re-rendered after refresh().
@@ -109,10 +111,10 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
     setError(null);
     setSavedNow(false);
     const sent = toSave.form;
-    const result = await save.run({ locale, postId: post.id, update: { ...sent, version: toSave.version } });
+    const result = await save.run({ locale, postId: post.id, update: toUpdate(sent, toSave.version) });
     if (result.ok) {
       setSaved(result.data);
-      setDraft((latest) => afterSave(latest, sent, result.data.version));
+      setDraft((latest) => afterSave(latest, sent, result.data));
       setSavedNow(true);
       return;
     }
@@ -156,6 +158,17 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
     } else {
       setError(result.error);
     }
+  }
+
+  /** After a photo change: reload the post (the image endpoints answer with the photo only) and follow its photo. */
+  async function photoChanged() {
+    const fresh = await loadPostAction({ locale, postId: post.id });
+    if (!fresh.ok) {
+      setError(fresh.error);
+      return;
+    }
+    setSaved(fresh.data);
+    setDraft((latest) => withServerImage(latest, fresh.data));
   }
 
   const statusLabel = t.has(`status.${current.status}`) ? t(`status.${current.status}`) : current.status;
@@ -285,6 +298,16 @@ export function PostEditor({ locale, post, twin, limits, categories, lockMinutes
           )}
         </div>
         <aside className="flex flex-col gap-4">
+          <PhotoPanel
+            locale={locale}
+            post={current}
+            editable={editable}
+            text={form.image}
+            onTextChange={set("image")}
+            onChanged={photoChanged}
+            limits={photoLimits}
+            error={errors.byField.image}
+          />
           <ChecksPanel post={current} />
           <SourcesList post={current} />
         </aside>
