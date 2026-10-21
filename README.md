@@ -11,6 +11,8 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 - `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
 - Mock scenario `signin_down` (the same `mock_scenario` cookie): the sign-in service can't be reached. The Users page shows a notice; the engine stays normal.
+- `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; see "Database, webhook and email" for Vercel.
+- With test logins, `POST /api/dev/mock-webhook` with `{ "event": "post.drafted", "data": { "postId": "p_201", "status": "pending" } }` makes the mock engine deliver a signed webhook (set the webhook up first, in Settings → Webhook). `GET /api/cron/notifications` with `Authorization: Bearer $CRON_SECRET` sends what's due.
 
 ## Checks
 
@@ -37,6 +39,19 @@ One Clerk application per website copy (design §5).
 7. Create the first Admin in the Clerk Dashboard, because sign-up is restricted and nobody can sign up on their own: Users → **Create user** (or **Invite**). Then open the user → Metadata → **Public** → `{ "role": "admin" }`. From then on the Admin invites people and sets roles on `/users`. Anyone without a role sees "No access yet".
 
 Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then. Clerk mode is unit-tested against a fake client only: check these steps end to end with real keys before go-live (`docs/plans/2026-10-22-m4b-followups.md`).
+
+## Database, webhook and email (Vercel)
+
+1. **Database:** add Neon from the Vercel Marketplace (it sets `DATABASE_URL`), and set `DB_MODE=neon`.
+   - Set `WEBHOOK_ENCRYPTION_KEY` to `openssl rand -base64 32`. Keep it: changing it means getting a new webhook secret.
+   - Apply the migrations once, and after every schema change: `DATABASE_URL=… pnpm db:migrate`.
+   - Pull `DATABASE_URL` from the Neon dashboard, not with `vercel env pull`, which can also write `VERCEL="1"` locally.
+2. **Email:** in Resend, add the sending domain (for example `notifications.fakhernco.com`). Add the DNS records Resend lists (DKIM, and its SPF/MX for the sending subdomain) in **Cloudflare**; the Microsoft 365 mail setup is unaffected. Then set:
+   - `EMAIL_MODE=resend`
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM` (for example `Articles AI <notifications@notifications.fakhernco.com>`)
+3. **Cron:** set `CRON_SECRET` (a long random string). `vercel.json` calls `/api/cron/notifications` every 5 minutes, which needs Vercel Pro; on Hobby, crons run at most once a day.
+4. **Webhook:** after deploying, open **Settings → Webhook** on the production address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted. A preview deployment that does the same takes the webhook over (one webhook per site): set it up again on production afterwards.
 
 ## Decisions in M1
 
@@ -159,3 +174,30 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
   - Roles and two-factor status come from a test directory per `mock_store` namespace, so a change on `/users` takes effect on the person's next request, as with Clerk.
   - Invitations are listed, but no email is sent and they can't be accepted.
   - A switch on `/security` stands in for setting up an authenticator app, then goes on to the dashboard.
+
+## Decisions in M4c (database, webhooks, email)
+
+- **The dashboard's database** holds only:
+  - webhook event ids (30 days)
+  - the webhook registration, with its secret encrypted (AES-256-GCM)
+  - the notification log
+  - each person's email setting
+
+  Locally it lives in memory (`DB_MODE=memory`, refused on Vercel); on Vercel it's Neon through Drizzle.
+- **The webhook receiver** (`/api/hooks/marketing`):
+  - It checks `X-Signature` against the raw body in constant time, before parsing anything.
+  - A delivery it can't verify gets 401 and changes nothing.
+  - A repeated `X-Event-Id` is acknowledged and ignored.
+  - An event it doesn't know is acknowledged, so the engine stops retrying.
+  - Screens aren't cached, so deliveries don't refresh anything; jobs are still followed by polling.
+- **Webhook setup** (Settings → Webhook):
+  - Every setup asks the engine for a new secret, so the stored one always matches.
+  - The page says when the webhook points at another address, or when this server can't read its secret (a changed `WEBHOOK_ENCRYPTION_KEY`).
+- **Emails** (design §10):
+  - **Who gets what:** drafts go to Reviewers (to the Admins when there are no Reviewers). Failed posts, connections that stop working or are about to expire, quota warnings and finished site scans go to the Admins.
+  - **Batching:** a batch goes out as one email per person, English then Arabic, once nothing new has arrived for 2 minutes. The cron runs every 5 minutes.
+  - **Retries:** a failed send is retried on the next run. Resend's idempotency key keeps anyone from getting it twice.
+  - **Each person's setting:** everyone can turn their emails off on the Email notifications page.
+- **Not built:**
+  - **Badges from webhooks:** every list and the dashboard read the engine when they open, so their counts are current.
+  - **React Email:** the templates are plain HTML and text from the message files.

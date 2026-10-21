@@ -23,7 +23,7 @@ Carry these into the M4c and M5 plans.
 - The Users page lists the first 100 people and 100 pending invitations (no paging).
 - Inviting checks for duplicates against those lists. Beyond them, Clerk refuses a duplicate itself, and the page shows the same message.
 - A pending invitation can't be resent: revoke it and invite again.
-- **Next 16.4: a refresh doesn't redraw a page outside the app shell.** On `/security`, neither `refresh()` nor a redirect back to the same URL from a server action redrew the page, although the action's response carried the new state (a reload showed it). The test switch goes on to the dashboard instead. Check again on a newer Next before adding actions to `/security`, `/no-access` or `/sign-in`.
+- **Next 16.4: a refresh doesn't redraw a page outside the app shell.** On `/security`, neither `refresh()` nor a redirect back to the same URL from a server action redrew the page, although the action's response carried the new state (a reload showed it). The test switch goes on to the dashboard instead. Check again on a newer Next before adding actions to `/security`, `/no-access` or `/sign-in`. — M4c found the cause: a view whose only request-time input is cookies isn't redrawn after in-app navigation; `await connection()` in the view fixes it (see the M4c follow-ups).
 
 ## Deferred minor findings (final review)
 

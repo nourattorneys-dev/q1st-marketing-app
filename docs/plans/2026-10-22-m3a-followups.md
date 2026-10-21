@@ -35,7 +35,7 @@ Carry these into the M3b–M5 plans.
   - `addKeywords` parses its response strictly: covered by the deferred M2b `invalid_response` item.
   - Arabic normalisation (diacritics, alef forms) when comparing duplicates: the engine's rules are unknown.
   - Search, filter and select-all on /keywords; restoring dismissed suggestions: the spec doesn't ask for them.
-  - Keyword and suggestion badges from webhooks: M4.
+  - Keyword and suggestion badges from webhooks: M4. — M4c: not built; every list and the dashboard read the engine when they open, so counts are current without webhook badges
   - An empty keyword tab page after approving: the same class as the deferred M2b Review item.
   - `role="status"` announcing every percent: inherited from M2a.
   - Dismiss offered on In use keywords: the engine decides, and refusals are listed.
