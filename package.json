@@ -10,10 +10,13 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@clerk/nextjs": "7.9.18",
+    "@neondatabase/serverless": "1.2.0",
     "@tiptap/extension-image": "3.32.0",
     "@tiptap/extension-subscript": "3.32.0",
     "@tiptap/extension-superscript": "3.32.0",
@@ -23,6 +26,7 @@
     "@tiptap/starter-kit": "3.32.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
+    "drizzle-orm": "0.45.4",
     "lucide-react": "^1.60.0",
     "next": "16.4.2",
     "next-intl": "4.14.9",
@@ -41,6 +45,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "happy-dom": "20.14.6",

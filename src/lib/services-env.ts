@@ -1,0 +1,61 @@
+import "server-only";
+import { z } from "zod";
+
+const ServicesSchema = z.object({
+  DB_MODE: z.enum(["memory", "neon"]).default("memory"),
+  DATABASE_URL: z.string().optional(),
+  WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
+  EMAIL_MODE: z.enum(["log", "resend"]).default("log"),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
+  NOTIFY_QUIET_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
+  VERCEL: z.string().optional(),
+});
+
+/** The database, webhook secret, email and cron settings (M4c). Server-only: none of these may reach the browser. */
+export type ServicesEnv = {
+  dbMode: "memory" | "neon";
+  databaseUrl: string | null;
+  /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
+  encryptionKey: Buffer | null;
+  emailMode: "log" | "resend";
+  resend: { apiKey: string; from: string } | null;
+  cronSecret: string | null;
+  notifyQuietMs: number;
+};
+
+export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
+  const cleaned = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value === "" ? undefined : value]));
+  const env = ServicesSchema.parse(cleaned);
+
+  if (env.DB_MODE === "memory" && env.VERCEL === "1") {
+    throw new Error("DB_MODE=memory keeps data in one server's memory and is refused on Vercel. Set DB_MODE=neon and DATABASE_URL.");
+  }
+  if (env.DB_MODE === "neon" && !env.DATABASE_URL) throw new Error("DB_MODE=neon needs DATABASE_URL.");
+
+  let encryptionKey: Buffer | null = null;
+  if (env.WEBHOOK_ENCRYPTION_KEY) {
+    encryptionKey = Buffer.from(env.WEBHOOK_ENCRYPTION_KEY, "base64");
+    if (encryptionKey.length !== 32) throw new Error("WEBHOOK_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32).");
+  }
+
+  if (env.EMAIL_MODE === "resend" && (!env.RESEND_API_KEY || !env.EMAIL_FROM)) {
+    throw new Error("EMAIL_MODE=resend needs RESEND_API_KEY and EMAIL_FROM.");
+  }
+
+  return {
+    dbMode: env.DB_MODE,
+    databaseUrl: env.DATABASE_URL ?? null,
+    encryptionKey,
+    emailMode: env.EMAIL_MODE,
+    resend: env.EMAIL_MODE === "resend" && env.RESEND_API_KEY && env.EMAIL_FROM ? { apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM } : null,
+    cronSecret: env.CRON_SECRET ?? null,
+    notifyQuietMs: env.NOTIFY_QUIET_SECONDS * 1000,
+  };
+}
+
+/** Parsed on every call, like serverEnv(), so tests and runtime always see the current environment. */
+export function servicesEnv(): ServicesEnv {
+  return parseServicesEnv(process.env);
+}
