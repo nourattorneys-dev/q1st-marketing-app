@@ -12,7 +12,8 @@
       "history": "History",
       "keywords": "Keywords",
       "ideas": "Topic ideas",
-      "settings": "Settings"
+      "settings": "Settings",
+      "siteHealth": "Site health"
     },
     "role": {
       "admin": "Admin",
@@ -596,5 +597,46 @@
     },
     "fix": "Fix the connection in Settings",
     "askAdmin": "Ask your admin to connect it."
+  },
+  "SiteHealth": {
+    "title": "Site health",
+    "hint": "Problems the content engine found on the website, and the fixes it proposes. Applying a fix changes the live website.",
+    "tabs": {
+      "label": "Findings",
+      "todo": "To do",
+      "applied": "Applied",
+      "dismissed": "Dismissed"
+    },
+    "scan": "Scan site",
+    "scanning": "Scanning the website…",
+    "prepare": "Prepare fixes for selected ({count})",
+    "preparing": "Preparing fixes…",
+    "columns": {
+      "select": "Select",
+      "url": "Page",
+      "level": "Level",
+      "issue": "Issue",
+      "fix": "Proposed fix",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "select": "Select {url}",
+    "levels": {
+      "critical": "Critical",
+      "warn": "Warning",
+      "info": "Info"
+    },
+    "statuses": {
+      "open": "Open",
+      "prepared": "Fix prepared",
+      "applied": "Applied",
+      "dismissed": "Dismissed"
+    },
+    "apply": "Apply",
+    "applyTitle": "Apply this fix to the live website?",
+    "applyBody": "The content engine will change {url} on the website now.",
+    "dismiss": "Dismiss",
+    "empty": "Nothing here.",
+    "failed": "Not done:"
   }
 }

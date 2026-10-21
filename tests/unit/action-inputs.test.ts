@@ -15,6 +15,9 @@ const engine = {
   createDrafts: vi.fn(),
   draftSuggestion: vi.fn(),
   requestUpgrade: vi.fn(),
+  scanSite: vi.fn(),
+  prepareFixes: vi.fn(),
+  bulkFindings: vi.fn(),
 };
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -29,6 +32,7 @@ const { searchPhotosAction, uploadPhotoAction } = await import("@/app/[locale]/(
 const { addKeywordsAction, draftKeywordArticlesAction } = await import("@/app/[locale]/(app)/keywords/actions");
 const { createDraftsAction, draftSuggestionAction } = await import("@/app/[locale]/(app)/ideas/actions");
 const { requestUpgradeAction } = await import("@/app/[locale]/(app)/plan/actions");
+const { findingsAction, prepareFixesAction, scanSiteAction } = await import("@/app/[locale]/(app)/site-health/actions");
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -128,5 +132,30 @@ describe("M3a actions validate their input too", () => {
     engine.requestUpgrade.mockResolvedValue({ requested: true });
     expect(await requestUpgradeAction({ locale: "en", metric: "articles", idempotencyKey: key })).toEqual({ ok: true, data: { requested: true } });
     expect(requirePermission).toHaveBeenCalledWith("en", "plan.manage");
+  });
+});
+
+const key = "key-12345678";
+
+describe("site-health actions (design §5)", () => {
+  it("asks for siteHealth.apply before applying a fix, and siteHealth.view to dismiss or scan (Review Focus 1)", async () => {
+    engine.bulkFindings.mockResolvedValue({ done: ["sf_3"], failed: [] });
+    await findingsAction({ locale: "en", action: "apply", ids: ["sf_3"], idempotencyKey: key });
+    expect(requirePermission).toHaveBeenLastCalledWith("en", "siteHealth.apply");
+    await findingsAction({ locale: "en", action: "dismiss", ids: ["sf_3"], idempotencyKey: key });
+    expect(requirePermission).toHaveBeenLastCalledWith("en", "siteHealth.view");
+    engine.scanSite.mockResolvedValue({ jobId: "j_1", postIds: [] });
+    await scanSiteAction({ locale: "en", idempotencyKey: key });
+    expect(requirePermission).toHaveBeenLastCalledWith("en", "siteHealth.view");
+  });
+
+  it("refuses an unknown finding action or a malformed id without calling the engine", async () => {
+    expect(await findingsAction({ locale: "en", action: "delete", ids: ["sf_1"], idempotencyKey: key })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_input" },
+    });
+    expect(await prepareFixesAction({ locale: "en", ids: [".."], idempotencyKey: key })).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+    expect(engine.bulkFindings).not.toHaveBeenCalled();
+    expect(engine.prepareFixes).not.toHaveBeenCalled();
   });
 });

@@ -21,4 +21,9 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems("admin")).toEqual(NAV_ITEMS);
     expect(NAV_ITEMS.find((item) => item.key === "settings")).toEqual({ key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage" });
   });
+
+  it("shows Site health to both roles", () => {
+    expect(visibleNavItems("reviewer").map((item) => item.key)).toContain("siteHealth");
+    expect(NAV_ITEMS.find((item) => item.key === "siteHealth")).toEqual({ key: "siteHealth", href: "/site-health", permission: "siteHealth.view" });
+  });
 });
