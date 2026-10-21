@@ -1,12 +1,22 @@
 "use client";
 
+import { Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getPathname, usePathname } from "@/i18n/navigation";
 
+// On routes with a segment unknown at build time (e.g. /review/[postId]) the pathname is request data,
+// so the path-aware button streams in; until then an inert button of the same size holds its place.
 export function LocaleSwitch() {
+  return (
+    <Suspense fallback={<SwitchButton />}>
+      <PathAwareSwitch />
+    </Suspense>
+  );
+}
+
+function PathAwareSwitch() {
   const locale = useLocale();
-  const t = useTranslations("Shell");
   const pathname = usePathname();
   const other = locale === "ar" ? "en" : "ar";
 
@@ -16,8 +26,15 @@ export function LocaleSwitch() {
     window.location.assign(getPathname({ href: pathname, locale: other }));
   }
 
+  return <SwitchButton onClick={switchLanguage} />;
+}
+
+function SwitchButton({ onClick }: { onClick?: () => void }) {
+  const locale = useLocale();
+  const t = useTranslations("Shell");
+  const other = locale === "ar" ? "en" : "ar";
   return (
-    <Button variant="ghost" size="sm" lang={other} data-testid="locale-switch" onClick={switchLanguage}>
+    <Button variant="ghost" size="sm" lang={other} data-testid="locale-switch" onClick={onClick} disabled={!onClick}>
       {t("language")}
     </Button>
   );

@@ -109,5 +109,61 @@
       "blog": "مقال",
       "social": "منشور تواصل"
     }
+  },
+  "Editor": {
+    "back": "→ المراجعة",
+    "status": {
+      "drafting": "قيد الصياغة",
+      "pending": "بانتظار المراجعة",
+      "approved": "معتمد",
+      "rejected": "مرفوض",
+      "published": "منشور",
+      "failed": "فشل"
+    },
+    "fields": {
+      "title": "العنوان",
+      "subtitle": "المقدمة",
+      "slug": "الرابط المختصر",
+      "metaTitle": "عنوان الميتا",
+      "metaDescription": "وصف الميتا",
+      "keywords": "الكلمات المفتاحية",
+      "content": "النص",
+      "hashtags": "الوسوم",
+      "section": "القسم"
+    },
+    "noSection": "بدون قسم",
+    "focusKeyword": "الرئيسية",
+    "addKeyword": "أضف كلمة مفتاحية واضغط Enter",
+    "removeKeyword": "إزالة «{keyword}»",
+    "hashtagsHint": "افصل بينها بفواصل",
+    "counter": "{length} / {limit}",
+    "toolbar": {
+      "h2": "عنوان",
+      "h3": "عنوان فرعي",
+      "bold": "غامق",
+      "italic": "مائل",
+      "bulletList": "قائمة نقطية",
+      "orderedList": "قائمة مرقمة"
+    },
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "saved": "تم الحفظ",
+    "unsaved": "تغييرات غير محفوظة",
+    "lockedBy": "يحرره {name} الآن. يمكنك القراءة، أو تولي التحرير.",
+    "takeover": "تولي التحرير",
+    "conflictTitle": "حفظ شخص آخر أولاً",
+    "conflictBody": "هذه الحقول مختلفة في النسخة التي حفظها:",
+    "loadTheirs": "تحميل نسخته",
+    "keepMine": "الإبقاء على نسختي وحفظها",
+    "checks": "الفحوصات",
+    "seoScore": "تقييم السيو {score}",
+    "critical": "حرجة",
+    "warn": "تحذيرات",
+    "human": "للمراجع",
+    "humanHint": "تحقق منها بنفسك؛ لا تُعلَّم كمجتازة أبداً.",
+    "noFindings": "لا توجد مشكلات.",
+    "sources": "المصادر",
+    "noSources": "لا توجد مصادر.",
+    "reviewNote": "التعديل المطلوب: {note}"
   }
 }

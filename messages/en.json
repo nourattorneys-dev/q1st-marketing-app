@@ -109,5 +109,61 @@
       "blog": "Article",
       "social": "Social post"
     }
+  },
+  "Editor": {
+    "back": "← Review",
+    "status": {
+      "drafting": "Drafting",
+      "pending": "Waiting for review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "published": "Published",
+      "failed": "Failed"
+    },
+    "fields": {
+      "title": "Title",
+      "subtitle": "Standfirst",
+      "slug": "Slug",
+      "metaTitle": "Meta title",
+      "metaDescription": "Meta description",
+      "keywords": "Keywords",
+      "content": "Body",
+      "hashtags": "Hashtags",
+      "section": "Section"
+    },
+    "noSection": "No section",
+    "focusKeyword": "focus",
+    "addKeyword": "Add a keyword and press Enter",
+    "removeKeyword": "Remove “{keyword}”",
+    "hashtagsHint": "Separate with commas",
+    "counter": "{length} / {limit}",
+    "toolbar": {
+      "h2": "Heading",
+      "h3": "Subheading",
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bulleted list",
+      "orderedList": "Numbered list"
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "lockedBy": "Being edited by {name}. You can read it, or take over to edit.",
+    "takeover": "Take over",
+    "conflictTitle": "Someone saved first",
+    "conflictBody": "These fields are different in the version they saved:",
+    "loadTheirs": "Load their version",
+    "keepMine": "Keep mine and save",
+    "checks": "Checks",
+    "seoScore": "SEO score {score}",
+    "critical": "Critical",
+    "warn": "Warnings",
+    "human": "For the reviewer",
+    "humanHint": "Check these yourself; they're never marked as passed.",
+    "noFindings": "No issues found.",
+    "sources": "Sources",
+    "noSources": "No sources listed.",
+    "reviewNote": "Requested change: {note}"
   }
 }
