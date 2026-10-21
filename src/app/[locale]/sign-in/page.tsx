@@ -1,4 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { asAppLocale } from "@/i18n/locales";
@@ -13,7 +15,11 @@ export default async function SignInPage({ params }: PageProps<"/[locale]/sign-i
   const t = await getTranslations("SignIn");
 
   return (
-    <main className="flex min-h-dvh items-center justify-center p-6">
+    <main className="relative flex min-h-dvh items-center justify-center p-6">
+      <div className="absolute end-4 top-4 flex gap-2">
+        <ThemeToggle />
+        <LocaleSwitch />
+      </div>
       {serverEnv().authMode === "clerk" ? (
         <ClerkSignIn />
       ) : (

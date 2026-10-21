@@ -2,9 +2,9 @@ import type { FetchLike } from "../client";
 import { MOCK_SITE_ID, mockMeta, mockPlan, mockSite } from "./fixtures";
 import { createMockStore, type ExportFile, type MockOutcome, type MockStore, type UploadedFile } from "./store";
 
-/** normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off). */
-export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual";
-const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual"];
+/** normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off) · crash (a non-engine error). */
+export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash";
+const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual", "crash"];
 export const MOCK_SCENARIO_COOKIE = "mock_scenario";
 
 export function isMockScenario(value: unknown): value is MockScenario {

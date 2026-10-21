@@ -56,10 +56,10 @@ export function PostCard({ post, selected, onSelect }: { post: Post; selected: b
           <>
             {counts.critical > 0 && (
               <span data-testid={`card-critical-${post.id}`} className="rounded bg-bad-bg px-2 py-0.5 text-bad-fg">
-                {t("critical", { count: counts.critical })}
+                {t("critical", { count: counts.critical, n: String(counts.critical) })}
               </span>
             )}
-            {counts.warn > 0 && <span className="rounded bg-warn-bg px-2 py-0.5 text-warn-fg">{t("warn", { count: counts.warn })}</span>}
+            {counts.warn > 0 && <span className="rounded bg-warn-bg px-2 py-0.5 text-warn-fg">{t("warn", { count: counts.warn, n: String(counts.warn) })}</span>}
           </>
         )}
         {post.image && (

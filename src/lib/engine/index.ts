@@ -18,6 +18,8 @@ export const getEngine = cache(async () => {
     await connection();
     const jar = await cookies();
     const scenario = jar.get(MOCK_SCENARIO_COOKIE)?.value;
+    // The "crash" scenario throws a plain error, to show the error page (an engine error would show a notice instead).
+    if (scenario === "crash") throw new Error("Simulated crash (mock scenario).");
     fetchImpl = createMockFetch({
       baseUrl: env.engineBaseUrl,
       apiKey: env.engineApiKey,

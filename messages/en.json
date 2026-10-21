@@ -101,8 +101,8 @@
     "bulkFailed": "Not approved:",
     "drafting": "Drafting…",
     "twin": "Pair: {language}",
-    "critical": "{count} critical",
-    "warn": "{count} warnings",
+    "critical": "{n} critical",
+    "warn": "{count, plural, one {{n} warning} other {{n} warnings}}",
     "languages": {
       "en": "English",
       "ar": "Arabic"
@@ -280,5 +280,11 @@
       "linkedin": "LinkedIn",
       "instagram": "Instagram"
     }
+  },
+  "ErrorPage": {
+    "title": "Something went wrong",
+    "body": "This page couldn't be shown. Try again; if it keeps happening, contact your admin.",
+    "retry": "Try again",
+    "home": "Go to the dashboard"
   }
 }
