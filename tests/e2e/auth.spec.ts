@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signInWithCookie } from "./helpers";
+import { isolateMockStore, signInWithCookie } from "./helpers";
 
 test("signed-out visitors are sent to sign-in", async ({ page }) => {
   await page.goto("/en");
@@ -38,4 +38,21 @@ test("switching language keeps the page and flips the direction", async ({ page,
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   // Next 16 keeps up to 3 previous routes in the DOM (hidden via <Activity>), so match only the visible badge.
   await expect(page.getByTestId("user-role").filter({ visible: true })).toHaveText("مراجع");
+});
+
+test("signing out loads the sign-in page afresh: nothing of the previous pages stays hidden in the DOM (Review Focus 5)", async ({ page, context }) => {
+  await isolateMockStore(context);
+  await signInWithCookie(context, "dev_admin");
+  await page.goto("/en");
+  await page.waitForLoadState("networkidle"); // hydrated, so the next click is an in-app navigation
+  await page.getByTestId("nav-keywords").click();
+  await expect(page).toHaveURL(/\/en\/keywords$/);
+  await expect(page.locator('[data-testid^="keyword-row-"]').first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+
+  await page.getByTestId("sign-out").filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/en\/sign-in$/);
+  await expect(page.getByTestId("sign-in-dev_admin")).toBeVisible();
+  await expect(page.getByTestId("user-name")).toHaveCount(0);
+  await expect(page.locator('[data-testid^="keyword-row-"]')).toHaveCount(0);
 });

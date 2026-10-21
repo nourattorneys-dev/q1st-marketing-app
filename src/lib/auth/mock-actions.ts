@@ -21,13 +21,6 @@ export async function signInAsMockUser(formData: FormData): Promise<void> {
   redirect(`/${locale}`);
 }
 
-export async function signOutMockUser(formData: FormData): Promise<void> {
-  assertMockMode();
-  const locale = asAppLocale(String(formData.get("locale") ?? ""));
-  (await cookies()).delete(MOCK_SESSION_COOKIE);
-  redirect(`/${locale}/sign-in`);
-}
-
 /** Test logins only: stands in for setting up an authenticator app (design §5), for this mock_store namespace. */
 export async function enableMockTwoFactor(formData: FormData): Promise<void> {
   assertMockMode();
