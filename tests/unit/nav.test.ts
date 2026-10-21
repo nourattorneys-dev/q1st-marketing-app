@@ -16,8 +16,9 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems("admin", items).map((i) => i.key)).toEqual(["dashboard", "settings", "users"]);
   });
 
-  it("gives both roles the M1 dashboard", () => {
-    expect(visibleNavItems("reviewer")).toEqual(NAV_ITEMS);
+  it("gives reviewers every content screen, and admins the settings too (design §5)", () => {
+    expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("settings");
     expect(visibleNavItems("admin")).toEqual(NAV_ITEMS);
+    expect(NAV_ITEMS.find((item) => item.key === "settings")).toEqual({ key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage" });
   });
 });

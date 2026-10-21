@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
-export function NavLink({ href, testId, children }: { href: string; testId: string; children: ReactNode }) {
+export function NavLink({ href, match, testId, children }: { href: string; match?: string; testId: string; children: ReactNode }) {
   const pathname = usePathname();
-  const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const active = href === "/" ? pathname === "/" : pathname.startsWith(match ?? href);
   return (
     <Link
       href={href}

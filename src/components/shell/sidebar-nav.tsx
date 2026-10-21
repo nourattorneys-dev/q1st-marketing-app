@@ -12,7 +12,7 @@ export async function SidebarNav({ locale }: { locale: AppLocale }) {
       <ul className="flex flex-col gap-1">
         {visibleNavItems(session.role).map((item) => (
           <li key={item.key}>
-            <NavLink href={item.href} testId={`nav-${item.key}`}>
+            <NavLink href={item.href} match={item.match} testId={`nav-${item.key}`}>
               {t(item.key)}
             </NavLink>
           </li>

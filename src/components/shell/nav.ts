@@ -1,6 +1,6 @@
 import { can, type Permission, type Role } from "@/lib/auth/roles";
 
-export type NavItem = { key: string; href: string; permission: Permission };
+export type NavItem = { key: string; href: string; permission: Permission; match?: string };
 
 /** Later milestones append their screens here, each with the permission that gates it. */
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -10,6 +10,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: "review", href: "/review", permission: "content.work" },
   { key: "scheduled", href: "/scheduled", permission: "content.work" },
   { key: "history", href: "/history", permission: "content.work" },
+  // The four settings pages share one item; it's highlighted on any of them.
+  { key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage" },
 ];
 
 export function visibleNavItems(role: Role, items: readonly NavItem[] = NAV_ITEMS): NavItem[] {

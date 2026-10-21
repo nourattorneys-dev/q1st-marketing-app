@@ -11,7 +11,8 @@
       "scheduled": "Scheduled",
       "history": "History",
       "keywords": "Keywords",
-      "ideas": "Topic ideas"
+      "ideas": "Topic ideas",
+      "settings": "Settings"
     },
     "role": {
       "admin": "Admin",
@@ -395,6 +396,55 @@
       "started": "{count, plural, one {Drafting {n} post. It will appear in Review.} other {Drafting {n} posts. They will appear in Review.}}",
       "openReview": "Open Review",
       "running": "Drafting…"
+    }
+  },
+  "Settings": {
+    "title": "Settings",
+    "tabs": {
+      "label": "Settings pages",
+      "seo": "SEO profile",
+      "schedule": "Publishing schedule",
+      "website": "Website connection",
+      "social": "Social accounts"
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "unsaved": "You have unsaved changes.",
+    "checkFields": "Some fields need attention. See the messages under them.",
+    "otherFields": "The content engine also said:",
+    "testFirst": "Test the connection first: a changed connection is saved only after its test passes.",
+    "on": "On",
+    "off": "Off",
+    "conflict": {
+      "title": "Someone saved first",
+      "body": "These settings changed while you were editing. Nothing is lost: compare the two versions and choose.",
+      "theirs": "Saved version",
+      "mine": "Your version",
+      "loadTheirs": "Use the saved version",
+      "keepMine": "Keep my changes"
+    },
+    "schedule": {
+      "title": "Publishing schedule",
+      "hint": "When approved posts go out. The content engine works out the exact times.",
+      "autoPublish": "Publish automatically",
+      "autoPublishHint": "When this is off, nothing goes out until someone presses Publish now.",
+      "perDay": "Posts a day",
+      "days": "Days",
+      "from": "From",
+      "to": "Until",
+      "gapMinutes": "Minutes between posts",
+      "wholeNumber": "Enter a whole number.",
+      "nextSlot": "Next publish slot: {time}",
+      "dayNames": {
+        "sun": "Sunday",
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday"
+      }
     }
   }
 }
