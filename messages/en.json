@@ -6,7 +6,8 @@
     "brand": "Articles AI",
     "nav": {
       "label": "Main",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "review": "Review"
     },
     "role": {
       "admin": "Admin",
@@ -87,5 +88,26 @@
     "engineInvalid": "The content engine sent data in an unexpected format. Contact Quantum1st if this continues.",
     "engineBusy": "The content engine is busy. Your request is queued; try again shortly.",
     "notFound": "This item was removed. Go back to the list."
+  },
+  "Review": {
+    "title": "Review",
+    "empty": "Nothing is waiting for review.",
+    "count": "{shown} of {total} posts",
+    "selectAll": "Select all",
+    "select": "Select “{title}”",
+    "approveSelected": "Approve selected ({count})",
+    "bulkFailed": "Not approved:",
+    "drafting": "Drafting…",
+    "twin": "Pair: {language}",
+    "critical": "{count} critical",
+    "warn": "{count} warnings",
+    "languages": {
+      "en": "English",
+      "ar": "Arabic"
+    },
+    "kinds": {
+      "blog": "Article",
+      "social": "Social post"
+    }
   }
 }

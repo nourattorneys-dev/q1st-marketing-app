@@ -3,7 +3,10 @@ import { can, type Permission, type Role } from "@/lib/auth/roles";
 export type NavItem = { key: string; href: string; permission: Permission };
 
 /** Later milestones append their screens here, each with the permission that gates it. */
-export const NAV_ITEMS: readonly NavItem[] = [{ key: "dashboard", href: "/", permission: "content.work" }];
+export const NAV_ITEMS: readonly NavItem[] = [
+  { key: "dashboard", href: "/", permission: "content.work" },
+  { key: "review", href: "/review", permission: "content.work" },
+];
 
 export function visibleNavItems(role: Role, items: readonly NavItem[] = NAV_ITEMS): NavItem[] {
   return items.filter((item) => can(role, item.permission));

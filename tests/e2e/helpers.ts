@@ -18,3 +18,9 @@ export async function setMockScenario(
 export function normalizeSpaces(text: string): string {
   return text.replace(/\s+/gu, " ");
 }
+
+/** Gives this test its own copy of the mock engine's data, so tests can't affect each other. */
+export async function isolateMockStore(context: BrowserContext): Promise<void> {
+  const namespace = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  await context.addCookies([{ name: "mock_store", value: namespace, url: BASE_URL }]);
+}
