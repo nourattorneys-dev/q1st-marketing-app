@@ -128,6 +128,13 @@ function route(
   });
   const idsOf = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
+  if (rest === "/settings/seo" && method === "GET") return outcome(store.settings.seo());
+  if (rest === "/settings/seo" && method === "PUT") return outcome(store.settings.saveSeo(body));
+  if (rest === "/settings/seo/propose" && method === "POST") return outcome(store.proposeSeo());
+  if (rest === "/settings/seo/picture" && method === "POST") return outcome(store.settings.uploadSeoPicture(uploadedFile(body.file)));
+  if (rest === "/settings/seo/picture" && method === "DELETE") return outcome(store.settings.removeSeoPicture());
+  if (rest === "/settings/publishing" && method === "GET") return outcome(store.settings.publishing());
+  if (rest === "/settings/publishing" && method === "PUT") return outcome(store.settings.savePublishing(body));
   if (rest === "/keywords" && method === "GET") {
     const { page, pageSize } = pageOf();
     const listed = store.listKeywords(statusesOf(), page, pageSize);

@@ -3,25 +3,16 @@ import { approvalMode } from "@/lib/posts/rules";
 import type { BulkResult, Category, Job, Keyword, Photo, Post, Suggestion } from "../schemas";
 import { draftedContent, ideaTitleFor, PROPOSALS, topicFor } from "./drafting";
 import { exportHtml, exportMarkdown } from "./export";
+import { fail, ok, type MockFail, type MockOutcome, type UploadedFile } from "./outcome";
 import { searchMockPhotos } from "./photos";
 import { mockMeta } from "./fixtures";
 import { seedKeywords, seedSuggestions } from "./keyword-fixtures";
 import { SEED_DRAFTING_POST_ID, SEED_FAILING_PUBLISH, SEED_QUEUE, seedPosts } from "./post-fixtures";
 import { computeFindings, seoScore, toNeutralHtml } from "./rules";
 import { slotTimes } from "./schedule";
+import { createSettingsStore } from "./settings-store";
 
-export type MockOk<T> = { ok: true; status: number; data: T };
-export type MockFail = {
-  ok: false;
-  status: number;
-  code: string;
-  message: string;
-  fields?: Record<string, string>;
-  details?: Record<string, unknown>;
-};
-export type MockOutcome<T> = MockOk<T> | MockFail;
-/** A file from a multipart upload, as the mock server hands it to the store. */
-export type UploadedFile = { name: string; type: string; size: number; dataUrl: string };
+export type { MockFail, MockOk, MockOutcome, UploadedFile } from "./outcome";
 export type ExportFile = { body: string; contentType: string; filename: string };
 
 function isImageText(value: unknown): value is { alt: string | null; credit: string | null } {
@@ -64,14 +55,6 @@ const CATEGORIES: Category[] = [
   { slug: "real-estate", name: "Real estate" },
 ];
 
-const ok = <T>(data: T, status = 200): MockOk<T> => ({ ok: true, status, data });
-const fail = (
-  status: number,
-  code: string,
-  message: string,
-  extra: { fields?: Record<string, string>; details?: Record<string, unknown> } = {},
-): MockFail => ({ ok: false, status, code, message, ...extra });
-
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
@@ -94,6 +77,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   let suggestionSequence = 100;
   let postSequence = 600;
   const iso = (ms: number) => new Date(ms).toISOString();
+  const settings = createSettingsStore();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
 
@@ -115,7 +99,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   /** Positions and expected times of the approved queue: a held post keeps its place but gets no time. */
   function queueSchedule(autoPublish: boolean): Map<string, QueueEntry> {
     const queued = queue.map((id) => posts.get(id)).filter((post): post is Post => post?.status === "approved");
-    const times = autoPublish ? slotTimes(queued.filter((post) => !post.schedule?.hold).length) : [];
+    const times = autoPublish ? slotTimes(queued.filter((post) => !post.schedule?.hold).length, settings.slotPlan()) : [];
     const plan = new Map<string, QueueEntry>();
     let slot = 0;
     queued.forEach((post, index) => {
@@ -371,10 +355,11 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok(view(post));
   }
 
-  /** GET …/scheduled: the queue with positions and times; with auto-publish off, nothing has a time. */
+  /** GET …/scheduled: the queue with positions and times. With auto-publish off (settings or scenario), nothing has a time. */
   function scheduled(autoPublish: boolean, pageSize: number | null) {
     tick();
-    const plan = queueSchedule(autoPublish);
+    const on = autoPublish && settings.autoPublish();
+    const plan = queueSchedule(on);
     const items = [...plan].map(([id, schedule]) => {
       const item = view(posts.get(id) as Post);
       delete item.content;
@@ -382,9 +367,9 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     });
     const next = [...plan.values()].find((entry) => entry.scheduledAt)?.scheduledAt ?? null;
     return ok({
-      autoPublish,
+      autoPublish: on,
       nextSlotAt: next,
-      waitingReason: autoPublish && !next ? "queue_empty" : null,
+      waitingReason: on && !next ? "queue_empty" : null,
       posts: pageSize ? items.slice(0, pageSize) : items,
     });
   }
@@ -758,6 +743,12 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return ok(result);
   }
 
+  /** POST …/settings/seo/propose: AI suggestions for focus keywords and the call to action, as a job (not saved). */
+  function proposeSeo() {
+    tick();
+    return ok({ jobId: startJob(() => settings.seoProposal()), status: "queued", postIds: [] as string[] });
+  }
+
   function job(id: string): MockOutcome<Job> {
     tick();
     const found = jobs.get(id);
@@ -786,6 +777,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
 
   return {
     idempotency,
+    settings,
+    proposeSeo,
     listPosts,
     getPost,
     updatePost,
