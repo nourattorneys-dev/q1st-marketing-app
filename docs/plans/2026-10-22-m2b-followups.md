@@ -40,7 +40,7 @@ Carry these into the M3–M5 plans.
   - Publishing, bulk actions and photo uploads get 120 s per attempt instead of 10 s.
 - **Declined in the final review:**
   - Idle lock renewal, the `pagehide` release and the unsaved-changes guard: still deferred, as recorded in the M2a follow-ups.
-  - Role-specific `not_connected` / quota hints and polling through `/api/jobs`: these belong to M3/M4.
+  - Role-specific `not_connected` / quota hints and polling through `/api/jobs`: these belong to M3/M4. — not_connected handled in M3b
   - "Create social posts" in History and the editor: feature-flagged; it stays hidden while `/meta.features` is empty.
   - Whether the real engine's list and queue items carry `actions`: already a question for Quantum1st.
   - The Vercel 4.5 MB cap: a recorded risk. The misleading message is deferred above.

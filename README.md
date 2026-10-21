@@ -90,3 +90,24 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
   - In the new-request form, an article goes to the website and a social post to a social platform; the engine still checks.
 - **A 429 `quota_exceeded`** shows "Monthly limit reached for {metric}". Admins get Request upgrade; reviewers are told to ask their admin.
 - **Mock scenario `quota`:** every drafting request answers 429, so this path can be tried locally.
+
+## Decisions in M3b (settings)
+
+- **Settings are the Admin's** (`settings.manage`): the menu item, the four pages (`/settings/seo`, `/schedule`, `/website`, `/social`) and every settings action check it on the server.
+- **Every settings form is versioned:**
+  - A save sends the version the form started from.
+  - If someone saved first, both versions show; Keep my changes saves my fields on top of theirs.
+  - The engine's field messages show under their fields.
+- **Website connection:**
+  - The form is drawn entirely from `/meta.targetTypes` (types, fields, body formats, Arabic modes).
+  - Test connection fills the field and block maps from the website's own fields.
+  - A changed type, connection field or password is saved only after its test passes.
+  - The password or token is write-only: never shown or sent back, and an empty field keeps the stored one.
+- **Social accounts:**
+  - Connect goes to the engine's sign-in address, followed only if it's https (http on localhost), and comes back to `/{locale}/settings/social?connected=…`.
+  - Google Search Console shows only with the `performance` feature.
+- **First run:** with no website connection, the dashboard sends the Admin to the website connection, then to social accounts. A Reviewer is told to ask the admin.
+- **`422 not_connected`:** an Admin gets a link to the right settings page; a Reviewer is told to ask the admin.
+- **Mock scenarios:**
+  - `firstrun`: a fresh mock store starts with nothing connected. Use it with a new `mock_store` cookie.
+  - `performance`: turns on that feature and Search Console.
