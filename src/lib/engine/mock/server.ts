@@ -103,6 +103,25 @@ function route(
     return outcome(store.searchPhotos(url.searchParams.get("q") ?? "", Math.max(1, Number(url.searchParams.get("page")) || 1)));
   }
 
+  const statusesOf = () => url.searchParams.get("status")?.split(",").filter(Boolean) ?? null;
+  const idsOf = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
+
+  if (rest === "/keywords" && method === "GET") {
+    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get("pageSize")) || 25));
+    const listed = store.listKeywords(statusesOf(), page, pageSize);
+    return listed.ok ? { status: 200, json: { ok: true, data: listed.data.items, meta: listed.data.meta } } : outcome(listed);
+  }
+  if (rest === "/keywords" && method === "POST") return outcome(store.addKeywords(body.phrases, body.language, actor));
+  if (rest === "/keywords/bulk" && method === "POST") return outcome(store.bulkKeywords(String(body.action ?? ""), idsOf(body.ids)));
+  if (rest === "/suggestions" && method === "GET") return outcome(store.listSuggestions(statusesOf()));
+
+  const suggestionRoute = /^\/suggestions\/([^/]+)(\/.*)?$/.exec(rest);
+  if (suggestionRoute && suggestionRoute[1] !== "bulk") {
+    const id = decodeURIComponent(suggestionRoute[1]);
+    if (suggestionRoute[2] === "/dismiss" && method === "POST") return outcome(store.dismissSuggestion(id));
+  }
+
   if (rest === "/posts" && method === "GET") {
     const statuses = url.searchParams.get("status")?.split(",").filter(Boolean) ?? null;
     const page = Math.max(1, Number(url.searchParams.get("page")) || 1);

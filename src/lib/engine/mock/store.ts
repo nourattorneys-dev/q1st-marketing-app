@@ -1,8 +1,10 @@
+import { normalizePhrase } from "@/lib/keywords/phrases";
 import { approvalMode } from "@/lib/posts/rules";
-import type { BulkResult, Category, Job, Photo, Post } from "../schemas";
+import type { BulkResult, Category, Job, Keyword, Photo, Post, Suggestion } from "../schemas";
 import { exportHtml, exportMarkdown } from "./export";
 import { searchMockPhotos } from "./photos";
 import { mockMeta } from "./fixtures";
+import { seedKeywords, seedSuggestions } from "./keyword-fixtures";
 import { SEED_DRAFTING_POST_ID, SEED_FAILING_PUBLISH, SEED_QUEUE, seedPosts } from "./post-fixtures";
 import { computeFindings, seoScore, toNeutralHtml } from "./rules";
 import { slotTimes } from "./schedule";
@@ -82,6 +84,10 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   const queue: string[] = [];
   const failNextPublish = new Set<string>();
   const photoCache = new Map<number, Photo>();
+  const keywords = new Map<string, Keyword>();
+  const suggestions = new Map<string, Suggestion>();
+  const siteLanguages = mockMeta().languages;
+  let keywordSequence = 100;
   const iso = (ms: number) => new Date(ms).toISOString();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
@@ -442,6 +448,87 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return fail(404, "not_found", `There's no ${format} export.`);
   }
 
+  function listKeywords(statuses: string[] | null, page: number, pageSize: number) {
+    tick();
+    const all = [...keywords.values()].filter((keyword) => !statuses || statuses.includes(keyword.status));
+    const start = (page - 1) * pageSize;
+    return ok({ items: structuredClone(all.slice(start, start + pageSize)), meta: { page, pageSize, total: all.length } });
+  }
+
+  /** POST …/keywords: adds each phrase that isn't already a keyword in that language; returns only what it added. */
+  function addKeywords(phrases: unknown, language: unknown, actor: string): MockOutcome<Keyword[]> {
+    if (!Array.isArray(phrases) || phrases.length === 0 || phrases.length > 50) {
+      return fail(400, "invalid_input", "Add between 1 and 50 keywords at a time.", { fields: { phrases: "Required" } });
+    }
+    if (typeof language !== "string" || !siteLanguages.includes(language)) {
+      return fail(400, "invalid_input", "Choose one of the site's languages.", { fields: { language: "Unknown language" } });
+    }
+    const existing = new Set([...keywords.values()].filter((keyword) => keyword.language === language).map((keyword) => normalizePhrase(keyword.phrase)));
+    const created: Keyword[] = [];
+    for (const raw of phrases) {
+      if (typeof raw !== "string") continue;
+      const phrase = raw.trim().replace(/\s+/g, " ");
+      const key = normalizePhrase(phrase);
+      if (!phrase || phrase.length > 100 || existing.has(key)) continue;
+      existing.add(key);
+      const at = iso(now());
+      const keyword: Keyword = {
+        id: `kw_${++keywordSequence}`,
+        phrase,
+        language,
+        source: "person",
+        status: "new",
+        rationale: null,
+        uses: 0,
+        addedBy: { id: actor, name: actor },
+        createdAt: at,
+        updatedAt: at,
+      };
+      keywords.set(keyword.id, keyword);
+      created.push(structuredClone(keyword));
+    }
+    return ok(created);
+  }
+
+  const KEYWORD_MOVES: Record<string, { from: string[]; to: string; refusal: string }> = {
+    approve: { from: ["new"], to: "approved", refusal: "Only new keywords can be approved." },
+    dismiss: { from: ["new", "approved"], to: "dismissed", refusal: "Only new or in-use keywords can be dismissed." },
+    restore: { from: ["dismissed", "off_strategy"], to: "new", refusal: "Only dismissed keywords can be restored." },
+  };
+
+  /** POST …/keywords/bulk (spec v1.1 §5 Keyword flow). */
+  function bulkKeywords(action: string, ids: string[]): MockOutcome<BulkResult> {
+    const move = Object.hasOwn(KEYWORD_MOVES, action) ? KEYWORD_MOVES[action] : undefined;
+    if (!move) return fail(400, "invalid_input", `Unknown keyword action: ${action}.`, { fields: { action: "Unknown" } });
+    const result: BulkResult = { done: [], failed: [] };
+    for (const id of ids) {
+      const keyword = keywords.get(id);
+      if (!keyword) {
+        result.failed.push({ id, code: "not_found", message: "This keyword no longer exists." });
+      } else if (!move.from.includes(keyword.status)) {
+        result.failed.push({ id, code: "invalid_input", message: move.refusal });
+      } else {
+        keyword.status = move.to;
+        keyword.updatedAt = iso(now());
+        result.done.push(id);
+      }
+    }
+    return ok(result);
+  }
+
+  function listSuggestions(statuses: string[] | null): MockOutcome<Suggestion[]> {
+    tick();
+    return ok(structuredClone([...suggestions.values()].filter((suggestion) => !statuses || statuses.includes(suggestion.status))));
+  }
+
+  function dismissSuggestion(id: string): MockOutcome<Suggestion> {
+    const suggestion = suggestions.get(id);
+    if (!suggestion) return fail(404, "not_found", "This topic idea no longer exists.");
+    if (suggestion.status !== "new") return fail(422, "invalid_input", "Only new topic ideas can be dismissed.");
+    suggestion.status = "dismissed";
+    return ok(structuredClone(suggestion));
+  }
+
   function bulk(action: string, ids: string[], note: string | undefined, actor: string): MockOutcome<BulkResult> {
     const handlers: Record<string, (id: string) => MockOutcome<unknown>> = {
       approve: (id) => approve(id, undefined, actor),
@@ -484,6 +571,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   for (const seeded of posts.values()) refreshFindings(seeded);
   queue.push(...SEED_QUEUE);
   for (const id of SEED_FAILING_PUBLISH) failNextPublish.add(id);
+  for (const seeded of seedKeywords()) keywords.set(seeded.id, seeded);
+  for (const seeded of seedSuggestions()) suggestions.set(seeded.id, seeded);
   jobs.set("j_seed", {
     id: "j_seed",
     postId: SEED_DRAFTING_POST_ID,
@@ -513,6 +602,11 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     uploadPhoto,
     removePhoto,
     exportPost,
+    listKeywords,
+    addKeywords,
+    bulkKeywords,
+    listSuggestions,
+    dismissSuggestion,
     bulk,
     job,
     categories,
