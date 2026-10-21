@@ -35,3 +35,13 @@ test("the nav links to the review queue", async ({ page }) => {
   await page.getByTestId("nav-review").click();
   await expect(page).toHaveURL(/\/en\/review$/);
 });
+
+test("bulk publish publishes what it can and names what it couldn't", async ({ page }) => {
+  await page.goto("/en/review");
+  await page.getByTestId("card-select-p_201").check();
+  await page.getByTestId("card-select-p_203").check();
+  await page.getByTestId("publish-selected").click();
+  await page.getByTestId("publish-selected-confirm").click();
+  await expect(page.getByTestId("bulk-failures")).toContainText("Shareholder deadlock: your options under UAE company law");
+  await expect(page.getByTestId("card-p_201")).toHaveCount(0);
+});

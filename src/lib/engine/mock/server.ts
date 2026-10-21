@@ -67,6 +67,9 @@ export function createMockFetch(options: MockOptions): FetchLike {
   };
 }
 
+/** With the "drift" scenario, lists also carry a post in a shape the portal doesn't know (Review Focus 4). */
+const DRIFTED_POST = { id: "p_drift", title: 42 };
+
 function route(
   method: string,
   path: string,
@@ -91,7 +94,9 @@ function route(
   if (method === "GET" && rest === "") return ok(scenario === "drift" ? driftedSite() : mockSite());
   if (method === "GET" && rest === "/scheduled") {
     const pageSize = Number(url.searchParams.get("pageSize")) || null;
-    return outcome(store.scheduled(scenario !== "manual", pageSize));
+    const queue = store.scheduled(scenario !== "manual", pageSize);
+    if (queue.ok && scenario === "drift") return ok({ ...queue.data, posts: [...queue.data.posts, DRIFTED_POST] });
+    return outcome(queue);
   }
   if (method === "GET" && rest === "/website/categories") return outcome(store.categories());
   if (method === "GET" && rest === "/photos/search") {
@@ -103,7 +108,9 @@ function route(
     const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get("pageSize")) || 25));
     const listed = store.listPosts(statuses, page, pageSize, url.searchParams.get("sort"));
-    return listed.ok ? { status: 200, json: { ok: true, data: listed.data.items, meta: listed.data.meta } } : outcome(listed);
+    if (!listed.ok) return outcome(listed);
+    const items = scenario === "drift" ? [...listed.data.items, DRIFTED_POST] : listed.data.items;
+    return { status: 200, json: { ok: true, data: items, meta: listed.data.meta } };
   }
   if (rest === "/posts/bulk" && method === "POST") {
     const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];

@@ -10,7 +10,7 @@ import { findingCounts } from "@/lib/posts/rules";
 export function PostCard({ post, selected, onSelect }: { post: Post; selected: boolean; onSelect: (checked: boolean) => void }) {
   const t = useTranslations("Review");
   const counts = findingCounts(post);
-  const selectable = post.actions.includes("approve");
+  const selectable = post.actions.includes("approve") || post.actions.includes("publishNow");
   const languageName = (code: string) => (t.has(`languages.${code}`) ? t(`languages.${code}`) : code);
 
   return (

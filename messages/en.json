@@ -8,7 +8,8 @@
       "label": "Main",
       "dashboard": "Dashboard",
       "review": "Review",
-      "scheduled": "Scheduled"
+      "scheduled": "Scheduled",
+      "history": "History"
     },
     "role": {
       "admin": "Admin",
@@ -114,7 +115,12 @@
       "website": "Website",
       "linkedin": "LinkedIn",
       "instagram": "Instagram"
-    }
+    },
+    "publishNow": "Publish now",
+    "publishSelected": "Publish selected ({count})",
+    "publishSelectedTitle": "Publish the selected posts now?",
+    "publishSelectedBody": "Each one is approved and published right away. Posts that need a reason or a photo are skipped and listed.",
+    "bulkPublishFailed": "Not published:"
   },
   "Editor": {
     "back": "← Review",
@@ -260,5 +266,19 @@
     "pageEmpty": "There's nothing on this page.",
     "firstPage": "Go to the first page",
     "skipped": "{count, plural, one {{n} item couldn't be shown because the content engine sent it in an unexpected format.} other {{n} items couldn't be shown because the content engine sent them in an unexpected format.}}"
+  },
+  "History": {
+    "title": "History",
+    "empty": "Nothing has been published, failed or been rejected yet.",
+    "publishedAt": "Published {time}",
+    "override": "Approved with an override: {reason}",
+    "rejectionNote": "Rejection note: {note}",
+    "retry": "Retry",
+    "targets": {
+      "wordpress": "WordPress",
+      "strapi": "Strapi",
+      "linkedin": "LinkedIn",
+      "instagram": "Instagram"
+    }
   }
 }
