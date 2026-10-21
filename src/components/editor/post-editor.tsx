@@ -58,7 +58,6 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
   const [error, setError] = useState<EngineFailure | null>(null);
   const save = useEngineAction(savePostAction);
   const takeover = useEngineAction(takeoverPostAction);
-  const takeLock = useEngineAction(lockPostAction).run;
 
   const canEdit = current.actions.includes("edit");
   const editable = canEdit && lockedBy === null;
@@ -86,9 +85,10 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
     if (!canEdit) return;
     let active = true;
     async function acquire() {
-      const result = await takeLock({ locale, postId: post.id });
-      if (!active) return;
-      setLockedBy(!result.ok && result.error.code === "locked" ? String(result.error.details?.lockedBy ?? "") : null);
+      const result = await lockPostAction({ locale, postId: post.id, idempotencyKey: crypto.randomUUID() }).catch(() => null);
+      if (!active || !result) return;
+      const failure: EngineFailure | null = result.ok ? null : result.error;
+      setLockedBy(failure?.code === "locked" ? String(failure.details?.lockedBy ?? "") : null);
     }
     void acquire();
     const timer = setInterval(acquire, Math.max(30, lockMinutes * 30) * 1000);
@@ -97,7 +97,7 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
       clearInterval(timer);
       void unlockPostAction({ locale, postId: post.id, idempotencyKey: crypto.randomUUID() });
     };
-  }, [canEdit, locale, lockMinutes, post.id, takeLock]);
+  }, [canEdit, locale, lockMinutes, post.id]);
 
   function set<K extends keyof EditableFields>(key: K) {
     return (value: EditableFields[K]) => {
@@ -186,6 +186,11 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
           <span data-testid="save-status" className="text-sm text-ok-fg">
             {t("saved")}
           </span>
+        )}
+        {current.published && (
+          <a href={current.published.url} target="_blank" rel="noopener noreferrer" dir="ltr" data-testid="published-link" className="text-sm text-primary underline">
+            {t("viewLive")}
+          </a>
         )}
       </div>
 
@@ -321,6 +326,8 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
         saving={save.pending}
         onSave={() => void persist(draft)}
         pollSeconds={pollSeconds}
+        lockedBy={lockedBy}
+        onLocked={setLockedBy}
       />
     </div>
   );

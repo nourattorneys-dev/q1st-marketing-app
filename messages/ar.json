@@ -220,6 +220,14 @@
       "remove": "إزالة الصورة",
       "alt": "النص البديل",
       "credit": "المصدر"
-    }
+    },
+    "publishNow": "انشر الآن",
+    "publishTitle": "نشر هذا المنشور الآن؟",
+    "publishBody": "سيُنشر فوراً. النشر الآن لا يُحتسب من حصة اليوم.",
+    "publishBodyPending": "سيُعتمد المنشور ويُنشر فوراً.",
+    "publishNeedsApproval": "اعتمده مع ذكر السبب أولاً، ثم يمكن نشره.",
+    "viewLive": "عرضه منشوراً",
+    "exportHtml": "تصدير HTML",
+    "exportMarkdown": "تصدير Markdown"
   }
 }

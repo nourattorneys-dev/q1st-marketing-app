@@ -2,7 +2,13 @@
 
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
-import { approvePostAction, deletePostAction, rejectPostAction, requestChangesAction } from "@/app/[locale]/(app)/review/actions";
+import {
+  approvePostAction,
+  deletePostAction,
+  publishPostAction,
+  rejectPostAction,
+  requestChangesAction,
+} from "@/app/[locale]/(app)/review/actions";
 import { ActionError } from "@/components/actions/action-error";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
@@ -14,16 +20,24 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { JobProgress } from "./job-progress";
 import { StatusWatcher } from "./status-watcher";
 
-type Props = { locale: string; post: Post; dirty: boolean; pollSeconds: number };
+type Props = {
+  locale: string;
+  post: Post;
+  dirty: boolean;
+  pollSeconds: number;
+  lockedBy: string | null;
+  onLocked: (by: string) => void;
+};
 
-/** Buttons come from post.actions (spec v1.1 §5); approval follows the findings (direct, override with reason, or blocked). */
-export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
+/** Buttons come from post.actions (spec v1.1 §5); approval and publishing follow the findings. Nothing runs while someone else holds the lock. */
+export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked }: Props) {
   const t = useTranslations("Editor");
   const router = useRouter();
   const approve = useEngineAction(approvePostAction);
   const changes = useEngineAction(requestChangesAction);
   const reject = useEngineAction(rejectPostAction);
   const remove = useEngineAction(deletePostAction);
+  const publish = useEngineAction(publishPostAction);
   const [error, setError] = useState<EngineFailure | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   // A full reload: the editor keeps its own form state, so only a fresh page shows the redrafted content.
@@ -31,32 +45,46 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
 
   const allowed = new Set(post.actions);
   const mode = approvalMode(post.findings);
+  const locked = lockedBy !== null;
+  // Publishing straight from review needs what approval needs; with a critical finding, approve with a reason first.
+  const publishable = post.status !== "pending" || mode === "direct";
+
+  /** A refusal because someone else took the lock shows the lock banner (with Take over) instead of an error. */
+  function refusal(failure: EngineFailure): EngineFailure | null {
+    if (failure.code !== "locked") return failure;
+    onLocked(String(failure.details?.lockedBy ?? ""));
+    return null;
+  }
 
   async function approveDirectly() {
     setError(null);
     const result = await approve.run({ locale, postId: post.id });
-    if (!result.ok) setError(result.error);
+    if (!result.ok) setError(refusal(result.error));
   }
 
   const approveWithReason = async (reason: string) => {
     const result = await approve.run({ locale, postId: post.id, overrideReason: reason });
-    return result.ok ? null : result.error;
+    return result.ok ? null : refusal(result.error);
   };
   const askForChanges = async (note: string) => {
     const result = await changes.run({ locale, postId: post.id, note });
-    if (!result.ok) return result.error;
+    if (!result.ok) return refusal(result.error);
     setJobId(result.data.jobId);
     return null;
   };
   const rejectPost = async (note: string) => {
     const result = await reject.run({ locale, postId: post.id, note: note || undefined });
-    return result.ok ? null : result.error;
+    return result.ok ? null : refusal(result.error);
   };
   const deletePost = async () => {
     const result = await remove.run({ locale, postId: post.id });
-    if (!result.ok) return result.error;
+    if (!result.ok) return refusal(result.error);
     router.push("/review");
     return null;
+  };
+  const publishPost = async () => {
+    const result = await publish.run({ locale, postId: post.id });
+    return result.ok ? null : refusal(result.error);
   };
 
   return (
@@ -65,7 +93,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
       {!jobId && post.status === "drafting" && <StatusWatcher locale={locale} postId={post.id} status={post.status} pollSeconds={pollSeconds} />}
       <div className="flex flex-wrap items-center gap-2">
         {allowed.has("approve") && mode === "direct" && (
-          <Button data-testid="approve" disabled={dirty || approve.pending} onClick={() => void approveDirectly()}>
+          <Button data-testid="approve" disabled={dirty || locked || approve.pending} onClick={() => void approveDirectly()}>
             {t("approve")}
           </Button>
         )}
@@ -74,7 +102,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
             testId="approve"
             triggerVariant="default"
             triggerLabel={t("approve")}
-            disabled={dirty}
+            disabled={dirty || locked}
             title={t("overrideTitle")}
             description={t("overrideBody")}
             confirmLabel={t("approveAnyway")}
@@ -88,10 +116,24 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
             {t("approve")}
           </Button>
         )}
+        {allowed.has("publishNow") && (
+          <ConfirmDialog
+            testId="publish"
+            triggerVariant="secondary"
+            triggerLabel={t("publishNow")}
+            disabled={dirty || locked || !publishable}
+            title={t("publishTitle")}
+            description={post.status === "pending" ? t("publishBodyPending") : t("publishBody")}
+            confirmLabel={t("publishNow")}
+            pending={publish.pending}
+            onConfirm={publishPost}
+          />
+        )}
         {allowed.has("changes") && (
           <ConfirmDialog
             testId="changes"
             triggerLabel={t("changes")}
+            disabled={locked}
             title={t("changes")}
             description={t("changesBody")}
             confirmLabel={t("send")}
@@ -104,6 +146,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
           <ConfirmDialog
             testId="reject"
             triggerLabel={t("reject")}
+            disabled={locked}
             title={t("rejectTitle")}
             description={t("rejectBody")}
             confirmLabel={t("reject")}
@@ -117,6 +160,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
             testId="delete"
             triggerVariant="destructive"
             triggerLabel={t("delete")}
+            disabled={locked}
             title={t("deleteTitle")}
             description={t("deleteBody")}
             confirmLabel={t("delete")}
@@ -130,7 +174,14 @@ export function ActionBar({ locale, post, dirty, pollSeconds }: Props) {
           {t("approveBlockedHint")}
         </p>
       )}
-      {allowed.has("approve") && mode !== "blocked" && dirty && <p className="text-sm text-muted-foreground">{t("saveFirst")}</p>}
+      {allowed.has("publishNow") && post.status === "pending" && mode === "override" && (
+        <p data-testid="publish-needs-approval" className="text-sm text-muted-foreground">
+          {t("publishNeedsApproval")}
+        </p>
+      )}
+      {(allowed.has("approve") || allowed.has("publishNow")) && mode !== "blocked" && dirty && (
+        <p className="text-sm text-muted-foreground">{t("saveFirst")}</p>
+      )}
       {error && <ActionError error={error} />}
     </div>
   );

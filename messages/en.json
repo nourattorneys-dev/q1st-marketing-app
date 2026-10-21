@@ -220,6 +220,14 @@
       "remove": "Remove photo",
       "alt": "Alt text",
       "credit": "Credit"
-    }
+    },
+    "publishNow": "Publish now",
+    "publishTitle": "Publish this post now?",
+    "publishBody": "It goes live right away. Publishing now doesn't use up today's allowance.",
+    "publishBodyPending": "This approves the post and publishes it right away.",
+    "publishNeedsApproval": "Approve it with a reason first; then it can be published.",
+    "viewLive": "View it live",
+    "exportHtml": "Export HTML",
+    "exportMarkdown": "Export Markdown"
   }
 }
