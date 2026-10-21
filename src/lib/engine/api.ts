@@ -25,11 +25,13 @@ import {
   RemovedSchema,
   ScheduledSchema,
   SeoSettingsSchema,
+  SiteFindingSchema,
   SiteRefsSchema,
   SiteSchema,
   SocialConnectionSchema,
   SuggestionSchema,
   UpgradeRequestedSchema,
+  UsageSchema,
   WebsiteTestSchema,
   type PostUpdate,
   type PublishingSettings,
@@ -64,6 +66,10 @@ export type KeywordBulkAction = (typeof KEYWORD_BULK_ACTIONS)[number];
 /** Suggestion bulk actions (spec v1.1 §7 POST …/suggestions/bulk). */
 export const SUGGESTION_BULK_ACTIONS = ["draft", "dismiss"] as const;
 export type SuggestionBulkAction = (typeof SUGGESTION_BULK_ACTIONS)[number];
+
+/** Site-health bulk actions (spec v1.1 §7 POST …/site/findings/bulk). */
+export const FINDING_BULK_ACTIONS = ["apply", "dismiss"] as const;
+export type FindingBulkAction = (typeof FINDING_BULK_ACTIONS)[number];
 
 /** A new draft (spec v1.1 §6 "New request", §7 POST …/drafts). `language` is a site language or "both". */
 export type DraftRequest = { topic: string; kind: string; platform: string; language: string; tone?: string; keywords?: string[] };
@@ -278,6 +284,45 @@ export function createEngineApi(client: EngineClient) {
   const requestUpgrade = async (metric: string | undefined, note: string | undefined, ctx: ChangeContext) =>
     (await client.request({ method: "POST", path: "/account/upgrade-request", schema: UpgradeRequestedSchema, body: { metric, note }, ...ctx })).data;
 
+  async function listFindings(options: { statuses: string[]; levels?: string[]; page?: number; pageSize?: number }) {
+    const { data, meta } = await client.request({
+      method: "GET",
+      path: `${await sitePath()}/site/findings`,
+      schema: z.array(z.unknown()),
+      query: {
+        status: options.statuses.join(","),
+        level: options.levels?.length ? options.levels.join(",") : undefined,
+        page: options.page,
+        pageSize: options.pageSize,
+      },
+    });
+    const { items, skipped } = parseItems(data, SiteFindingSchema);
+    return { findings: items, skipped, meta };
+  }
+
+  const scanSite = async (ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/site/scan`, schema: JobStartSchema, body: {}, ...ctx })).data;
+
+  const prepareFixes = async (ids: string[], ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: `${await sitePath()}/site/fixes`, schema: JobStartSchema, body: { ids }, ...ctx })).data;
+
+  // Apply changes the live website, so it gets the slow-change limit.
+  const bulkFindings = async (action: FindingBulkAction, ids: string[], ctx: ChangeContext) =>
+    (
+      await client.request({
+        method: "POST",
+        path: `${await sitePath()}/site/findings/bulk`,
+        schema: BulkResultSchema,
+        body: { action, ids },
+        timeoutMs: SLOW_CHANGE_MS,
+        ...ctx,
+      })
+    ).data;
+
+  /** Spec v1.1 §7: this key's site only; months are YYYY-MM. Quota totals in /account/plan stay account-wide. */
+  const usage = async (range: { from: string; to: string }) =>
+    (await client.request({ method: "GET", path: "/account/usage", schema: UsageSchema, query: range })).data;
+
   const settingsPath = async (suffix: string) => `${await sitePath()}/settings${suffix}`;
 
   const seoSettings = async () => (await client.request({ method: "GET", path: await settingsPath("/seo"), schema: SeoSettingsSchema })).data;
@@ -409,6 +454,11 @@ export function createEngineApi(client: EngineClient) {
     disconnectSocial,
     connectSearchConsole,
     disconnectSearchConsole,
+    listFindings,
+    scanSite,
+    prepareFixes,
+    bulkFindings,
+    usage,
   };
 }
 

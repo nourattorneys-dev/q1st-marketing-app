@@ -426,3 +426,26 @@ export type SocialConnection = z.infer<typeof SocialConnectionSchema>;
 export const AuthorizeSchema = z.object({ authorizeUrl: z.string() });
 export const DisconnectedSchema = z.object({ disconnected: z.literal(true) });
 export const PictureSchema = z.object({ url: z.string() });
+
+// ── Site health (spec v1.1 §4 SiteFinding; §7 …/site endpoints) ──────────────
+export const SiteFindingSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  level: z.string(), // known: critical | warn | info
+  issue: z.string(),
+  fix: z.string().nullish(),
+  status: z.string(), // known: open | prepared | applied | dismissed
+});
+export type SiteFinding = z.infer<typeof SiteFindingSchema>;
+
+// ── Usage (spec v1.1 §7 GET /account/usage: this key's site only) ────────────
+export const UsageSchema = z.object({
+  months: z.array(
+    z.object({
+      month: z.string(), // YYYY-MM
+      sites: list(z.object({ siteId: z.string(), metrics: z.record(z.string(), z.number()) })),
+    }),
+  ),
+  results: list(z.object({ siteId: z.string(), published: z.number().int(), keywordsCovered: z.number().int() })),
+});
+export type Usage = z.output<typeof UsageSchema>;
