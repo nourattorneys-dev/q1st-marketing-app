@@ -6,6 +6,7 @@ export type NavItem = { key: string; href: string; permission: Permission };
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: "dashboard", href: "/", permission: "content.work" },
   { key: "review", href: "/review", permission: "content.work" },
+  { key: "scheduled", href: "/scheduled", permission: "content.work" },
 ];
 
 export function visibleNavItems(role: Role, items: readonly NavItem[] = NAV_ITEMS): NavItem[] {

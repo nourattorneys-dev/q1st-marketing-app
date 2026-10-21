@@ -7,7 +7,8 @@
     "nav": {
       "label": "Main",
       "dashboard": "Dashboard",
-      "review": "Review"
+      "review": "Review",
+      "scheduled": "Scheduled"
     },
     "role": {
       "admin": "Admin",
@@ -108,6 +109,11 @@
     "kinds": {
       "blog": "Article",
       "social": "Social post"
+    },
+    "platforms": {
+      "website": "Website",
+      "linkedin": "LinkedIn",
+      "instagram": "Instagram"
     }
   },
   "Editor": {
@@ -229,5 +235,30 @@
     "viewLive": "View it live",
     "exportHtml": "Export HTML",
     "exportMarkdown": "Export Markdown"
+  },
+  "Scheduled": {
+    "title": "Scheduled",
+    "empty": "Nothing is queued.",
+    "bannerSlot": "Auto-publish is on. Next slot: {time}.",
+    "onHold": "On hold",
+    "noTime": "Not scheduled",
+    "hold": "Hold",
+    "resume": "Resume",
+    "select": "Select “{title}”",
+    "publishNow": "Publish now",
+    "publishTitle": "Publish this post now?",
+    "publishBody": "It goes live right away. Publishing now doesn't use up today's allowance.",
+    "publishSelected": "Publish selected ({count})",
+    "publishSelectedTitle": "Publish the selected posts now?",
+    "bulkFailed": "Not published:"
+  },
+  "Lists": {
+    "pages": "Pages",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {count}",
+    "pageEmpty": "There's nothing on this page.",
+    "firstPage": "Go to the first page",
+    "skipped": "{count, plural, one {{n} item couldn't be shown because the content engine sent it in an unexpected format.} other {{n} items couldn't be shown because the content engine sent them in an unexpected format.}}"
   }
 }
