@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { BASE_URL } from "./constants";
 
-export type TestUser = "dev_admin" | "dev_reviewer" | "dev_norole";
+export type TestUser = "dev_admin" | "dev_reviewer" | "dev_norole" | "dev_admin_no2fa";
 
 export async function signInWithCookie(context: BrowserContext, user: TestUser): Promise<void> {
   await context.addCookies([{ name: "dev_session", value: user, url: BASE_URL }]);

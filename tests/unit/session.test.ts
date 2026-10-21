@@ -52,4 +52,15 @@ describe("session guards (test logins)", () => {
     vi.stubEnv("VERCEL", "1");
     await expect(getSession()).rejects.toThrow(/refused on Vercel/);
   });
+
+  it("sends an admin without two-factor login to set it up first (design §5; Review Focus 2)", async () => {
+    cookieJar.set("dev_session", "dev_admin_no2fa");
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/security");
+    await expect(requirePermission("ar", "settings.manage")).rejects.toThrow("REDIRECT:/ar/security");
+  });
+
+  it("only reminds a reviewer: one without two-factor login may continue", async () => {
+    cookieJar.set("dev_session", "dev_reviewer");
+    await expect(requireSession("en")).resolves.toMatchObject({ role: "reviewer", twoFactor: false });
+  });
 });

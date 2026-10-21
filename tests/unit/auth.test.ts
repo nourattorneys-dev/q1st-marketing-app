@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sessionFromClerkUser } from "@/lib/auth/clerk-session";
+import { roleFromClaims, sessionFromClerkUser } from "@/lib/auth/clerk-session";
 import { decodeMockSession, MOCK_USERS } from "@/lib/auth/mock-session";
 import { can, isRole } from "@/lib/auth/roles";
 
@@ -28,8 +28,13 @@ describe("roles", () => {
 });
 
 describe("mock sessions", () => {
-  it("decodes the three fixed test users", () => {
-    expect(MOCK_USERS.map((u) => u.userId)).toEqual(["dev_admin", "dev_reviewer", "dev_norole"]);
+  it("decodes the fixed test users, with their two-factor status", () => {
+    expect(MOCK_USERS.map((u) => [u.userId, u.role, u.twoFactor])).toEqual([
+      ["dev_admin", "admin", true],
+      ["dev_reviewer", "reviewer", false],
+      ["dev_norole", null, false],
+      ["dev_admin_no2fa", "admin", false],
+    ]);
     expect(decodeMockSession("dev_reviewer")?.role).toBe("reviewer");
     expect(decodeMockSession("dev_norole")?.role).toBeNull();
   });
@@ -42,7 +47,7 @@ describe("mock sessions", () => {
 });
 
 describe("sessionFromClerkUser", () => {
-  const base = { id: "user_1", fullName: "Sara Ali", primaryEmailAddress: { emailAddress: "sara@example.com" } };
+  const base = { id: "user_1", fullName: "Sara Ali", primaryEmailAddress: { emailAddress: "sara@example.com" }, twoFactorEnabled: true };
 
   it("reads the role from public metadata", () => {
     expect(sessionFromClerkUser({ ...base, publicMetadata: { role: "admin" } })).toEqual({
@@ -50,6 +55,7 @@ describe("sessionFromClerkUser", () => {
       email: "sara@example.com",
       name: "Sara Ali",
       role: "admin",
+      twoFactor: true,
     });
   });
 
@@ -61,5 +67,23 @@ describe("sessionFromClerkUser", () => {
 
   it("falls back to the email when there is no name", () => {
     expect(sessionFromClerkUser({ ...base, fullName: null, publicMetadata: {} }).name).toBe("sara@example.com");
+  });
+
+  it("reads whether two-factor login is on (design §5)", () => {
+    expect(sessionFromClerkUser({ ...base, twoFactorEnabled: false, publicMetadata: { role: "admin" } }).twoFactor).toBe(false);
+  });
+});
+
+describe("roleFromClaims (M3a follow-up: no Clerk API call per job poll)", () => {
+  it("reads the role the session token carries in its metadata claim", () => {
+    expect([roleFromClaims({ metadata: { role: "reviewer" } }), roleFromClaims({ metadata: { role: "owner" } }), roleFromClaims({ metadata: {} })]).toEqual([
+      "reviewer",
+      null,
+      null,
+    ]);
+  });
+
+  it("says nothing when the token has no metadata claim, so the caller asks Clerk instead", () => {
+    expect([roleFromClaims({}), roleFromClaims(null), roleFromClaims({ metadata: "x" })]).toEqual([undefined, undefined, undefined]);
   });
 });
