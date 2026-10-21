@@ -485,6 +485,76 @@
         "remove": "Remove",
         "tooLarge": "This file is {size} MB; the limit is {limit} MB."
       }
+    },
+    "website": {
+      "title": "Website connection",
+      "hint": "Where approved articles are published. The fields come from the content engine.",
+      "statuses": {
+        "ok": "Connected",
+        "error": "Not working",
+        "missing": "Not connected"
+      },
+      "lastChecked": "Last checked {time}",
+      "lastError": "Last error: {error}",
+      "type": "Website type",
+      "secretKept": "Saved. Leave it empty to keep it.",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "The connection works.",
+      "testFailed": "The connection failed: {error}",
+      "needsTest": "Test the connection before saving: its type, address, user or password changed.",
+      "fieldMap": "Field mapping",
+      "fieldMapHint": "Which website field receives each part of the article. Test the connection to see the website's fields.",
+      "blockMap": "Block mapping",
+      "blockMapHint": "Which block receives each part of the article's body.",
+      "mapEmpty": "Nothing to map yet. Test the connection to get suggestions.",
+      "notMapped": "Not sent",
+      "bodyFormat": "Article format",
+      "arabicMode": "Arabic version",
+      "bodyFormats": {
+        "html": "HTML",
+        "boldbuilder": "Bold Builder",
+        "blocks": "Blocks"
+      },
+      "arabicModes": {
+        "translatepress": "TranslatePress translation of the English post",
+        "separate": "A separate post",
+        "locale": "Arabic locale of the same entry"
+      },
+      "mapKeys": {
+        "title": "Title",
+        "slug": "Slug",
+        "subtitle": "Subtitle",
+        "excerpt": "Excerpt",
+        "metaTitle": "Meta title",
+        "metaDescription": "Meta description",
+        "keywords": "Keywords",
+        "image": "Photo",
+        "category": "Category",
+        "author": "Author",
+        "heading": "Heading",
+        "paragraph": "Paragraph",
+        "list": "List",
+        "faq": "FAQ",
+        "quote": "Quote",
+        "table": "Table"
+      },
+      "fieldLabels": {
+        "url": "Site address",
+        "username": "Publishing user",
+        "secret": "Password or token",
+        "postType": "Post type",
+        "collection": "Collection"
+      },
+      "formKeys": {
+        "type": "Website type",
+        "settings": "Connection details",
+        "secret": "Password or token",
+        "fieldMap": "Field mapping",
+        "bodyFormat": "Article format",
+        "blockMap": "Block mapping",
+        "arabicMode": "Arabic version"
+      }
     }
   }
 }
