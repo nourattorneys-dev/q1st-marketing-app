@@ -11,9 +11,9 @@ Carry these into the M2–M4 plans.
 - no error.tsx — non-engine throws (e.g. Clerk outage) show Next's default error page. — handled in M2b
 - unmapped engine codes (not_found, engine_busy) show the engine's English message in the Arabic UI. — handled in M2a (engine_busy and not_found translated)
 - NextIntlClientProvider ships every message on every page; pass only client-needed namespaces.
-- after test-login sign-out, hidden (Activity) dashboard copies stay in the DOM until next navigation; recheck with Clerk sign-out in M4.
+- after test-login sign-out, hidden (Activity) dashboard copies stay in the DOM until next navigation; recheck with Clerk sign-out in M4. — handled in M4b (sign-out loads the sign-in page afresh in both modes)
 - live mode accepts http:// ENGINE_BASE_URL (key in clear text); require https except localhost.
-- getSession not wrapped in React cache() — up to 6 currentUser() calls per render in Clerk mode.
+- getSession not wrapped in React cache() — up to 6 currentUser() calls per render in Clerk mode. — handled in M4b
 - "Published" stat vs spec's "published this month" — confirm counts.published semantics with Quantum1st.
 - `vercel env pull` may write VERCEL="1" into .env.local and refuse local test logins with a confusing message.
 

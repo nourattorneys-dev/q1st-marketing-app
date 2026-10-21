@@ -8,8 +8,9 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
     cp .env.example .env.local
     pnpm dev            # http://localhost:3000 → /en
 
-- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, and a user with no role). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
+- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
+- Mock scenario `signin_down` (the same `mock_scenario` cookie): the sign-in service can't be reached. The Users page shows a notice; the engine stays normal.
 
 ## Checks
 
@@ -23,12 +24,17 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 
 ## Real sign-in (Clerk)
 
-1. Create an application at https://dashboard.clerk.com and enable **Microsoft** and **Email code** sign-in.
-2. Put its keys in `.env.local` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and set `AUTH_MODE=clerk`.
-3. Rebuild (`pnpm build`). `AUTH_MODE` is read at build time.
-4. Give the first person the Admin role: Clerk dashboard → Users → the user → Metadata → **Public** → `{ "role": "admin" }`. Reviewers get `{ "role": "reviewer" }`. Anyone without a role sees "No access yet".
+One Clerk application per website copy (design §5).
 
-Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then.
+1. Create an application at https://dashboard.clerk.com and enable **Microsoft** and **Email code** sign-in.
+2. **Restrictions → Sign-up mode: Restricted.** Only people the Admin invites from `/users` can create an account.
+3. **Multi-factor:** turn on **Authenticator application** and **Backup codes**. The portal sends an Admin without two-factor login to `/security` (Clerk's account page) until it's on.
+4. **Sessions → Customize session token:** `{ "metadata": "{{user.public_metadata}}" }`. `/api/jobs` then reads the role from the token instead of asking Clerk on every poll. Without it the portal still works, with one Clerk call per poll.
+5. Put the keys in `.env.local` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and set `AUTH_MODE=clerk`.
+6. Rebuild (`pnpm build`). `AUTH_MODE` is read at build time.
+7. Give the first person the Admin role: Clerk dashboard → Users → the user → Metadata → **Public** → `{ "role": "admin" }`. From then on the Admin invites people and sets roles on `/users`. Anyone without a role sees "No access yet".
+
+Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then. Clerk mode is unit-tested against a fake client only: check these steps end to end with real keys before go-live (`docs/plans/2026-10-22-m4b-followups.md`).
 
 ## Decisions in M1
 
@@ -128,3 +134,26 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
   - A preview shows the caption (text, then hashtags) with a character count.
   - An Instagram post can't be approved or published until it has a photo.
 - **Mock scenario `quota`:** also refuses scans (`siteScans`) and AI proposals (`aiTokens`).
+
+## Decisions in M4b (users and security)
+
+- **Users** (Admin, `/users`):
+  - Everyone who can sign in, with their role, two-factor status and last sign-in (in the site's timezone).
+  - Roles live in Clerk's public metadata: Admin, Reviewer or No access. No access removes the role and keeps the account, so access can be given back.
+  - Nobody can change their own access, so the site can't lose its last Admin.
+  - Invitations go by email with a role, which reaches the account when the person signs up. Emails are compared trimmed and in lower case; one that already has an account or a pending invitation is refused. A pending invitation can be revoked.
+  - The page lists the first 100 people and 100 pending invitations.
+  - When Clerk can't be reached, the page and its actions say so instead of failing.
+- **Two-factor login** (design §5, §11):
+  - Required for the Admin: an Admin without it reaches only `/security`; every page and server action sends them there.
+  - Recommended for Reviewers: the user menu says "Turn on two-factor login" until it's on.
+  - `/security` sits outside the app shell, like "No access". With Clerk it shows Clerk's account page.
+- **Sessions:**
+  - The signed-in person is read once per request (React `cache`), not once per check.
+  - `/api/jobs` reads the role from the session token when the token carries it (step 4 above). Clerk renews the token every minute, so a role change reaches job polls within a minute; pages and actions see it on the next request.
+- **Sign-out** loads the sign-in page afresh in both modes, so nothing of the previous person's pages stays hidden in the page. With Clerk, a Sign out button replaces Clerk's user button; the account page is `/security`.
+- **Test logins:**
+  - A fourth test user: "Admin without two-factor (test)".
+  - Roles and two-factor status come from a test directory per `mock_store` namespace, so a change on `/users` takes effect on the person's next request, as with Clerk.
+  - Invitations are listed, but no email is sent and they can't be accepted.
+  - A switch on `/security` stands in for setting up an authenticator app, then goes on to the dashboard.

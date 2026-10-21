@@ -42,7 +42,7 @@ Carry these into the M3b–M5 plans.
   - The Add language picker doesn't detect Arabic text: the request carries the language the person chose.
   - "Requested" isn't remembered across dialogs: the engine handles repeats, and M4's plan page owns upgrade status.
   - The mock never fails a job: the reducer tests cover failure.
-  - One Clerk Backend API call (`currentUser()`) per poll: the existing session pattern. Consider reading the role from session claims later.
+  - One Clerk Backend API call (`currentUser()`) per poll: the existing session pattern. Consider reading the role from session claims later. — handled in M4b (the role comes from the session token)
 
 ## Questions for Quantum1st (from M3a)
 
