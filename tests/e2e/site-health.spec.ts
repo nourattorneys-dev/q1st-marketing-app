@@ -24,6 +24,16 @@ test("scanning shows progress and adds what it found (Review Focus 2)", async ({
   await expect(page.getByTestId("finding-sf_7")).toBeVisible();
 });
 
+test("Scan site stays unavailable while a scan runs, so a second click can't spend another scan (final review)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_reviewer");
+  await page.goto("/en/site-health");
+  await page.getByTestId("site-scan").click();
+  await expect(page.getByTestId("scan-job")).toHaveAttribute("data-state", "running");
+  await expect(page.getByTestId("site-scan")).toBeDisabled();
+  await expect(page.getByTestId("scan-job")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
+  await expect(page.getByTestId("site-scan")).toBeEnabled();
+});
+
 test("preparing fixes for the selected findings fills in the proposed fix", async ({ page, context }) => {
   await signInWithCookie(context, "dev_reviewer");
   await page.goto("/en/site-health");

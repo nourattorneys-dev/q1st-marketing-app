@@ -14,13 +14,23 @@ async function fetchJob(jobId: string): Promise<EngineResult<Job> | null> {
   }
 }
 
-/** Polls our /api/jobs/[id] every `pollSeconds` until the job is done or failed; calls onDone once, with the job's result. */
-export function useJob(jobId: string, pollSeconds: number, onDone?: (result: unknown) => void): JobPoll {
+/**
+ * Polls our /api/jobs/[id] every `pollSeconds` until the job is done or failed; calls onDone once, with the job's result,
+ * and onSettled once, either way (so a caller can stop a button from starting the same job twice).
+ */
+export function useJob(
+  jobId: string,
+  pollSeconds: number,
+  onDone?: (result: unknown) => void,
+  onSettled?: (status: "done" | "failed") => void,
+): JobPoll {
   const [state, setState] = useState<JobPoll>(JOB_STARTED);
   const done = useRef(onDone);
+  const settled = useRef(onSettled);
   useEffect(() => {
     done.current = onDone;
-  }, [onDone]);
+    settled.current = onSettled;
+  }, [onDone, onSettled]);
 
   useEffect(() => {
     let current = JOB_STARTED;
@@ -30,8 +40,11 @@ export function useJob(jobId: string, pollSeconds: number, onDone?: (result: unk
       if (!active || current.status !== "running") return;
       current = afterPoll(current, answer);
       setState(current);
-      if (current.status !== "running") clearInterval(timer);
       if (current.status === "done") done.current?.(current.result);
+      if (current.status !== "running") {
+        clearInterval(timer);
+        settled.current?.(current.status);
+      }
     }
     const timer = setInterval(() => void poll(), pollSeconds * 1000);
     void poll();

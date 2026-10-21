@@ -28,6 +28,9 @@ export function FindingsBoard({ locale, findings, pollSeconds, canApply, canRequ
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scanJob, setScanJob] = useState<string | null>(null);
   const [prepareJob, setPrepareJob] = useState<string | null>(null);
+  // A running scan or fix job keeps its button off: each scan is metered (siteScans), so a second click mustn't start another.
+  const [scanning, setScanning] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<EngineFailure | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
   const refresh = useCallback(() => router.refresh(), [router]);
@@ -46,8 +49,12 @@ export function FindingsBoard({ locale, findings, pollSeconds, canApply, canRequ
   async function startScan() {
     setError(null);
     const result = await scan.run({ locale });
-    if (result.ok) setScanJob(result.data.jobId);
-    else setError(result.error);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setScanJob(result.data.jobId);
+    setScanning(true);
   }
 
   async function startPrepare() {
@@ -58,6 +65,7 @@ export function FindingsBoard({ locale, findings, pollSeconds, canApply, canRequ
       return;
     }
     setPrepareJob(result.data.jobId);
+    setPreparing(true);
     setSelected(new Set());
   }
 
@@ -79,15 +87,15 @@ export function FindingsBoard({ locale, findings, pollSeconds, canApply, canRequ
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button data-testid="site-scan" disabled={scan.pending} onClick={() => void startScan()}>
+        <Button data-testid="site-scan" disabled={scan.pending || scanning} onClick={() => void startScan()}>
           {t("scan")}
         </Button>
-        <Button variant="outline" data-testid="prepare-fixes" disabled={chosen.length === 0 || prepare.pending} onClick={() => void startPrepare()}>
+        <Button variant="outline" data-testid="prepare-fixes" disabled={chosen.length === 0 || prepare.pending || preparing} onClick={() => void startPrepare()}>
           {t("prepare", { count: String(chosen.length) })}
         </Button>
       </div>
-      {scanJob && <JobTracker key={scanJob} jobId={scanJob} pollSeconds={pollSeconds} label={t("scanning")} testId="scan-job" onDone={refresh} />}
-      {prepareJob && <JobTracker key={prepareJob} jobId={prepareJob} pollSeconds={pollSeconds} label={t("preparing")} testId="prepare-job" onDone={refresh} />}
+      {scanJob && <JobTracker key={scanJob} jobId={scanJob} pollSeconds={pollSeconds} label={t("scanning")} testId="scan-job" onDone={refresh} onSettled={() => setScanning(false)} />}
+      {prepareJob && <JobTracker key={prepareJob} jobId={prepareJob} pollSeconds={pollSeconds} label={t("preparing")} testId="prepare-job" onDone={refresh} onSettled={() => setPreparing(false)} />}
       {error && <ActionFailure error={error} locale={locale} canRequestUpgrade={canRequestUpgrade} />}
       {failures.length > 0 && (
         <div role="alert" data-testid="finding-failures" className="rounded-md bg-bad-bg p-3 text-sm text-bad-fg">

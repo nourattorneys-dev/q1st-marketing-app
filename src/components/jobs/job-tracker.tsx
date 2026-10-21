@@ -5,12 +5,19 @@ import { useJob } from "./use-job";
 
 const MESSAGE_KEYS = new Set(["unreachable", "signedOut", "jobFailed"]);
 
-type Props = { jobId: string; pollSeconds: number; label: string; testId?: string; onDone?: (result: unknown) => void };
+type Props = {
+  jobId: string;
+  pollSeconds: number;
+  label: string;
+  testId?: string;
+  onDone?: (result: unknown) => void;
+  onSettled?: (status: "done" | "failed") => void;
+};
 
 /** A slow AI job's progress (design §8). It stops with a message if the job fails or can't be followed any more. */
-export function JobTracker({ jobId, pollSeconds, label, testId = "job-tracker", onDone }: Props) {
+export function JobTracker({ jobId, pollSeconds, label, testId = "job-tracker", onDone, onSettled }: Props) {
   const t = useTranslations("Jobs");
-  const state = useJob(jobId, pollSeconds, onDone);
+  const state = useJob(jobId, pollSeconds, onDone, onSettled);
   const percent = Math.round(state.progress * 100);
   const message = state.message && (MESSAGE_KEYS.has(state.message) ? t(state.message) : state.message);
   return (

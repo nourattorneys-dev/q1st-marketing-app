@@ -4,7 +4,7 @@ import type { AppLocale } from "@/i18n/locales";
 import { requireSession } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
-import { monthOf, siteMetrics } from "@/lib/plan/usage";
+import { periodMonth, siteMetrics } from "@/lib/plan/usage";
 import { EngineNotice } from "./engine-notice";
 import { QuotaBars } from "./quota-bars";
 
@@ -29,7 +29,7 @@ export async function QuotaPanel({ locale }: { locale: AppLocale }) {
   }
 
   // The site's share is extra: if usage can't be read, the account bars still show.
-  const month = monthOf(plan.data.period.start);
+  const month = periodMonth(plan.data.period);
   const [usage, siteId] = await Promise.all([tryEngine(() => engine.usage({ from: month, to: month })), tryEngine(() => engine.siteId())]);
   const siteUsage = usage.ok && siteId.ok ? siteMetrics(usage.data, siteId.data, month) : null;
 

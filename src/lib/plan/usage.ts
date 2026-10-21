@@ -1,7 +1,15 @@
 import type { Usage } from "@/lib/engine/schemas";
 
-/** The plan period's month, YYYY-MM, as the engine wrote it (spec v1.1 §4 Plan.period), never from the browser's clock. */
-export const monthOf = (iso: string) => iso.slice(0, 7);
+/**
+ * The calendar month a plan period covers (spec v1.1 §4 Plan.period), YYYY-MM: the month of its midpoint, so the
+ * offset the engine writes (+04:00 or Z) can't shift it to the previous month. Never the browser's clock.
+ */
+export function periodMonth(period: { start: string; end: string }): string {
+  const start = Date.parse(period.start);
+  const end = Date.parse(period.end);
+  if (Number.isNaN(start) || Number.isNaN(end)) return period.start.slice(0, 7);
+  return new Date(start + (end - start) / 2).toISOString().slice(0, 7);
+}
 
 /** This site's numbers for one month (spec v1.1 §7: usage covers this key's site), or null when the engine has none. */
 export function siteMetrics(usage: Usage, siteId: string, month: string): Record<string, number> | null {

@@ -9,7 +9,7 @@ import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
 import { formatDate } from "@/lib/format/datetime";
 import { formatNumber } from "@/lib/format/number";
-import { lastMonths, monthOf, siteMetrics, siteResults } from "@/lib/plan/usage";
+import { lastMonths, periodMonth, siteMetrics, siteResults } from "@/lib/plan/usage";
 import { RequestUpgrade } from "./request-upgrade";
 import { UsageChart } from "./usage-chart";
 
@@ -22,7 +22,7 @@ export async function PlanView({ locale }: { locale: AppLocale }) {
   if (!plan.ok) return <EngineNotice error={plan.error} />;
 
   const timeZone = site.ok ? site.data.timezone : "UTC";
-  const month = monthOf(plan.data.period.start);
+  const month = periodMonth(plan.data.period);
   const months = lastMonths(month, 6);
   const usage = months.length > 0 ? await tryEngine(() => engine.usage({ from: months[0], to: month })) : null;
   const id = siteId.ok ? siteId.data : "";
