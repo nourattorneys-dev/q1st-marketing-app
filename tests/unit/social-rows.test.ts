@@ -23,13 +23,14 @@ describe("the Social accounts rows (spec v1.1 §6 Social)", () => {
     expect(socialRows([{ platform: "tiktok", status: "ok" }], [], null)).toMatchObject([{ key: "tiktok", status: "ok", searchConsole: false }]);
   });
 
-  it("names the account that just connected only when it's a row on the page", () => {
+  it("names the account that just connected only when its row is connected now, so a disconnect hides the notice (M3b follow-up)", () => {
     const rows = socialRows(ACCOUNTS, ["performance"], "ok");
-    expect([connectedRow("instagram", rows), connectedRow(["searchConsole"], rows), connectedRow("<script>", rows), connectedRow(undefined, rows)]).toEqual([
-      "instagram",
-      "searchConsole",
-      null,
-      null,
-    ]);
+    expect([
+      connectedRow("instagram", rows),
+      connectedRow("linkedin", rows),
+      connectedRow(["searchConsole"], rows),
+      connectedRow("<script>", rows),
+      connectedRow(undefined, rows),
+    ]).toEqual([null, "linkedin", "searchConsole", null, null]);
   });
 });

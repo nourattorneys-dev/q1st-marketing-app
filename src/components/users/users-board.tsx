@@ -116,7 +116,7 @@ function UserRowView({ locale, user, self, changed, onStart, onDone }: RowProps)
       <td className="py-3">
         <div className="flex items-center gap-2">
           <select
-            aria-label={t("table.access")}
+            aria-label={t("accessFor", { name: user.name })}
             data-testid={`user-role-${user.id}`}
             className={SELECT}
             disabled={self || setRole.pending}
@@ -134,6 +134,7 @@ function UserRowView({ locale, user, self, changed, onStart, onDone }: RowProps)
             size="sm"
             variant="outline"
             data-testid={`user-apply-${user.id}`}
+            aria-label={t("applyFor", { name: user.name })}
             disabled={self || setRole.pending || choice === current}
             onClick={() => void apply()}
           >
@@ -278,7 +279,7 @@ function PendingInvites({ locale, invites }: { locale: string; invites: InviteRo
                 <span>
                   <bdi>{invite.email}</bdi> · {t(`roles.${invite.role ?? NONE}`)} · {t("invites.sentOn", { date: invite.sentOn })}
                 </span>
-                <Button size="sm" variant="outline" data-testid={`pending-revoke-${invite.id}`} disabled={revoke.pending} onClick={() => void revokeOne(invite.id)}>
+                <Button size="sm" variant="outline" data-testid={`pending-revoke-${invite.id}`} aria-label={t("revokeFor", { email: invite.email })} disabled={revoke.pending} onClick={() => void revokeOne(invite.id)}>
                   {t("invites.revoke")}
                 </Button>
               </li>

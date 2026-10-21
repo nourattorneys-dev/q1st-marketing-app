@@ -122,3 +122,10 @@ test("the dashboard's own refusal is in Arabic, not \"Invalid request.\" (M4b fo
   await page.getByTestId("invite-submit").click();
   await expect(page.getByTestId("invite-error")).toHaveText("لم يُقبل هذا الطلب. تحقّق منه وحاول مرة أخرى.");
 });
+
+test("each person's controls are labelled with their name, so a screen reader can tell the rows apart (M4b follow-up)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_admin");
+  await page.goto("/en/users");
+  await expect(page.getByRole("combobox", { name: "Access for Reviewer (test)" })).toHaveValue("reviewer");
+  await expect(page.getByRole("button", { name: "Apply for Reviewer (test)" })).toHaveCount(1);
+});

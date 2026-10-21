@@ -46,6 +46,10 @@ function fromClerk(error: unknown): DirectoryError {
     return new DirectoryError("conflict", "This person already has an account or an invitation.");
   }
   if (record.status === 404) return new DirectoryError("not_found", "This person or invitation no longer exists.");
+  // A refusal (bad input, not allowed) is not an outage: retrying won't help, so say so (M4b follow-up).
+  if (record.status === 400 || record.status === 403 || record.status === 422) {
+    return new DirectoryError("refused", "The sign-in service refused this. Check the details and try again.");
+  }
   return new DirectoryError("unavailable", "The sign-in service can't be reached right now. Try again shortly.");
 }
 

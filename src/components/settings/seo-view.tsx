@@ -4,6 +4,7 @@ import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
+import { uploadLimit } from "@/lib/uploads";
 import { SeoSettingsForm } from "./seo-settings-form";
 import { SharePicture } from "./share-picture";
 
@@ -26,7 +27,7 @@ export async function SeoView({ locale }: { locale: AppLocale }) {
         locale={locale}
         picture={seo.data.ogImageUploaded?.url ?? null}
         photoTypes={meta.data.limits.photoTypes}
-        photoMaxBytes={meta.data.limits.photoMaxBytes}
+        photoMaxBytes={uploadLimit(meta.data.limits.photoMaxBytes)}
       />
     </div>
   );

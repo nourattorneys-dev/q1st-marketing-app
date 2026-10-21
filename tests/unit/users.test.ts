@@ -173,6 +173,25 @@ describe("the Clerk directory (AUTH_MODE=clerk), over a fake Clerk client", () =
     };
     await expect(createClerkDirectory(client).list()).rejects.toMatchObject({ code: "unavailable" });
   });
+  it("tells a refusal (400, 403, 422) apart from the service being down (M4b follow-up; Review Focus 5)", async () => {
+    for (const status of [400, 403, 422]) {
+      const { client } = fakeClerk();
+      client.users.updateUserMetadata = async () => {
+        throw Object.assign(new Error("refused"), { status, errors: [{ code: "form_param_format_invalid" }] });
+      };
+      await expect(createClerkDirectory(client).setRole("user_2", "reviewer")).rejects.toMatchObject({ code: "refused" });
+    }
+    const { client } = fakeClerk();
+    client.users.updateUserMetadata = async () => {
+      throw Object.assign(new Error("boom"), { status: 500, errors: [{ code: "unexpected_error" }] });
+    };
+    await expect(createClerkDirectory(client).setRole("user_2", "reviewer")).rejects.toMatchObject({ code: "unavailable" });
+    expect(
+      await tryDirectory(async () => {
+        throw new DirectoryError("refused", "The sign-in service refused this.");
+      }),
+    ).toMatchObject({ ok: false, error: { status: 422, code: "refused" } });
+  });
 });
 
 describe("tryDirectory", () => {

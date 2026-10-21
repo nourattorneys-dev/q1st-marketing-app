@@ -749,8 +749,12 @@
       "unavailable": "The sign-in service can't be reached right now. Try again shortly.",
       "self": "You can't change your own access.",
       "network_error": "The server could not be reached. Try again shortly.",
-      "invalid_input": "This request wasn't accepted. Check it and try again."
-    }
+      "invalid_input": "This request wasn't accepted. Check it and try again.",
+      "refused": "The sign-in service refused this. Check the details and try again."
+    },
+    "accessFor": "Access for {name}",
+    "applyFor": "Apply for {name}",
+    "revokeFor": "Revoke the invitation to {email}"
   },
   "Security": {
     "title": "Two-factor login",

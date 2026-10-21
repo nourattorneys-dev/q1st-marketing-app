@@ -25,8 +25,10 @@ export function socialRows(connections: SocialConnection[], features: string[], 
   return rows;
 }
 
-/** `?connected=…` after the OAuth round trip (spec v1.1 §7): a row on this page, or null for anything else. */
+const CONNECTED = new Set(["ok", "expiring"]);
+
+/** `?connected=…` after the OAuth round trip (spec v1.1 §7): a row on this page that is connected now, or null (after a disconnect, say). */
 export function connectedRow(value: string | string[] | undefined, rows: SocialRow[]): string | null {
   const key = Array.isArray(value) ? value[0] : value;
-  return key && rows.some((row) => row.key === key) ? key : null;
+  return key && rows.some((row) => row.key === key && CONNECTED.has(row.status)) ? key : null;
 }

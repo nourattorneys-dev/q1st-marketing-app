@@ -9,6 +9,7 @@ import { can } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine, type EngineFailure } from "@/lib/engine/result";
+import { uploadLimit } from "@/lib/uploads";
 
 // `postId` isn't known at build time, so params is read inside the Suspense boundary (Cache Components).
 export default function EditorPage({ params }: PageProps<"/[locale]/review/[postId]">) {
@@ -52,7 +53,7 @@ async function EditorLoader({ params }: { params: Promise<{ locale: string; post
       post={post.data}
       twin={twin?.ok ? twin.data : null}
       limits={{ metaTitle: meta.data.limits.metaTitle, metaDescription: meta.data.limits.metaDescription }}
-      photoLimits={{ photoTypes: meta.data.limits.photoTypes, photoMaxBytes: meta.data.limits.photoMaxBytes }}
+      photoLimits={{ photoTypes: meta.data.limits.photoTypes, photoMaxBytes: uploadLimit(meta.data.limits.photoMaxBytes) }}
       categories={categories.ok ? categories.data : []}
       lockMinutes={meta.data.limits.lockMinutes}
       pollSeconds={meta.data.pollSeconds}

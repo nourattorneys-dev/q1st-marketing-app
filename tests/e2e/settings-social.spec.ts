@@ -44,3 +44,14 @@ test("Google Search Console is offered with the performance feature, through the
   await expect(page.getByTestId("social-connected")).toHaveText("Google Search Console connected.");
   await expect(page.getByTestId("social-status-searchConsole")).toHaveAttribute("data-status", "ok");
 });
+
+test("after Instagram is disconnected, the page no longer says it's connected (M3b follow-up; Review Focus 5)", async ({ page }) => {
+  await page.goto("/en/settings/social");
+  await page.getByTestId("social-connect-instagram").click();
+  await page.waitForURL(/\/en\/settings\/social\?connected=instagram$/);
+  await expect(page.getByTestId("social-connected")).toBeVisible();
+  await page.getByTestId("social-disconnect-instagram").click();
+  await page.getByTestId("social-disconnect-instagram-confirm").click();
+  await expect(page.getByTestId("social-status-instagram")).toHaveAttribute("data-status", "missing");
+  await expect(page.getByTestId("social-connected")).toHaveCount(0);
+});

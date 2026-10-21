@@ -12,8 +12,8 @@ export interface UserDirectory {
   setRole(userId: string, role: Role | null): Promise<DirectoryUser>;
 }
 
-export type DirectoryErrorCode = "invalid_input" | "conflict" | "not_found" | "unavailable";
-const STATUS: Record<DirectoryErrorCode, number> = { invalid_input: 400, conflict: 409, not_found: 404, unavailable: 503 };
+export type DirectoryErrorCode = "invalid_input" | "conflict" | "not_found" | "refused" | "unavailable";
+const STATUS: Record<DirectoryErrorCode, number> = { invalid_input: 400, conflict: 409, not_found: 404, refused: 422, unavailable: 503 };
 
 export class DirectoryError extends Error {
   constructor(

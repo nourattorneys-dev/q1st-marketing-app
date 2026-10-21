@@ -43,7 +43,7 @@ test("an upload of the wrong type shows the server's message (spec v1.1 §10)", 
 test("a photo over the size limit is stopped before it's uploaded", async ({ page }) => {
   await page.goto("/en/review/p_201");
   await page.getByTestId("photo-upload").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(6_000_000) });
-  await expect(page.getByTestId("photo-too-large")).toContainText("the limit is 5 MB");
+  await expect(page.getByTestId("photo-too-large")).toContainText("the limit is 4 MB");
 });
 
 test("upload a photo, save its alt text, then remove it", async ({ page }) => {
@@ -68,4 +68,10 @@ test("an Instagram post asks for a photo and can't be approved or published with
   await page.getByTestId("photo-upload").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByTestId("photo-needed")).toHaveCount(0);
   await expect(page.getByTestId("approve")).toBeEnabled();
+});
+
+test("a photo over Vercel's request limit is stopped with the size message, not \"can't be reached\" (M2b follow-up; Review Focus 5)", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("photo-upload").setInputFiles({ name: "big.png", mimeType: "image/png", buffer: Buffer.alloc(4_600_000) });
+  await expect(page.getByTestId("photo-too-large")).toContainText("the limit is 4 MB");
 });
