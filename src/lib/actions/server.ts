@@ -3,6 +3,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { LOCALES } from "@/i18n/locales";
 import type { ActionResult } from "@/lib/actions/result";
+import type { Permission } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import type { ChangeContext, EngineApi } from "@/lib/engine/api";
@@ -15,9 +16,9 @@ export const EngineId = z.string().regex(ENGINE_ID);
 export const IdempotencyKey = z.string().min(8);
 export const INVALID = { ok: false as const, error: { status: 400, code: "invalid_input", message: "Invalid request." } };
 
-/** Role check + engine + who is acting. Every action goes through it. */
-export async function engineFor(locale: string) {
-  const session = await requirePermission(locale, "content.work");
+/** Role check + engine + who is acting. Every action goes through it; most need content.work (design §5). */
+export async function engineFor(locale: string, permission: Permission = "content.work") {
+  const session = await requirePermission(locale, permission);
   return { engine: await getEngine(), actingUser: session.email };
 }
 
@@ -26,8 +27,9 @@ export async function change<T>(
   locale: string,
   idempotencyKey: string,
   run: (ctx: ChangeContext & { engine: EngineApi }) => Promise<T>,
+  permission: Permission = "content.work",
 ): Promise<ActionResult<T>> {
-  const { engine, actingUser } = await engineFor(locale);
+  const { engine, actingUser } = await engineFor(locale, permission);
   const result = await tryEngine(() => run({ engine, actingUser, idempotencyKey }));
   if (result.ok) refresh();
   return result;

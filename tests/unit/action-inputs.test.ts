@@ -9,16 +9,26 @@ const engine = {
   exportPost: vi.fn(),
   searchPhotos: vi.fn(),
   uploadPhoto: vi.fn(),
+  addKeywords: vi.fn(),
+  bulkKeywords: vi.fn(),
+  draftKeywordArticles: vi.fn(),
+  createDrafts: vi.fn(),
+  draftSuggestion: vi.fn(),
+  requestUpgrade: vi.fn(),
 };
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
-vi.mock("@/lib/auth/session", () => ({ requirePermission: vi.fn(async () => ({ email: "reviewer@example.com" })) }));
+const requirePermission = vi.fn(async () => ({ email: "reviewer@example.com" }));
+vi.mock("@/lib/auth/session", () => ({ requirePermission }));
 vi.mock("@/lib/engine", () => ({ getEngine: async () => engine }));
 
 const { deletePostAction, exportPostAction, holdPostAction, jobAction, loadPostAction, publishPostAction } = await import(
   "@/app/[locale]/(app)/review/actions"
 );
 const { searchPhotosAction, uploadPhotoAction } = await import("@/app/[locale]/(app)/review/photo-actions");
+const { addKeywordsAction, draftKeywordArticlesAction } = await import("@/app/[locale]/(app)/keywords/actions");
+const { createDraftsAction, draftSuggestionAction } = await import("@/app/[locale]/(app)/ideas/actions");
+const { requestUpgradeAction } = await import("@/app/[locale]/(app)/plan/actions");
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -87,5 +97,36 @@ describe("M2b actions validate their input too", () => {
   it("searches photos only for actual words", async () => {
     expect(await searchPhotosAction({ locale: "en", query: "   ", page: 1 })).toMatchObject({ ok: false, error: { code: "invalid_input" } });
     expect(engine.searchPhotos).not.toHaveBeenCalled();
+  });
+});
+
+describe("M3a actions validate their input too", () => {
+  const key = "key-12345678";
+
+  it("adds keywords and lists the ones the engine skipped as already there (Review Focus 3)", async () => {
+    engine.addKeywords.mockResolvedValue([{ id: "kw_1", phrase: "labour court", language: "en", source: "person", status: "new", createdAt: "2026-10-22T10:00:00+04:00" }]);
+    const result = await addKeywordsAction({ locale: "en", phrases: ["labour court", "Commission UAE"], language: "en", idempotencyKey: key });
+    expect(result).toMatchObject({ ok: true, data: { skipped: ["Commission UAE"] } });
+    expect(await addKeywordsAction({ locale: "en", phrases: [], language: "en", idempotencyKey: key })).toMatchObject({ ok: false });
+  });
+
+  it("refuses malformed ids and languages before calling the engine", async () => {
+    expect(await draftKeywordArticlesAction({ locale: "en", ids: [".."], language: "en", idempotencyKey: key })).toMatchObject({ ok: false });
+    expect(await draftKeywordArticlesAction({ locale: "en", ids: ["kw_1"], language: "english", idempotencyKey: key })).toMatchObject({ ok: false });
+    expect(await draftSuggestionAction({ locale: "en", suggestionId: "a/b", language: "both", idempotencyKey: key })).toMatchObject({ ok: false });
+    expect(engine.draftKeywordArticles).not.toHaveBeenCalled();
+    expect(engine.draftSuggestion).not.toHaveBeenCalled();
+  });
+
+  it("refuses a new draft request without a topic", async () => {
+    const request = { topic: "  ", kind: "blog", platform: "website", language: "en" };
+    expect(await createDraftsAction({ locale: "en", request, idempotencyKey: key })).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+    expect(engine.createDrafts).not.toHaveBeenCalled();
+  });
+
+  it("asks for the plan permission before requesting an upgrade", async () => {
+    engine.requestUpgrade.mockResolvedValue({ requested: true });
+    expect(await requestUpgradeAction({ locale: "en", metric: "articles", idempotencyKey: key })).toEqual({ ok: true, data: { requested: true } });
+    expect(requirePermission).toHaveBeenCalledWith("en", "plan.manage");
   });
 });

@@ -292,5 +292,11 @@
     "unreachable": "Still waiting for the server…",
     "signedOut": "Your session has ended. Sign in again to follow this job.",
     "jobFailed": "The job failed."
+  },
+  "Quota": {
+    "limitReached": "Monthly limit reached for {metric}.",
+    "askAdmin": "Ask your admin to raise the limit.",
+    "request": "Request upgrade",
+    "requested": "Upgrade requested. Quantum1st will be in touch."
   }
 }
