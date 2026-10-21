@@ -164,6 +164,27 @@
     "noFindings": "No issues found.",
     "sources": "Sources",
     "noSources": "No sources listed.",
-    "reviewNote": "Requested change: {note}"
+    "reviewNote": "Requested change: {note}",
+    "approve": "Approve",
+    "approveBlockedHint": "A critical check can't be overridden here. Fix it first (see Checks).",
+    "saveFirst": "Save your changes before approving.",
+    "overrideTitle": "Approve with an override",
+    "overrideBody": "This post has critical findings. Approving it anyway needs a reason, which is recorded in History.",
+    "overrideReason": "Reason",
+    "approveAnyway": "Approve anyway",
+    "changes": "Ask for changes",
+    "changesBody": "Say what should change. The post is redrafted and comes back for review.",
+    "changesNote": "What should change",
+    "send": "Send",
+    "reject": "Reject",
+    "rejectTitle": "Reject this post?",
+    "rejectBody": "It leaves the review queue. You can add a note.",
+    "rejectNote": "Note (optional)",
+    "delete": "Delete",
+    "deleteTitle": "Delete this post?",
+    "deleteBody": "This can't be undone.",
+    "cancel": "Cancel",
+    "redrafting": "Redrafting… {percent}%",
+    "jobFailed": "The redraft failed."
   }
 }
