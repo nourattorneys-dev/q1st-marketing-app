@@ -25,7 +25,9 @@
     "language": "العربية",
     "themeDark": "Dark mode",
     "themeLight": "Light mode",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "security": "Security",
+    "turnOnTwoFactor": "Turn on two-factor login"
   },
   "SignIn": {
     "title": "Sign in",
@@ -718,5 +720,15 @@
       "self": "You can't change your own access.",
       "network_error": "The server could not be reached. Try again shortly."
     }
+  },
+  "Security": {
+    "title": "Two-factor login",
+    "required": "Your role is Admin, so two-factor login is required. Turn it on to continue: you'll enter a code from an authenticator app each time you sign in.",
+    "recommended": "Two-factor login is recommended: each time you sign in, you'll also enter a code from an authenticator app.",
+    "on": "Two-factor login is on.",
+    "testNotice": "Test logins only: this switch stands in for setting up an authenticator app.",
+    "enableTest": "Turn on two-factor login (test)",
+    "continue": "Continue to the dashboard",
+    "continueOnceOn": "I've turned it on: continue"
   }
 }

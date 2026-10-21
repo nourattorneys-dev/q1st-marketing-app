@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { getSession, requirePermission, requireSession } from "@/lib/auth/session";
+import { enableMockTwoFactor } from "@/lib/auth/mock-actions";
 
 describe("session guards (test logins)", () => {
   beforeEach(() => {
@@ -62,5 +63,16 @@ describe("session guards (test logins)", () => {
   it("only reminds a reviewer: one without two-factor login may continue", async () => {
     cookieJar.set("dev_session", "dev_reviewer");
     await expect(requireSession("en")).resolves.toMatchObject({ role: "reviewer", twoFactor: false });
+  });
+
+  it("lets the admin in once two-factor login is on, in that test store only (design §5)", async () => {
+    cookieJar.set("mock_store", `twofactor${Date.now().toString(36)}`);
+    cookieJar.set("dev_session", "dev_admin_no2fa");
+    const form = new FormData();
+    form.set("locale", "ar");
+    await expect(enableMockTwoFactor(form)).rejects.toThrow("REDIRECT:/ar");
+    await expect(requireSession("ar")).resolves.toMatchObject({ userId: "dev_admin_no2fa", role: "admin", twoFactor: true });
+    cookieJar.set("mock_store", `other${Date.now().toString(36)}`);
+    await expect(requireSession("ar")).rejects.toThrow("REDIRECT:/ar/security");
   });
 });
