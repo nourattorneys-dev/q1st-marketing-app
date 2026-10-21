@@ -42,6 +42,26 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
   const social = new Map(seedSocial(options.firstRun ?? false).map((account) => [account.platform, account]));
   let searchConsole = "missing";
   const passedTests = new Set<string>();
+  let webhook: { url: string | null; events: string[]; secret: string | null } = { url: null, events: [], secret: null };
+
+  /** GET …/webhook: never the secret. */
+  const webhookView = () => ok({ url: webhook.url, events: [...webhook.events] });
+
+  /** PUT …/webhook: a new secret on the first save or with rotateSecret, returned only then (spec v1.1 §7). */
+  function saveWebhook(input: Record<string, unknown>): MockOutcome<{ url: string; events: string[]; secret?: string }> {
+    const url = text(input.url);
+    const events = textList(input.events);
+    const fields: Record<string, string> = {};
+    if (!isWebAddress(url)) fields.url = ADDRESS;
+    if (events.length === 0) fields.events = "Choose at least one event.";
+    if (Object.keys(fields).length > 0) return invalid(fields);
+    const secret = !webhook.secret || input.rotateSecret === true ? `whsec_${crypto.randomUUID().replace(/-/g, "")}` : null;
+    webhook = { url, events, secret: secret ?? webhook.secret };
+    return ok({ url, events, ...(secret ? { secret } : {}) });
+  }
+
+  /** Where, and with which secret, the mock engine signs its deliveries (test logins only). */
+  const webhookTarget = () => (webhook.url && webhook.secret ? { url: webhook.url, secret: webhook.secret } : null);
 
   const seoView = () => ok(structuredClone(seo));
 
@@ -304,6 +324,9 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     disconnectSocial,
     connectSearchConsole,
     disconnectSearchConsole,
+    webhook: webhookView,
+    saveWebhook,
+    webhookTarget,
   };
 }
 

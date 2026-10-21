@@ -166,6 +166,8 @@ function route(
   if (rest === "/settings/website" && method === "PUT") return outcome(store.settings.saveWebsite(body));
   if (rest === "/settings/website/test" && method === "POST") return outcome(store.settings.testWebsite(body));
   if (rest === "/settings/social" && method === "GET") return outcome(store.settings.socialList());
+  if (rest === "/webhook" && method === "GET") return outcome(store.settings.webhook());
+  if (rest === "/webhook" && method === "PUT") return outcome(store.settings.saveWebhook(body));
   if (rest.startsWith("/settings/search-console") && scenario !== "performance") return fail(404, "not_found", "Search Console needs the performance feature.");
   if (rest === "/settings/search-console/connect" && method === "GET") {
     return outcome(store.settings.connectSearchConsole(url.searchParams.get("returnUrl") ?? ""));

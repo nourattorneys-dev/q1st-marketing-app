@@ -32,6 +32,8 @@ import {
   SuggestionSchema,
   UpgradeRequestedSchema,
   UsageSchema,
+  WebhookSavedSchema,
+  WebhookSettingsSchema,
   WebsiteTestSchema,
   type PostUpdate,
   type PublishingSettings,
@@ -398,6 +400,13 @@ export function createEngineApi(client: EngineClient) {
     async () => (await client.request({ method: "GET", path: `${await sitePath()}/website/categories`, schema: CategoriesSchema })).data,
   );
 
+  /** Spec v1.1 §7 GET …/webhook. */
+  const webhookSettings = async () => (await client.request({ method: "GET", path: `${await sitePath()}/webhook`, schema: WebhookSettingsSchema })).data;
+
+  /** Spec v1.1 §7 PUT …/webhook: one webhook per portal deployment; rotateSecret asks for a new signing secret. */
+  const saveWebhook = async (update: { url: string; events: readonly string[]; rotateSecret: boolean }, ctx: ChangeContext) =>
+    (await client.request({ method: "PUT", path: `${await sitePath()}/webhook`, schema: WebhookSavedSchema, body: update, ...ctx })).data;
+
   return {
     siteId,
     meta,
@@ -459,6 +468,8 @@ export function createEngineApi(client: EngineClient) {
     prepareFixes,
     bulkFindings,
     usage,
+    webhookSettings,
+    saveWebhook,
   };
 }
 

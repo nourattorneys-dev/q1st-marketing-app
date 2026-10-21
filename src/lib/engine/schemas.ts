@@ -449,3 +449,13 @@ export const UsageSchema = z.object({
   results: list(z.object({ siteId: z.string(), published: z.number().int(), keywordsCovered: z.number().int() })),
 });
 export type Usage = z.output<typeof UsageSchema>;
+
+// ── Webhook (spec v1.1 §7 GET / PUT …/webhook; §8) ──
+
+/** GET …/webhook: where the engine sends deliveries, and which events. A secret is never read from a GET answer. */
+export const WebhookSettingsSchema = z.object({ url: z.string().nullish(), events: z.array(z.string()).default([]) });
+export type WebhookSettings = z.infer<typeof WebhookSettingsSchema>;
+
+/** PUT …/webhook: the secret comes back only on the first save, or when rotateSecret is true. */
+export const WebhookSavedSchema = WebhookSettingsSchema.extend({ secret: z.string().optional() });
+export type WebhookSaved = z.infer<typeof WebhookSavedSchema>;
