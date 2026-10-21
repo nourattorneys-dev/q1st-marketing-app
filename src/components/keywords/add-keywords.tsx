@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { EngineFailure } from "@/lib/engine/result";
-import { parsePhrases } from "@/lib/keywords/phrases";
+import { KEYWORD_LIMITS, parsePhrases, phraseProblem } from "@/lib/keywords/phrases";
 
 /** Spec v1.1 §6 "Add keyword(s): comma or line separated". Phrases already in the list are skipped and named. */
 export function AddKeywords({ locale, languages }: { locale: string; languages: string[] }) {
@@ -22,6 +22,7 @@ export function AddKeywords({ locale, languages }: { locale: string; languages: 
   const [outcome, setOutcome] = useState<{ added: number; skipped: string[] } | null>(null);
   const [error, setError] = useState<EngineFailure | null>(null);
   const phrases = parsePhrases(text);
+  const problem = phraseProblem(phrases);
 
   async function submit() {
     setError(null);
@@ -60,10 +61,15 @@ export function AddKeywords({ locale, languages }: { locale: string; languages: 
               ))}
             </select>
           </div>
-          <Button data-testid="add-keywords" disabled={phrases.length === 0 || add.pending} onClick={() => void submit()}>
+          <Button data-testid="add-keywords" disabled={phrases.length === 0 || problem !== null || add.pending} onClick={() => void submit()}>
             {t("submit")}
           </Button>
         </div>
+        {problem && (
+          <p data-testid="keywords-limit" className="text-sm text-bad-fg">
+            {t(problem, { max: String(problem === "tooMany" ? KEYWORD_LIMITS.maxPhrases : KEYWORD_LIMITS.maxLength) })}
+          </p>
+        )}
         {outcome && (
           <p role="status" data-testid="keywords-added" className="text-sm">
             {t("added", { count: outcome.added, n: String(outcome.added) })}

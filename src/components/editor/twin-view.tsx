@@ -21,10 +21,10 @@ export function TwinView({ mineHtml, mineLanguage, twin }: Props) {
 
   const summary =
     mismatches === 0
-      ? t("structureMatches", { count: String(rows.length) })
+      ? t("structureMatches", { count: rows.length, n: String(rows.length) })
       : mismatches === 1
         ? t("structureMismatchOne")
-        : t("structureMismatchMany", { count: String(mismatches) });
+        : t("structureMismatchMany", { count: mismatches, n: String(mismatches) });
 
   const cell = (block: BlockSummary | null, dir: "ltr" | "rtl", lang: string) => (
     <div dir={dir} lang={lang} className="min-w-0 rounded px-2 py-1">

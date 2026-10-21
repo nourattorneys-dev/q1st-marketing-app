@@ -1,10 +1,10 @@
 import { getTranslations } from "next-intl/server";
-import { engineNoticeKey } from "@/lib/engine/notice";
+import { failureNoticeKey } from "@/lib/engine/notice";
 import type { EngineFailure } from "@/lib/engine/result";
 
 export async function EngineNotice({ error }: { error: EngineFailure }) {
   const t = await getTranslations("Errors");
-  const key = engineNoticeKey(error.code);
+  const key = failureNoticeKey(error);
   return (
     <div
       role="alert"

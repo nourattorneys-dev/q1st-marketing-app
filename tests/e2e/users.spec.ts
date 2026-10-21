@@ -114,3 +114,11 @@ test("the Users page in Arabic: right to left, Arabic labels, Latin digits", asy
   expect(last).toContain("9:00");
   expect(last).not.toMatch(/[٠-٩]/);
 });
+
+test("the dashboard's own refusal is in Arabic, not \"Invalid request.\" (M4b follow-up; Review Focus 3)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_admin");
+  await page.goto("/ar/users");
+  await page.getByTestId("invite-email").fill(`${"a".repeat(310)}@example.com`);
+  await page.getByTestId("invite-submit").click();
+  await expect(page.getByTestId("invite-error")).toHaveText("لم يُقبل هذا الطلب. تحقّق منه وحاول مرة أخرى.");
+});

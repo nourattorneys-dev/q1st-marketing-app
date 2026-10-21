@@ -92,3 +92,12 @@ test("Arabic keywords read right to left", async ({ page }) => {
   await page.goto("/en/keywords");
   await expect(page.getByTestId("keyword-phrase-kw_7")).toHaveAttribute("dir", "rtl");
 });
+
+test("more keywords than one request takes: Add waits, and the limit is said in Arabic (M3a follow-up; Review Focus 3)", async ({ page, context }) => {
+  await isolateMockStore(context);
+  await signInWithCookie(context, "dev_reviewer");
+  await page.goto("/ar/keywords");
+  await page.getByTestId("add-keywords-input").fill(Array.from({ length: 51 }, (_, i) => `keyword ${i + 1}`).join(", "));
+  await expect(page.getByTestId("add-keywords")).toBeDisabled();
+  await expect(page.getByTestId("keywords-limit")).toHaveText("أضف 50 كلمة مفتاحية كحدٍّ أقصى في كل مرة.");
+});

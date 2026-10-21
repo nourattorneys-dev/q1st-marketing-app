@@ -60,7 +60,7 @@ export function ReviewBoard({ locale, posts, total, pollSeconds }: Props) {
       {posts.some((post) => post.status === "drafting") && <AutoRefresh seconds={pollSeconds} />}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-foreground" data-testid="review-count">
-          {t("count", { shown: String(posts.length), total: String(total) })}
+          {t("count", { shown: String(posts.length), total, n: String(total) })}
         </span>
         <Button variant="outline" size="sm" onClick={() => setSelected(new Set(selectable.map((post) => post.id)))}>
           {t("selectAll")}

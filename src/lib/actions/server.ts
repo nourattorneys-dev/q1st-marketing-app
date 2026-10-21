@@ -2,7 +2,9 @@ import "server-only";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { LOCALES } from "@/i18n/locales";
-import type { ActionResult } from "@/lib/actions/result";
+import { INVALID, type ActionResult } from "@/lib/actions/result";
+
+export { INVALID };
 import type { Permission } from "@/lib/auth/roles";
 import { requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
@@ -14,7 +16,6 @@ export const Locale = z.enum(LOCALES);
 // Ids go into engine URL paths: only the engine's opaque id characters, so "." or ".." can't reach another endpoint.
 export const EngineId = z.string().regex(ENGINE_ID);
 export const IdempotencyKey = z.string().min(8);
-export const INVALID = { ok: false as const, error: { status: 400, code: "invalid_input", message: "Invalid request." } };
 
 /** Role check + engine + who is acting. Every action goes through it; most need content.work (design §5). */
 export async function engineFor(locale: string, permission: Permission = "content.work") {

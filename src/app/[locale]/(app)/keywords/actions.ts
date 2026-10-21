@@ -5,7 +5,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import { change, EngineId, IdempotencyKey, INVALID, Locale } from "@/lib/actions/server";
 import { KEYWORD_BULK_ACTIONS, type KeywordBulkAction } from "@/lib/engine/api";
 import type { BulkResult, JobStart, Keyword } from "@/lib/engine/schemas";
-import { skippedPhrases } from "@/lib/keywords/phrases";
+import { KEYWORD_LIMITS, skippedPhrases } from "@/lib/keywords/phrases";
 
 // Languages are checked by the engine against /meta; here only their shape ("en", "ar") and "both" for drafts.
 const Language = z.string().regex(/^[a-z]{2,3}$/);
@@ -21,7 +21,7 @@ export async function addKeywordsAction(input: {
   idempotencyKey: string;
 }): Promise<ActionResult<AddedKeywords>> {
   const parsed = z
-    .object({ locale: Locale, phrases: z.array(z.string().trim().min(1).max(100)).min(1).max(50), language: Language, idempotencyKey: IdempotencyKey })
+    .object({ locale: Locale, phrases: z.array(z.string().trim().min(1).max(KEYWORD_LIMITS.maxLength)).min(1).max(KEYWORD_LIMITS.maxPhrases), language: Language, idempotencyKey: IdempotencyKey })
     .safeParse(input);
   if (!parsed.success) return INVALID;
   const { locale, phrases, language, idempotencyKey } = parsed.data;

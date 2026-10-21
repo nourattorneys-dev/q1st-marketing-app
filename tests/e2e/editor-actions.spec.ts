@@ -62,3 +62,9 @@ test("rejects, then deletes, returning to the queue", async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/review$/);
   await expect(page.getByTestId("card-p_206")).toHaveCount(0);
 });
+
+test("the dialog's Close button is labelled in Arabic (M2a follow-up; Review Focus 3)", async ({ page }) => {
+  await page.goto("/ar/review/p_201");
+  await page.getByTestId("reject").click();
+  await expect(page.getByRole("button", { name: "إغلاق" })).toBeVisible();
+});

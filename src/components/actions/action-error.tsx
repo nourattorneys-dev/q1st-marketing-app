@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { settingsPageFor } from "@/lib/dashboard/connections";
-import { engineNoticeKey } from "@/lib/engine/notice";
+import { failureNoticeKey } from "@/lib/engine/notice";
 import type { EngineFailure } from "@/lib/engine/result";
 
 type Props = { error: EngineFailure; canManageSettings?: boolean };
@@ -11,7 +11,7 @@ type Props = { error: EngineFailure; canManageSettings?: boolean };
 export function ActionError({ error, canManageSettings = false }: Props) {
   const t = useTranslations("Errors");
   if (error.code === "not_connected") return <NotConnected error={error} canManageSettings={canManageSettings} />;
-  const key = engineNoticeKey(error.code);
+  const key = failureNoticeKey(error);
   return (
     <p role="alert" data-testid="action-error" data-code={error.code} className="rounded-md bg-bad-bg px-3 py-2 text-sm text-bad-fg">
       {key ? t(key) : error.message}

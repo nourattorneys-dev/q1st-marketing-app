@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePhrase, parsePhrases, skippedPhrases } from "@/lib/keywords/phrases";
+import { KEYWORD_LIMITS, normalizePhrase, parsePhrases, phraseProblem, skippedPhrases } from "@/lib/keywords/phrases";
 
 describe("keyword phrases (spec v1.1 §6: comma or line separated)", () => {
   it("splits on commas and new lines, tidies spaces and drops repeats ignoring case", () => {
@@ -18,5 +18,13 @@ describe("keyword phrases (spec v1.1 §6: comma or line separated)", () => {
 describe("Arabic separators (final review)", () => {
   it("splits on the Arabic comma too", () => {
     expect(parsePhrases("دعوى عمالية، تعويض الفصل\nnon-compete")).toEqual(["دعوى عمالية", "تعويض الفصل", "non-compete"]);
+  });
+});
+
+describe("phraseProblem (M3a follow-up)", () => {
+  it("says when there are more phrases than one request takes, or one is too long", () => {
+    expect(phraseProblem(Array.from({ length: KEYWORD_LIMITS.maxPhrases }, (_, i) => `k${i}`))).toBeNull();
+    expect(phraseProblem(Array.from({ length: KEYWORD_LIMITS.maxPhrases + 1 }, (_, i) => `k${i}`))).toBe("tooMany");
+    expect(phraseProblem(["ok", "x".repeat(KEYWORD_LIMITS.maxLength + 1)])).toBe("tooLong");
   });
 });

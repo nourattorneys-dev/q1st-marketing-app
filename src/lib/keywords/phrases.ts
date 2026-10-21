@@ -20,3 +20,12 @@ export function skippedPhrases(sent: string[], created: { phrase: string }[]): s
   const added = new Set(created.map((keyword) => normalizePhrase(keyword.phrase)));
   return sent.filter((phrase) => !added.has(normalizePhrase(phrase)));
 }
+
+/** What one "add keywords" request takes: at most 50 phrases, each at most 100 characters (the action checks the same). */
+export const KEYWORD_LIMITS = { maxPhrases: 50, maxLength: 100 } as const;
+
+/** Why these phrases can't be sent as they are, or null when they can. */
+export function phraseProblem(phrases: string[]): "tooMany" | "tooLong" | null {
+  if (phrases.length > KEYWORD_LIMITS.maxPhrases) return "tooMany";
+  return phrases.some((phrase) => phrase.length > KEYWORD_LIMITS.maxLength) ? "tooLong" : null;
+}

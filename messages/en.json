@@ -28,7 +28,8 @@
     "loading": "Loading…",
     "security": "Security",
     "turnOnTwoFactor": "Turn on two-factor login",
-    "notifications": "Email notifications"
+    "notifications": "Email notifications",
+    "close": "Close"
   },
   "SignIn": {
     "title": "Sign in",
@@ -100,12 +101,13 @@
     "engineUnreachable": "The content engine can't be reached right now. Try again shortly.",
     "engineInvalid": "The content engine sent data in an unexpected format. Contact Quantum1st if this continues.",
     "engineBusy": "The content engine is busy. Your request is queued; try again shortly.",
-    "notFound": "This item was removed. Go back to the list."
+    "notFound": "This item was removed. Go back to the list.",
+    "invalidRequest": "This request couldn't be sent. Reload the page and try again."
   },
   "Review": {
     "title": "Review",
     "empty": "Nothing is waiting for review.",
-    "count": "{shown} of {total} posts",
+    "count": "{total, plural, one {{shown} of {n} post} other {{shown} of {n} posts}}",
     "selectAll": "Select all",
     "select": "Select “{title}”",
     "approveSelected": "Approve selected ({count})",
@@ -215,9 +217,9 @@
       "en": "English",
       "ar": "Arabic"
     },
-    "structureMatches": "The structure matches ({count} sections).",
+    "structureMatches": "{count, plural, one {The structure matches ({n} section).} other {The structure matches ({n} sections).}}",
     "structureMismatchOne": "1 section doesn't line up. TranslatePress needs both versions to have the same structure.",
-    "structureMismatchMany": "{count} sections don't line up. TranslatePress needs both versions to have the same structure.",
+    "structureMismatchMany": "{count, plural, one {{n} section doesn't line up. TranslatePress needs both versions to have the same structure.} other {{n} sections don't line up. TranslatePress needs both versions to have the same structure.}}",
     "missingBlock": "— missing —",
     "conflictTheirs": "Theirs",
     "conflictMine": "Yours",
@@ -369,8 +371,10 @@
       "hint": "Separate them with commas or new lines.",
       "language": "Language",
       "submit": "Add",
-      "added": "{count, plural, one {Added {n} keyword.} other {Added {n} keywords.}}",
-      "skipped": "Already in the list: {phrases}."
+      "added": "{count, plural, =0 {No new keywords: they're all in the list already.} one {Added {n} keyword.} other {Added {n} keywords.}}",
+      "skipped": "Already in the list: {phrases}.",
+      "tooMany": "Add at most {max} keywords at a time.",
+      "tooLong": "Each keyword can be at most {max} characters."
     },
     "propose": {
       "title": "Propose keywords (AI)",
@@ -744,7 +748,8 @@
       "not_found": "This person or invitation no longer exists. Reload the page.",
       "unavailable": "The sign-in service can't be reached right now. Try again shortly.",
       "self": "You can't change your own access.",
-      "network_error": "The server could not be reached. Try again shortly."
+      "network_error": "The server could not be reached. Try again shortly.",
+      "invalid_input": "This request wasn't accepted. Check it and try again."
     }
   },
   "Security": {

@@ -12,3 +12,6 @@ export const NETWORK_FAILURE: EngineFailure = {
 export function shouldReuseKey(error: EngineFailure): boolean {
   return error.code === "network_error";
 }
+
+/** The dashboard's own input check refused a request. It's marked, so the person sees it translated (Errors.invalidRequest). */
+export const INVALID = { ok: false as const, error: { status: 400, code: "invalid_input", message: "Invalid request.", details: { source: "dashboard" } } };
