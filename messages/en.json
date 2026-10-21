@@ -14,7 +14,8 @@
       "ideas": "Topic ideas",
       "settings": "Settings",
       "siteHealth": "Site health",
-      "plan": "Plan & usage"
+      "plan": "Plan & usage",
+      "users": "Users"
     },
     "role": {
       "admin": "Admin",
@@ -670,6 +671,52 @@
       "note": "Note (optional)",
       "submit": "Request upgrade",
       "requested": "Upgrade requested. Quantum1st will be in touch."
+    }
+  },
+  "Users": {
+    "title": "Users",
+    "intro": "Everyone who can sign in to this dashboard. Admins manage settings and users; Reviewers work on content.",
+    "testNotice": "Test logins: invitations are listed here, but no email is sent and they can't be accepted.",
+    "people": "People",
+    "table": {
+      "person": "Person",
+      "twoFactor": "Two-factor login",
+      "lastSignIn": "Last sign-in",
+      "access": "Access"
+    },
+    "roles": {
+      "admin": "Admin",
+      "reviewer": "Reviewer",
+      "none": "No access"
+    },
+    "you": "You",
+    "selfHint": "You can't change your own access.",
+    "twoFactorOn": "On",
+    "twoFactorOff": "Off",
+    "never": "Never",
+    "apply": "Apply",
+    "changed": "Access updated.",
+    "invite": {
+      "title": "Invite someone",
+      "hint": "They get an email from the sign-in service with a link to create their account, with this role.",
+      "email": "Email",
+      "role": "Role",
+      "submit": "Send invitation",
+      "sent": "Invitation sent to {email}."
+    },
+    "invites": {
+      "title": "Pending invitations",
+      "empty": "No pending invitations.",
+      "sentOn": "Sent {date}",
+      "revoke": "Revoke"
+    },
+    "errors": {
+      "invalidEmail": "Enter an email address.",
+      "conflict": "This person already has an account or an invitation.",
+      "not_found": "This person or invitation no longer exists. Reload the page.",
+      "unavailable": "The sign-in service can't be reached right now. Try again shortly.",
+      "self": "You can't change your own access.",
+      "network_error": "The server could not be reached. Try again shortly."
     }
   }
 }

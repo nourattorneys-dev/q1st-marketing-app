@@ -12,6 +12,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: "history", href: "/history", permission: "content.work" },
   { key: "siteHealth", href: "/site-health", permission: "siteHealth.view" },
   { key: "plan", href: "/plan", permission: "plan.manage" },
+  { key: "users", href: "/users", permission: "users.manage" },
   // The four settings pages share one item; it's highlighted on any of them.
   { key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage" },
 ];

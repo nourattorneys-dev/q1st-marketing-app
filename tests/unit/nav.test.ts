@@ -31,4 +31,11 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("plan");
     expect(NAV_ITEMS.find((item) => item.key === "plan")).toEqual({ key: "plan", href: "/plan", permission: "plan.manage" });
   });
+
+  it("shows Users to admins only, before Settings (design §7 /users)", () => {
+    expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("users");
+    expect(NAV_ITEMS.find((item) => item.key === "users")).toEqual({ key: "users", href: "/users", permission: "users.manage" });
+    const keys = NAV_ITEMS.map((item) => item.key);
+    expect(keys.indexOf("users")).toBe(keys.indexOf("settings") - 1);
+  });
 });
