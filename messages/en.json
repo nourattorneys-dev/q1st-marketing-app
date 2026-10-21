@@ -421,7 +421,8 @@
       "seo": "SEO profile",
       "schedule": "Publishing schedule",
       "website": "Website connection",
-      "social": "Social accounts"
+      "social": "Social accounts",
+      "webhook": "Webhook"
     },
     "save": "Save",
     "saving": "Saving…",
@@ -597,6 +598,29 @@
       "disconnectBody": "Posts for {platform} can't be published until it's connected again.",
       "connected": "{platform} connected.",
       "unsafeAddress": "The content engine sent a sign-in address the portal won't open. Contact Quantum1st."
+    },
+    "webhook": {
+      "title": "Webhook",
+      "hint": "The content engine tells this dashboard when drafts are ready, posts fail, connections break or quotas run low, so the right people get an email. Every delivery is signed; the signing secret is kept encrypted on this server.",
+      "address": "This dashboard's address for deliveries",
+      "noAddress": "This dashboard's address couldn't be read from the request.",
+      "status": {
+        "off": "Not set up. Screens still update when you open them, but nobody gets emails.",
+        "elsewhere": "Registered to another address: {url}. Setting it up here moves it, and that address stops getting deliveries.",
+        "secretMissing": "Registered here, but this server can't read the signing secret, so deliveries are refused. Get a new secret.",
+        "connected": "Set up. Deliveries to this address are checked against the signing secret."
+      },
+      "lastEvent": "Last delivery: {time}",
+      "noEvents": "No deliveries yet",
+      "setUp": {
+        "off": "Set up webhook",
+        "elsewhere": "Move the webhook here",
+        "secretMissing": "Get a new secret",
+        "connected": "Get a new secret"
+      },
+      "rotateHint": "A new secret replaces the old one straight away.",
+      "done": "Webhook set up. Deliveries are now signed with the new secret.",
+      "notConfigured": "This server can't store the signing secret: WEBHOOK_ENCRYPTION_KEY isn't set."
     }
   },
   "NotConnected": {

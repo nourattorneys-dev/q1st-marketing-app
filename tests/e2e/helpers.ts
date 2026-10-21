@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { BASE_URL } from "./constants";
 
 export type TestUser = "dev_admin" | "dev_reviewer" | "dev_norole" | "dev_admin_no2fa";
@@ -33,4 +33,22 @@ export async function pageInSharedStore(browser: Browser, store: string, user: T
     { name: "dev_session", value: user, url: BASE_URL },
   ]);
   return context.newPage();
+}
+
+/** Settings → Webhook → Set up, as the Admin (the page must be signed in as one). */
+export async function setUpWebhook(page: Page): Promise<void> {
+  await page.goto("/en/settings/webhook");
+  await page.getByTestId("webhook-set-up").click();
+  await expect(page.getByTestId("webhook-status")).toHaveAttribute("data-status", "connected");
+}
+
+let eventSequence = 0;
+
+/** The mock engine delivers one signed event to the registered address; returns the receiver's answer. */
+export async function deliverEvent(page: Page, event: string, data: unknown, eventId?: string): Promise<{ status: number; body: unknown }> {
+  const id = eventId ?? `evt_e2e_${Date.now().toString(36)}_${++eventSequence}`;
+  const response = await page.request.post("/api/dev/mock-webhook", { data: { event, data, eventId: id } });
+  const json = (await response.json()) as { data: { delivered: boolean; status?: number; body?: unknown } };
+  expect(json.data.delivered).toBe(true);
+  return { status: json.data.status ?? 0, body: json.data.body };
 }

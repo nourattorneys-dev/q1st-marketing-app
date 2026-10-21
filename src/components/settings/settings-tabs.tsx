@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
-export const SETTINGS_PAGES = ["seo", "schedule", "website", "social"] as const;
+export const SETTINGS_PAGES = ["seo", "schedule", "website", "social", "webhook"] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number];
 
 /** Design §7: one page per settings model. Each page says which one it is, so nothing here reads the pathname. */
