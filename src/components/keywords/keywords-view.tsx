@@ -32,7 +32,7 @@ export async function KeywordsView({ locale, searchParams }: Props) {
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 lg:grid-cols-2">
         <AddKeywords locale={locale} languages={languages} />
-        <ProposeKeywords locale={locale} languages={languages} pollSeconds={pollSeconds} />
+        <ProposeKeywords locale={locale} languages={languages} pollSeconds={pollSeconds} canRequestUpgrade={canRequestUpgrade} />
       </div>
       <KeywordTabs current={tab} />
       {list.ok ? (

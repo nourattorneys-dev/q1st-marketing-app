@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { proposeKeywordsAction } from "@/app/[locale]/(app)/keywords/actions";
-import { ActionError } from "@/components/actions/action-error";
+import { ActionFailure } from "@/components/actions/action-failure";
 import { JobTracker } from "@/components/jobs/job-tracker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { EngineFailure } from "@/lib/engine/result";
 
 /** Spec v1.1 §6 "Propose keywords (AI): starts a job". The new keywords land in the New tab. */
-export function ProposeKeywords({ locale, languages, pollSeconds }: { locale: string; languages: string[]; pollSeconds: number }) {
+export function ProposeKeywords({ locale, languages, pollSeconds, canRequestUpgrade }: { locale: string; languages: string[]; pollSeconds: number; canRequestUpgrade: boolean }) {
   const t = useTranslations("Keywords.propose");
   const tLanguages = useTranslations("Review.languages");
   const router = useRouter();
@@ -66,7 +66,7 @@ export function ProposeKeywords({ locale, languages, pollSeconds }: { locale: st
             {t("ready")}
           </p>
         )}
-        {error && <ActionError error={error} />}
+        {error && <ActionFailure error={error} locale={locale} canRequestUpgrade={canRequestUpgrade} />}
       </CardContent>
     </Card>
   );

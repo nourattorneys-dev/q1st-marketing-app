@@ -85,7 +85,8 @@
         "siteScans": "Site scans",
         "aiTokens": "AI tokens",
         "sites": "Sites"
-      }
+      },
+      "thisSite": "This site: {used}"
     }
   },
   "Errors": {
@@ -301,7 +302,8 @@
     "limitReached": "Monthly limit reached for {metric}.",
     "askAdmin": "Ask your admin to raise the limit.",
     "request": "Request upgrade",
-    "requested": "Upgrade requested. Quantum1st will be in touch."
+    "requested": "Upgrade requested. Quantum1st will be in touch.",
+    "limitReachedAny": "A monthly limit has been reached."
   },
   "Drafting": {
     "language": "Language",

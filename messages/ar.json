@@ -85,7 +85,8 @@
         "siteScans": "فحوصات الموقع",
         "aiTokens": "رموز الذكاء الاصطناعي",
         "sites": "المواقع"
-      }
+      },
+      "thisSite": "هذا الموقع: {used}"
     }
   },
   "Errors": {
@@ -301,7 +302,8 @@
     "limitReached": "تم بلوغ الحد الشهري لـ{metric}.",
     "askAdmin": "اطلب من المسؤول رفع الحد.",
     "request": "طلب ترقية",
-    "requested": "أُرسل طلب الترقية، وسيتواصل معكم فريق Quantum1st."
+    "requested": "أُرسل طلب الترقية، وسيتواصل معكم فريق Quantum1st.",
+    "limitReachedAny": "تم بلوغ أحد الحدود الشهرية."
   },
   "Drafting": {
     "language": "اللغة",

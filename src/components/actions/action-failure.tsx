@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { requestUpgradeAction } from "@/app/[locale]/(app)/plan/actions";
 import { Button } from "@/components/ui/button";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
+import { quotaMetric } from "@/lib/dashboard/quota";
 import type { EngineFailure } from "@/lib/engine/result";
 import { ActionError } from "./action-error";
 
@@ -22,19 +23,19 @@ function QuotaExceeded({ error, locale, canRequestUpgrade }: Props) {
   const upgrade = useEngineAction(requestUpgradeAction);
   const [requested, setRequested] = useState(false);
   const [failure, setFailure] = useState<EngineFailure | null>(null);
-  const metric = String(error.details?.metric ?? "");
-  const label = metric && tMetrics.has(metric) ? tMetrics(metric) : metric;
+  const metric = quotaMetric(error.details);
+  const label = metric ? (tMetrics.has(metric) ? tMetrics(metric) : metric) : null;
 
   async function request() {
     setFailure(null);
-    const result = await upgrade.run({ locale, metric: metric || undefined });
+    const result = await upgrade.run({ locale, metric: metric ?? undefined });
     if (result.ok) setRequested(true);
     else setFailure(result.error);
   }
 
   return (
     <div role="alert" data-testid="quota-exceeded" className="flex flex-col gap-2 rounded-md bg-bad-bg px-3 py-2 text-sm text-bad-fg">
-      <p>{t("limitReached", { metric: label })}</p>
+      <p>{label ? t("limitReached", { metric: label }) : t("limitReachedAny")}</p>
       {!canRequestUpgrade && <p data-testid="ask-admin">{t("askAdmin")}</p>}
       {canRequestUpgrade && !requested && (
         <div>

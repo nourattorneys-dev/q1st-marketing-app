@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { connectionWarnings, settingsPageFor } from "@/lib/dashboard/connections";
 import { nextSlotView } from "@/lib/dashboard/next-slot";
-import { quotaView } from "@/lib/dashboard/quota";
+import { quotaMetric, quotaView } from "@/lib/dashboard/quota";
 
 describe("quotaView", () => {
   it("is ok below the warning line", () => {
@@ -34,7 +34,7 @@ describe("quotaView", () => {
   });
 
   it("handles a zero limit without NaN or Infinity", () => {
-    expect(quotaView({ metric: "sites", limit: 0, used: 0, warnAt: 0.8 })).toMatchObject({ percent: 0, state: "ok" });
+    expect(quotaView({ metric: "sites", limit: 0, used: 0, warnAt: 0.8 })).toMatchObject({ percent: 100, state: "over" });
     expect(quotaView({ metric: "sites", limit: 0, used: 2, warnAt: 0.8 })).toMatchObject({ percent: 100, state: "over" });
   });
 
@@ -92,6 +92,21 @@ describe("settingsPageFor (design §9 not_connected, M1 follow-up)", () => {
       "/settings/social",
       "/settings/social",
       "/settings/social",
+    ]);
+  });
+});
+
+describe("quota edge cases (M1 and M3a follow-ups)", () => {
+  it("a limit of 0 is already reached, used or not (Review Focus 3)", () => {
+    expect(quotaView({ metric: "siteScans", limit: 0, used: 0, mode: "hard" })).toMatchObject({ percent: 100, state: "over" });
+  });
+
+  it("reads the 429's metric, or null when the engine didn't say which limit", () => {
+    expect([quotaMetric({ metric: "aiTokens", used: 1, limit: 1 }), quotaMetric({ metric: " " }), quotaMetric({}), quotaMetric(undefined)]).toEqual([
+      "aiTokens",
+      null,
+      null,
+      null,
     ]);
   });
 });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { loadSeoAction, proposeSeoAction, saveSeoAction } from "@/app/[locale]/(app)/settings/actions";
-import { ActionError } from "@/components/actions/action-error";
+import { ActionFailure } from "@/components/actions/action-failure";
 import { JobTracker } from "@/components/jobs/job-tracker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,10 +29,10 @@ const FIELDS: readonly string[] = GROUPS.flatMap((group) => group.fields);
 const LISTS = new Set<keyof SeoForm>(SEO_LISTS);
 const ADDRESSES = new Set<keyof SeoForm>(["siteUrl", "linkedin", "instagram", "ogImage"]);
 
-type Props = { locale: string; settings: SeoSettings; languages: string[]; pollSeconds: number };
+type Props = { locale: string; settings: SeoSettings; languages: string[]; pollSeconds: number; canRequestUpgrade: boolean };
 
 /** Spec v1.1 §6 SEO: the site's profile, which the AI writes from, with AI suggestions for focus keywords and the call to action. */
-export function SeoSettingsForm({ locale, settings, languages, pollSeconds }: Props) {
+export function SeoSettingsForm({ locale, settings, languages, pollSeconds, canRequestUpgrade }: Props) {
   const t = useTranslations("Settings.seo");
   const tReview = useTranslations("Review");
   const save = useEngineAction(saveSeoAction);
@@ -136,7 +136,7 @@ export function SeoSettingsForm({ locale, settings, languages, pollSeconds }: Pr
                     {t("proposalUnreadable")}
                   </p>
                 )}
-                {proposeError && <ActionError error={proposeError} />}
+                {proposeError && <ActionFailure error={proposeError} locale={locale} canRequestUpgrade={canRequestUpgrade} />}
               </div>
             )}
           </fieldset>
