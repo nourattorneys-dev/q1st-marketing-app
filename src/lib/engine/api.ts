@@ -3,9 +3,11 @@ import type { EngineClient } from "./client";
 import { EngineError } from "./errors";
 import { ENGINE_ID } from "./ids";
 import {
+  AuthorizeSchema,
   BulkResultSchema,
   CategoriesSchema,
   DeletedSchema,
+  DisconnectedSchema,
   JobSchema,
   JobStartSchema,
   KeywordSchema,
@@ -13,17 +15,27 @@ import {
   MetaSchema,
   parseItems,
   PhotosSchema,
+  PictureSchema,
   PlanSchema,
   PostImageSchema,
   PostSchema,
+  PublishingSettingsSchema,
+  PublishTargetSchema,
   ReleasedSchema,
   RemovedSchema,
   ScheduledSchema,
+  SeoSettingsSchema,
   SiteRefsSchema,
   SiteSchema,
+  SocialConnectionSchema,
   SuggestionSchema,
   UpgradeRequestedSchema,
+  WebsiteTestSchema,
   type PostUpdate,
+  type PublishingSettings,
+  type SeoUpdate,
+  type WebsiteTargetInput,
+  type WebsiteUpdate,
 } from "./schemas";
 
 /** Memoises an argument-less read for the life of one API instance (one request). */
@@ -266,6 +278,77 @@ export function createEngineApi(client: EngineClient) {
   const requestUpgrade = async (metric: string | undefined, note: string | undefined, ctx: ChangeContext) =>
     (await client.request({ method: "POST", path: "/account/upgrade-request", schema: UpgradeRequestedSchema, body: { metric, note }, ...ctx })).data;
 
+  const settingsPath = async (suffix: string) => `${await sitePath()}/settings${suffix}`;
+
+  const seoSettings = async () => (await client.request({ method: "GET", path: await settingsPath("/seo"), schema: SeoSettingsSchema })).data;
+
+  const saveSeo = async (update: SeoUpdate, ctx: ChangeContext) =>
+    (await client.request({ method: "PUT", path: await settingsPath("/seo"), schema: SeoSettingsSchema, body: update, ...ctx })).data;
+
+  /** AI suggestions for focus keywords and the call to action: a job whose result holds the proposed values, not saved. */
+  const proposeSeo = async (ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await settingsPath("/seo/propose"), schema: JobStartSchema, body: {}, ...ctx })).data;
+
+  async function uploadSeoPicture(file: File, ctx: ChangeContext) {
+    const form = new FormData();
+    form.set("file", file);
+    return (await client.request({ method: "POST", path: await settingsPath("/seo/picture"), schema: PictureSchema, form, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
+      .data;
+  }
+
+  const removeSeoPicture = async (ctx: ChangeContext) =>
+    (await client.request({ method: "DELETE", path: await settingsPath("/seo/picture"), schema: RemovedSchema, ...ctx })).data;
+
+  const publishingSettings = async () =>
+    (await client.request({ method: "GET", path: await settingsPath("/publishing"), schema: PublishingSettingsSchema })).data;
+
+  const savePublishing = async (update: PublishingSettings, ctx: ChangeContext) =>
+    (await client.request({ method: "PUT", path: await settingsPath("/publishing"), schema: PublishingSettingsSchema, body: update, ...ctx })).data;
+
+  const websiteSettings = async () => (await client.request({ method: "GET", path: await settingsPath("/website"), schema: PublishTargetSchema })).data;
+
+  // A save of a changed connection and a test both reach the website itself, so they get the slow-change limit.
+  const saveWebsite = async (update: WebsiteUpdate, ctx: ChangeContext) =>
+    (await client.request({ method: "PUT", path: await settingsPath("/website"), schema: PublishTargetSchema, body: update, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
+      .data;
+
+  const testWebsite = async (target: WebsiteTargetInput, ctx: ChangeContext) =>
+    (
+      await client.request({
+        method: "POST",
+        path: await settingsPath("/website/test"),
+        schema: WebsiteTestSchema,
+        body: target,
+        timeoutMs: SLOW_CHANGE_MS,
+        ...ctx,
+      })
+    ).data;
+
+  async function socialConnections() {
+    const { data } = await client.request({ method: "GET", path: await settingsPath("/social"), schema: z.array(z.unknown()) });
+    const { items, skipped } = parseItems(data, SocialConnectionSchema);
+    return { connections: items, skipped };
+  }
+
+  /** Spec v1.1 §7: the provider's sign-in address; the person comes back to `returnUrl?connected=<platform>`. */
+  const connectSocial = async (platform: string, returnUrl: string) => {
+    const segment = idSegment(platform);
+    return (
+      await client.request({ method: "GET", path: await settingsPath(`/social/${segment}/connect`), schema: AuthorizeSchema, query: { returnUrl } })
+    ).data;
+  };
+
+  const disconnectSocial = async (platform: string, ctx: ChangeContext) => {
+    const segment = idSegment(platform);
+    return (await client.request({ method: "DELETE", path: await settingsPath(`/social/${segment}`), schema: DisconnectedSchema, ...ctx })).data;
+  };
+
+  const connectSearchConsole = async (returnUrl: string) =>
+    (await client.request({ method: "GET", path: await settingsPath("/search-console/connect"), schema: AuthorizeSchema, query: { returnUrl } })).data;
+
+  const disconnectSearchConsole = async (ctx: ChangeContext) =>
+    (await client.request({ method: "DELETE", path: await settingsPath("/search-console"), schema: DisconnectedSchema, ...ctx })).data;
+
   const categories = once(
     async () => (await client.request({ method: "GET", path: `${await sitePath()}/website/categories`, schema: CategoriesSchema })).data,
   );
@@ -311,6 +394,21 @@ export function createEngineApi(client: EngineClient) {
     requestUpgrade,
     job,
     categories,
+    seoSettings,
+    saveSeo,
+    proposeSeo,
+    uploadSeoPicture,
+    removeSeoPicture,
+    publishingSettings,
+    savePublishing,
+    websiteSettings,
+    saveWebsite,
+    testWebsite,
+    socialConnections,
+    connectSocial,
+    disconnectSocial,
+    connectSearchConsole,
+    disconnectSearchConsole,
   };
 }
 

@@ -308,3 +308,121 @@ export const SuggestionSchema = z.object({
 export type Suggestion = z.output<typeof SuggestionSchema>;
 
 export const UpgradeRequestedSchema = z.object({ requested: z.literal(true) });
+
+// ── Settings (spec v1.1 §4 SeoSettings, PublishingSettings, PublishTarget, SocialConnection; §7 settings endpoints) ──
+export type TargetType = Meta["targetTypes"][number];
+export type TargetField = TargetType["fields"][number];
+
+export const SeoSettingsSchema = z.object({
+  siteName: z.string(),
+  siteUrl: z.string(),
+  blogPath: z.string().nullish(),
+  defaultLang: z.string(),
+  focusKeywords: list(z.string()),
+  locations: list(z.string()),
+  author: z.string().nullish(),
+  linkedin: z.string().nullish(),
+  instagram: z.string().nullish(),
+  ogImage: z.string().nullish(),
+  ogImageUploaded: z.object({ url: z.string(), key: z.string().nullish() }).nullish(),
+  cta: z.string().nullish(),
+  tone: z.string().nullish(),
+  audience: z.string().nullish(),
+  avoid: list(z.string()),
+  version: z.number().int(),
+});
+export type SeoSettings = z.output<typeof SeoSettingsSchema>;
+
+/** PUT …/settings/seo: the whole profile but the uploaded picture, which has its own endpoint. Limits are generous; the engine validates. */
+export const SeoUpdateSchema = z.object({
+  siteName: z.string().max(2000),
+  siteUrl: z.string().max(2000),
+  blogPath: z.string().max(2000).nullable(),
+  defaultLang: z.string().max(20),
+  focusKeywords: z.array(z.string().max(2000)).max(500),
+  locations: z.array(z.string().max(2000)).max(500),
+  author: z.string().max(2000).nullable(),
+  linkedin: z.string().max(2000).nullable(),
+  instagram: z.string().max(2000).nullable(),
+  ogImage: z.string().max(2000).nullable(),
+  cta: z.string().max(2000).nullable(),
+  tone: z.string().max(2000).nullable(),
+  audience: z.string().max(2000).nullable(),
+  avoid: z.array(z.string().max(2000)).max(500),
+  version: z.number().int(),
+});
+export type SeoUpdate = z.infer<typeof SeoUpdateSchema>;
+
+/** Also the PUT body: the engine works out the slots from these (spec v1.1 §4: never in the browser). */
+export const PublishingSettingsSchema = z.object({
+  autoPublish: z.boolean(),
+  perDay: z.number().int(),
+  days: z.array(z.string()),
+  from: z.string(),
+  to: z.string(),
+  gapMinutes: z.number().int(),
+  version: z.number().int(),
+});
+export type PublishingSettings = z.infer<typeof PublishingSettingsSchema>;
+
+const stringMap = z
+  .record(z.string(), z.string())
+  .nullish()
+  .transform((value) => value ?? {});
+
+/** The website connection. The secret is write-only: the engine never returns it, and this schema would drop it if it did. */
+export const PublishTargetSchema = z.object({
+  type: z.string().nullish(), // known: wordpress | strapi; empty before the first connection
+  settings: z
+    .record(z.string(), z.unknown())
+    .nullish()
+    .transform((value) => value ?? {}),
+  secretSet: z.boolean(),
+  fieldMap: stringMap,
+  body: z.object({ format: z.string(), blockMap: z.record(z.string(), z.string()).nullish() }).nullish(),
+  arabic: z.object({ mode: z.string() }).nullish(),
+  languages: list(z.string()),
+  status: z.string(), // known: ok | error | missing
+  lastCheckedAt: isoDateTime.nullish(),
+  lastError: z.string().nullish(),
+  version: z.number().int(),
+});
+export type PublishTarget = z.output<typeof PublishTargetSchema>;
+
+/** POST …/settings/website/test: the unsaved values; without `secret` the engine tests with the stored one. */
+export const WebsiteTargetInputSchema = z.object({
+  type: z.string().min(1).max(60),
+  settings: z.record(z.string(), z.unknown()),
+  secret: z.string().max(4000).optional(),
+  fieldMap: z.record(z.string(), z.string()),
+  body: z.object({ format: z.string().max(60), blockMap: z.record(z.string(), z.string()).optional() }),
+  arabic: z.object({ mode: z.string().max(60) }),
+});
+export type WebsiteTargetInput = z.infer<typeof WebsiteTargetInputSchema>;
+export const WebsiteUpdateSchema = WebsiteTargetInputSchema.extend({ version: z.number().int() });
+export type WebsiteUpdate = z.infer<typeof WebsiteUpdateSchema>;
+
+export const WebsiteTestSchema = z.object({
+  ok: z.boolean(),
+  error: z.string().nullish(),
+  categories: list(z.object({ slug: z.string(), name: z.string() })),
+  languages: list(z.string()),
+  fields: list(z.string()),
+  blockTypes: list(z.string()),
+  suggestedFieldMap: stringMap,
+  suggestedBlockMap: stringMap,
+});
+export type WebsiteTest = z.output<typeof WebsiteTestSchema>;
+
+export const SocialConnectionSchema = z.object({
+  platform: z.string(),
+  accountName: z.string().nullish(),
+  status: z.string(), // known: ok | expiring | error | missing
+  expiresAt: isoDateTime.nullish(),
+  lastError: z.string().nullish(),
+});
+export type SocialConnection = z.infer<typeof SocialConnectionSchema>;
+
+export const AuthorizeSchema = z.object({ authorizeUrl: z.string() });
+export const DisconnectedSchema = z.object({ disconnected: z.literal(true) });
+export const PictureSchema = z.object({ url: z.string() });
