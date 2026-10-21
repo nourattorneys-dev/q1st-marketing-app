@@ -34,3 +34,14 @@ export async function change<T>(
   if (result.ok) refresh();
   return result;
 }
+
+/** A request that changes nothing on screen (a connection test, an AI proposal): change()'s checks, acting user and key, no refresh. */
+export async function ask<T>(
+  locale: string,
+  idempotencyKey: string,
+  run: (ctx: ChangeContext & { engine: EngineApi }) => Promise<T>,
+  permission: Permission = "content.work",
+): Promise<ActionResult<T>> {
+  const { engine, actingUser } = await engineFor(locale, permission);
+  return tryEngine(() => run({ engine, actingUser, idempotencyKey }));
+}
