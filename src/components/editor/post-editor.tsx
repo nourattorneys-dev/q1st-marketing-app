@@ -38,7 +38,7 @@ type Props = {
 
 const parseHashtags = (text: string) => text.split(",").map((tag) => tag.trim()).filter(Boolean);
 
-export function PostEditor({ locale, post, limits, categories, lockMinutes, pollSeconds }: Props) {
+export function PostEditor({ locale, post, twin, limits, categories, lockMinutes, pollSeconds }: Props) {
   const t = useTranslations("Editor");
   const [saved, setSaved] = useState<Post | null>(null);
   // The newest version wins: my last save, or what the server re-rendered after refresh().
@@ -172,7 +172,15 @@ export function PostEditor({ locale, post, limits, categories, lockMinutes, poll
             disabled={!editable}
             dir={dir}
           />
-          <EditorBody kind={current.kind} language={current.language} value={form.content} editable={editable} onChange={set("content")} bodyKey={bodyKey} />
+          <EditorBody
+            kind={current.kind}
+            language={current.language}
+            value={form.content}
+            editable={editable}
+            onChange={set("content")}
+            bodyKey={bodyKey}
+            twin={twin}
+          />
           {current.kind === "social" ? (
             <FieldCounter
               id="hashtags"

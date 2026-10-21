@@ -185,6 +185,16 @@
     "deleteBody": "This can't be undone.",
     "cancel": "Cancel",
     "redrafting": "Redrafting… {percent}%",
-    "jobFailed": "The redraft failed."
+    "jobFailed": "The redraft failed.",
+    "compare": "Side by side with the {language} version",
+    "hideCompare": "Hide side by side",
+    "languages": {
+      "en": "English",
+      "ar": "Arabic"
+    },
+    "structureMatches": "The structure matches ({count} sections).",
+    "structureMismatchOne": "1 section doesn't line up. TranslatePress needs both versions to have the same structure.",
+    "structureMismatchMany": "{count} sections don't line up. TranslatePress needs both versions to have the same structure.",
+    "missingBlock": "— missing —"
   }
 }

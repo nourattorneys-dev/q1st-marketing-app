@@ -185,6 +185,16 @@
     "deleteBody": "لا يمكن التراجع عن ذلك.",
     "cancel": "إلغاء",
     "redrafting": "جارٍ إعادة الصياغة… {percent}%",
-    "jobFailed": "فشلت إعادة الصياغة."
+    "jobFailed": "فشلت إعادة الصياغة.",
+    "compare": "عرض متجاور مع النسخة {language}",
+    "hideCompare": "إخفاء العرض المتجاور",
+    "languages": {
+      "en": "الإنجليزية",
+      "ar": "العربية"
+    },
+    "structureMatches": "البنية متطابقة ({count} أقسام).",
+    "structureMismatchOne": "قسم واحد غير متطابق. يحتاج TranslatePress إلى البنية نفسها في النسختين.",
+    "structureMismatchMany": "{count} أقسام غير متطابقة. يحتاج TranslatePress إلى البنية نفسها في النسختين.",
+    "missingBlock": "— غير موجود —"
   }
 }
