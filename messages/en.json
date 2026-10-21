@@ -197,8 +197,7 @@
     "deleteTitle": "Delete this post?",
     "deleteBody": "This can't be undone.",
     "cancel": "Cancel",
-    "redrafting": "Redrafting… {percent}%",
-    "jobFailed": "The redraft failed.",
+    "redraftingLabel": "Redrafting…",
     "compare": "Side by side with the {language} version",
     "hideCompare": "Hide side by side",
     "languages": {
@@ -286,5 +285,12 @@
     "body": "This page couldn't be shown. Try again; if it keeps happening, contact your admin.",
     "retry": "Try again",
     "home": "Go to the dashboard"
+  },
+  "Jobs": {
+    "percent": "{percent}%",
+    "done": "Done.",
+    "unreachable": "Still waiting for the server…",
+    "signedOut": "Your session has ended. Sign in again to follow this job.",
+    "jobFailed": "The job failed."
   }
 }

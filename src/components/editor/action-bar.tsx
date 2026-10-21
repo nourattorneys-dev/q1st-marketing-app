@@ -90,7 +90,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
 
   return (
     <div className="flex flex-col gap-2">
-      {jobId && <JobProgress locale={locale} jobId={jobId} pollSeconds={pollSeconds} onDone={finishJob} />}
+      {jobId && <JobProgress jobId={jobId} pollSeconds={pollSeconds} onDone={finishJob} />}
       {!jobId && post.status === "drafting" && <StatusWatcher locale={locale} postId={post.id} status={post.status} pollSeconds={pollSeconds} />}
       <div className="flex flex-wrap items-center gap-2">
         {allowed.has("approve") && mode === "direct" && (
