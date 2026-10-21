@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { cache } from "react";
 import { serverEnv } from "@/lib/env";
 import { createEngineApi } from "./api";
@@ -13,6 +14,8 @@ export const getEngine = cache(async () => {
   let fetchImpl: FetchLike;
 
   if (env.engineMode === "mock") {
+    // The mock store reads the clock; a real engine call is network I/O. Opt out of prerendering the same way.
+    await connection();
     const jar = await cookies();
     const scenario = jar.get(MOCK_SCENARIO_COOKIE)?.value;
     fetchImpl = createMockFetch({
