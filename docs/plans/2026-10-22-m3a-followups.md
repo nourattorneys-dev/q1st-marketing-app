@@ -14,10 +14,10 @@ Carry these into the M3b–M5 plans.
 - **AI keyword proposals show errors with `ActionError`, not `ActionFailure`.** A 429 there (for example on `aiTokens`) shows the raw message with no upgrade path. — handled in M4a
 - **A per-item `quota_exceeded` inside a bulk result** shows as "title: message" without the upgrade path. Bulk Draft under quota also has no e2e test.
 - **A 429 without `details.metric`** reads "Monthly limit reached for ." Fall back to a sentence without the metric. — handled in M4a
-- **Limits give an English-only "Invalid request.":** over 50 phrases, a phrase over 100 characters, or over 20 request keywords. There's no limit hint or field message.
+- **Limits give an English-only "Invalid request.":** over 50 phrases, a phrase over 100 characters, or over 20 request keywords. There's no limit hint or field message. — partly handled in M4d (the Add keywords limit hint; the dashboard's own refusals are translated)
 - **Stale "Not done:" lines on Keywords:** the `failures` list isn't cleared on an error or a later action.
 - **`jobAction` in `review/actions.ts` is dead code** but still a public server action. Remove it and its test.
-- **"Added 0 keywords." / "أُضيفت 0 كلمة مفتاحية"** when every phrase was a duplicate. Add a `=0` form.
+- **"Added 0 keywords." / "أُضيفت 0 كلمة مفتاحية"** when every phrase was a duplicate. Add a `=0` form. — handled in M4d
 - **Mock fidelity:** both posts of a "both" pair get the English title, so RTL is never tested on an Arabic draft title from these flows. Give the twin `topicFor(phrase, "ar")`.
 
 ## Rulings made during M3a

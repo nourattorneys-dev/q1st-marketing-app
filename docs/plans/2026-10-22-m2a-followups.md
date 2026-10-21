@@ -6,12 +6,12 @@ Carry these into the M2b–M4 plans.
 
 - Idempotency key reuse ignores input changes: after a `network_error`, a retry with an edited note or form reuses the key and gets `idempotency_mismatch`; a retried lock heartbeat replays the old lock instead of renewing it. Fingerprint the input; use a fresh key per heartbeat. — handled in M2b
 - Lock lifetime: an idle open tab renews its lock indefinitely (spec: "while editing"); closing a tab doesn't release it (no `pagehide` handler), so it waits for the 15-minute expiry; Approve/Reject/Changes/Delete stay enabled while someone else holds the lock, and a `locked` reply from them shows the raw message instead of the banner with Take over. (actions now wait while someone else holds the lock, and a locked reply shows the banner — M2b)
-- No unsaved-changes guard on Back, the language switch, Ask for changes or Reject.
+- No unsaved-changes guard on Back, the language switch, Ask for changes or Reject. — handled in M4d (Back and leaving the page ask first; Ask for changes and Reject wait for a save)
 - The review queue shows only the first page (25 posts); later posts can't be reached. — handled in M2b
 - One malformed post blanks the whole queue (`PostsSchema` is a plain array), against M1's "one bad field shouldn't blank the app". — handled in M2b
 - Job/status polling and lock heartbeats use server actions, which Next runs one at a time per client; design §8 names `/api/jobs/[id]`. Move before M3/M4 add more polling. — job polling moved to /api/jobs/[id] in M3a (the editor's StatusWatcher still checks the post through a server action)
 - Mock mode: the `mock_store` registry grows with every cookie value (anyone can set it); on Vercel previews the state lives per server instance and resets on cold starts. Document in the README or cap the registry.
-- i18n: "1 warnings" in English; Arabic dual and 11+ plurals; `post-card.tsx` passes numbers where the rest passes `String(...)`; the dialog's screen-reader "Close" is English; `JobProgress` shows the engine's English `error.message`; the server's `INVALID` message is English only. (finding counts now use plural forms — M2b)
+- i18n: "1 warnings" in English; Arabic dual and 11+ plurals; `post-card.tsx` passes numbers where the rest passes `String(...)`; the dialog's screen-reader "Close" is English; `JobProgress` shows the engine's English `error.message`; the server's `INVALID` message is English only. (finding counts now use plural forms — M2b) — partly handled in M4d (Arabic dual/11+ plurals for the review count and the structure counts; the dialog's Close label)
 - `useEngineAction` itself has no unit test (only `shouldReuseKey`). — handled in M2b
 
 ## Rulings made during M2a

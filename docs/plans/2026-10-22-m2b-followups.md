@@ -15,13 +15,13 @@ Carry these into the M3–M5 plans.
 - **Review on a page past the end says "Nothing is waiting for review."** Reuse History's "There's nothing on this page" with a link to page 1.
 - **Scheduled ignores paging.** If the real engine pages `GET …/scheduled`, later posts can't be reached.
 - **A photo action can overlap an in-flight Save.** If a pick lands before the save, the user's own pick shows as "Someone saved first". Disable Save during photo actions and photo actions during Save.
-- **An upload over 4.5 MB on Vercel shows "can't be reached".** It also keeps the key, so retrying fails the same way. Show a size message instead.
+- **An upload over 4.5 MB on Vercel shows "can't be reached".** It also keeps the key, so retrying fails the same way. Show a size message instead. — handled in M4d (uploads capped at 4 MB, with the size message)
 - **The time-zone e2e test depends on the machine.** Times are formatted on the server, so set `TZ=UTC` in the e2e web server's environment and `timezoneId` in Playwright's settings.
 - **Test gaps:**
   - History has no Arabic seed, so right-to-left there is untested.
   - The drift e2e test covers /review and a /history page, but not /scheduled.
   - The `useEngineAction` hook's wiring is untested; only its pure key-memory helpers are.
-- **The M1 `error.tsx` follow-up is only partly handled.**
+- **The M1 `error.tsx` follow-up is only partly handled.** — handled in M4d
   - `(app)/error.tsx` doesn't cover its own layout (`SidebarNav`, `UserMenu` and `ServiceBanner` read the session; `getSession()` in `ServiceBanner` isn't inside its `try`).
   - There is no `global-error.tsx`.
 - **One key memory is shared by all rows on the Scheduled and History boards.** A no-answer publish on one row is forgotten once another row is acted on. Low risk, because the engine refuses to republish.
@@ -39,7 +39,7 @@ Carry these into the M3–M5 plans.
   - History shows the skipped note even when every item on a page was left out.
   - Publishing, bulk actions and photo uploads get 120 s per attempt instead of 10 s.
 - **Declined in the final review:**
-  - Idle lock renewal, the `pagehide` release and the unsaved-changes guard: still deferred, as recorded in the M2a follow-ups.
+  - Idle lock renewal, the `pagehide` release and the unsaved-changes guard: still deferred, as recorded in the M2a follow-ups. — the unsaved-changes guard: handled in M4d; locks: M4e
   - Role-specific `not_connected` / quota hints and polling through `/api/jobs`: these belong to M3/M4. — not_connected handled in M3b
   - "Create social posts" in History and the editor: feature-flagged; it stays hidden while `/meta.features` is empty.
   - Whether the real engine's list and queue items carry `actions`: already a question for Quantum1st.
