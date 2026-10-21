@@ -10,10 +10,13 @@ import {
   JobStartSchema,
   LockSchema,
   MetaSchema,
+  parseItems,
+  PhotosSchema,
   PlanSchema,
+  PostImageSchema,
   PostSchema,
-  PostsSchema,
   ReleasedSchema,
+  RemovedSchema,
   ScheduledSchema,
   SiteRefsSchema,
   SiteSchema,
@@ -28,6 +31,10 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 
 /** Who made a change (audit log) and the key that makes a retried change safe (spec v1.1 §3). */
 export type ChangeContext = { actingUser: string; idempotencyKey: string };
+
+/** Bulk actions on posts (spec v1.1 §3 Bulk actions, §7 POST …/posts/bulk). */
+export const BULK_ACTIONS = ["approve", "reject", "delete", "publishNow", "hold", "resume"] as const;
+export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 /** Ids become URL path segments; anything but an engine id (e.g. "..") would address a different endpoint. */
 function idSegment(id: string): string {
@@ -84,14 +91,15 @@ export function createEngineApi(client: EngineClient) {
     return `${await sitePath()}/posts/${segment}${suffix}`;
   };
 
-  async function listPosts(options: { statuses: string[]; page?: number; pageSize?: number }) {
+  async function listPosts(options: { statuses: string[]; page?: number; pageSize?: number; sort?: string }) {
     const { data, meta } = await client.request({
       method: "GET",
       path: `${await sitePath()}/posts`,
-      schema: PostsSchema,
-      query: { status: options.statuses.join(","), page: options.page, pageSize: options.pageSize },
+      schema: z.array(z.unknown()),
+      query: { status: options.statuses.join(","), page: options.page, pageSize: options.pageSize, sort: options.sort },
     });
-    return { posts: data, meta };
+    const { items, skipped } = parseItems(data, PostSchema);
+    return { posts: items, skipped, meta };
   }
 
   const post = async (id: string) => (await client.request({ method: "GET", path: await postPath(id), schema: PostSchema })).data;
@@ -121,7 +129,7 @@ export function createEngineApi(client: EngineClient) {
   const takeoverPost = async (id: string, ctx: ChangeContext) =>
     (await client.request({ method: "POST", path: await postPath(id, "/takeover"), schema: PostSchema, body: {}, ...ctx })).data;
 
-  const bulkPosts = async (action: "approve" | "reject" | "delete", ids: string[], note: string | undefined, ctx: ChangeContext) =>
+  const bulkPosts = async (action: BulkAction, ids: string[], note: string | undefined, ctx: ChangeContext) =>
     (
       await client.request({
         method: "POST",
@@ -131,6 +139,32 @@ export function createEngineApi(client: EngineClient) {
         ...ctx,
       })
     ).data;
+
+  const publishPost = async (id: string, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await postPath(id, "/publish"), schema: PostSchema, body: {}, ...ctx })).data;
+
+  const holdPost = async (id: string, hold: boolean, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await postPath(id, "/hold"), schema: PostSchema, body: { hold }, ...ctx })).data;
+
+  const searchPhotos = async (query: string, page = 1) =>
+    (await client.request({ method: "GET", path: `${await sitePath()}/photos/search`, schema: PhotosSchema, query: { q: query, page } })).data;
+
+  const pickPhoto = async (id: string, pexelsId: number, alt: string | undefined, ctx: ChangeContext) =>
+    (await client.request({ method: "POST", path: await postPath(id, "/image/pick"), schema: PostImageSchema, body: { pexelsId, alt }, ...ctx }))
+      .data;
+
+  async function uploadPhoto(id: string, upload: { file: File; alt?: string; credit?: string }, ctx: ChangeContext) {
+    const form = new FormData();
+    form.set("file", upload.file);
+    if (upload.alt) form.set("alt", upload.alt);
+    if (upload.credit) form.set("credit", upload.credit);
+    return (await client.request({ method: "POST", path: await postPath(id, "/image"), schema: PostImageSchema, form, ...ctx })).data;
+  }
+
+  const removePhoto = async (id: string, ctx: ChangeContext) =>
+    (await client.request({ method: "DELETE", path: await postPath(id, "/image"), schema: RemovedSchema, ...ctx })).data;
+
+  const exportPost = async (id: string, format: "html" | "md") => client.requestFile({ path: await postPath(id, `/export.${format}`) });
 
   const job = async (id: string) =>
     (await client.request({ method: "GET", path: `/jobs/${idSegment(id)}`, schema: JobSchema })).data;
@@ -159,6 +193,13 @@ export function createEngineApi(client: EngineClient) {
     unlockPost,
     takeoverPost,
     bulkPosts,
+    publishPost,
+    holdPost,
+    searchPhotos,
+    pickPhoto,
+    uploadPhoto,
+    removePhoto,
+    exportPost,
     job,
     categories,
   };

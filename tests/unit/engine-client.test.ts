@@ -188,3 +188,49 @@ describe("tryEngine", () => {
     ).rejects.toThrow("bug");
   });
 });
+
+describe("engine client: uploads and files", () => {
+  it("sends a photo upload as multipart, with no JSON content type", async () => {
+    const { calls, fetch } = recorder([okJson({ id: "img" })]);
+    const client = createEngineClient(config(fetch));
+    const form = new FormData();
+    form.set("file", new File(["png-bytes"], "photo.png", { type: "image/png" }));
+
+    await client.request({ method: "POST", path: "/things", schema: Thing, form, actingUser: "sara@example.com", idempotencyKey: "key-1" });
+
+    expect(calls[0].init.body).toBe(form);
+    expect(headersOf(calls[0]).get("Content-Type")).toBeNull();
+    expect(headersOf(calls[0]).get("Idempotency-Key")).toBe("key-1");
+  });
+
+  it("downloads a file as text, with the name from Content-Disposition", async () => {
+    const { calls, fetch } = recorder([
+      new Response("# Title\n", {
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Content-Disposition": "attachment; filename=\"commission.md\"; filename*=UTF-8''%D8%B9%D9%85%D9%88%D9%84%D8%A9.md",
+        },
+      }),
+    ]);
+    const client = createEngineClient(config(fetch));
+
+    const file = await client.requestFile({ path: "/posts/p_1/export.md" });
+
+    expect(file).toEqual({ body: "# Title\n", contentType: "text/markdown; charset=utf-8", filename: "عمولة.md" });
+    expect(calls[0].url).toBe("https://api.example.com/api/v1/posts/p_1/export.md");
+    expect(headersOf(calls[0]).get("X-Api-Key")).toBe("secret-key");
+  });
+
+  it("reports the engine's error for a failed download", async () => {
+    const { fetch } = recorder([errJson(404, { code: "not_found", message: "This post no longer exists." })]);
+    const client = createEngineClient(config(fetch));
+    expect(await failure(client.requestFile({ path: "/posts/p_9/export.html" }))).toMatchObject({ status: 404, code: "not_found" });
+  });
+
+  it("retries a download after a network failure", async () => {
+    const { calls, fetch } = recorder([new TypeError("fetch failed"), new Response("<h1>x</h1>", { headers: { "Content-Type": "text/html" } })]);
+    const client = createEngineClient(config(fetch));
+    expect((await client.requestFile({ path: "/posts/p_1/export.html" })).body).toBe("<h1>x</h1>");
+    expect(calls).toHaveLength(2);
+  });
+});

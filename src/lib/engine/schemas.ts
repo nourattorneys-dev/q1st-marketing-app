@@ -5,6 +5,21 @@ const isoDateTime = z.string().refine((value) => /\d{2}:\d{2}/.test(value) && !N
   message: "Expected an ISO 8601 date-time",
 });
 
+/** A list that may be missing or null in the response; always an array after parsing. */
+const list = <T extends z.ZodType>(item: T) => z.array(item).nullish().transform((value) => value ?? []);
+
+/** Parses list items one by one: an item the engine sent in an unexpected shape is skipped and counted, not fatal for the page. */
+export function parseItems<T extends z.ZodType>(items: unknown[], schema: T): { items: z.output<T>[]; skipped: number } {
+  const parsed: z.output<T>[] = [];
+  let skipped = 0;
+  for (const item of items) {
+    const result = schema.safeParse(item);
+    if (result.success) parsed.push(result.data);
+    else skipped += 1;
+  }
+  return { items: parsed, skipped };
+}
+
 // ── Envelope (spec §3) ───────────────────────────────────────────────────────
 export const EngineErrorBodySchema = z.object({
   code: z.string(),
@@ -112,7 +127,31 @@ export const PlanSchema = z.object({
 });
 export type Plan = z.infer<typeof PlanSchema>;
 
-// ── Scheduled (spec §7 GET …/scheduled) ──────────────────────────────────────
+// ── Photos (spec v1.1 §4 Post.image, Photo) ─────────────────────────────────
+export const PostImageSchema = z.object({
+  url: z.string(),
+  alt: z.string().nullish(),
+  credit: z.string().nullish(),
+  source: z.string().nullish(), // known: pexels | upload
+  pexelsId: z.number().nullish(),
+});
+export type PostImage = z.infer<typeof PostImageSchema>;
+
+export const PhotoSchema = z.object({
+  pexelsId: z.number(),
+  thumb: z.string(),
+  full: z.string(),
+  width: z.number(),
+  height: z.number(),
+  photographer: z.string(),
+  photographerUrl: z.string().nullish(),
+  alt: z.string().nullish(),
+});
+export type Photo = z.infer<typeof PhotoSchema>;
+export const PhotosSchema = z.array(PhotoSchema);
+export const RemovedSchema = z.object({ removed: z.literal(true) });
+
+// ── Scheduled (spec v1.1 §7 GET …/scheduled) ─────────────────────────────────
 export const PostSummarySchema = z.object({
   id: z.string(),
   kind: z.string(),
@@ -120,25 +159,29 @@ export const PostSummarySchema = z.object({
   language: z.string(),
   status: z.string(),
   title: z.string(),
+  image: PostImageSchema.nullish(),
   schedule: z
-    .object({ hold: z.boolean(), scheduledAt: isoDateTime.nullish(), position: z.number().int() })
+    .object({ hold: z.boolean(), scheduledAt: isoDateTime.nullish(), position: z.number().int().nullish() })
     .nullish(),
   updatedAt: isoDateTime,
+  actions: list(z.string()),
 });
-export type PostSummary = z.infer<typeof PostSummarySchema>;
+export type PostSummary = z.output<typeof PostSummarySchema>;
 
-export const ScheduledSchema = z.object({
-  autoPublish: z.boolean(),
-  nextSlotAt: isoDateTime.nullish(),
-  waitingReason: z.string().nullish(),
-  posts: z.array(PostSummarySchema),
-});
-export type Scheduled = z.infer<typeof ScheduledSchema>;
+export const ScheduledSchema = z
+  .object({
+    autoPublish: z.boolean(),
+    nextSlotAt: isoDateTime.nullish(),
+    waitingReason: z.string().nullish(),
+    posts: z.array(z.unknown()),
+  })
+  .transform(({ posts, ...rest }) => {
+    const parsed = parseItems(posts, PostSummarySchema);
+    return { ...rest, posts: parsed.items, skipped: parsed.skipped };
+  });
+export type Scheduled = z.output<typeof ScheduledSchema>;
 
 // ── Posts (spec v1.1 §4 Post, Finding; §7 posts endpoints) ───────────────────
-/** A list that may be missing or null in the response; always an array after parsing. */
-const list = <T extends z.ZodType>(item: T) => z.array(item).nullish().transform((value) => value ?? []);
-
 export const FindingSchema = z.object({
   level: z.string(), // known: critical | warn | human
   code: z.string().nullish(),
@@ -171,15 +214,7 @@ export const PostSchema = z.object({
   content: z.string().nullish(), // lists (GET …/posts) omit it
   hashtags: list(z.string()),
   section: z.string().nullish(),
-  image: z
-    .object({
-      url: z.string(),
-      alt: z.string().nullish(),
-      credit: z.string().nullish(),
-      source: z.string().nullish(),
-      pexelsId: z.number().nullish(),
-    })
-    .nullish(),
+  image: PostImageSchema.nullish(),
   photoIdea: z.string().nullish(),
   sources: list(z.object({ title: z.string(), url: z.string() })),
   linkSuggestions: list(z.object({ anchor: z.string(), url: z.string(), title: z.string().nullish() })),
@@ -215,6 +250,8 @@ export const PostUpdateSchema = z.object({
   content: z.string(),
   hashtags: z.array(z.string()),
   section: z.string().nullable(),
+  // The photo's alt text and credit; the photo itself changes through the image endpoints (spec v1.1 §7).
+  image: z.object({ alt: z.string().nullable(), credit: z.string().nullable() }).optional(),
   version: z.number().int(),
 });
 export type PostUpdate = z.infer<typeof PostUpdateSchema>;

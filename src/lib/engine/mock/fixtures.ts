@@ -80,6 +80,7 @@ const SCHEDULED_POSTS: readonly PostSummary[] = [
     title: "When does a commission become payable under UAE Labour Law?",
     schedule: { hold: false, scheduledAt: "2026-10-22T10:00:00+04:00", position: 1 },
     updatedAt: "2026-10-21T09:12:00+04:00",
+    actions: [],
   },
   {
     id: "p_102",
@@ -90,6 +91,7 @@ const SCHEDULED_POSTS: readonly PostSummary[] = [
     title: "متى تستحق العمولة وفق قانون العمل الإماراتي؟",
     schedule: { hold: false, scheduledAt: "2026-10-22T13:00:00+04:00", position: 2 },
     updatedAt: "2026-10-21T09:12:00+04:00",
+    actions: [],
   },
   {
     id: "p_103",
@@ -100,6 +102,7 @@ const SCHEDULED_POSTS: readonly PostSummary[] = [
     title: "Commission rights after resignation",
     schedule: { hold: true, scheduledAt: null, position: 3 },
     updatedAt: "2026-10-21T08:40:00+04:00",
+    actions: [],
   },
 ];
 
@@ -109,6 +112,7 @@ export function mockScheduled(): Scheduled {
     nextSlotAt: "2026-10-22T10:00:00+04:00",
     waitingReason: null,
     posts: SCHEDULED_POSTS.map((post) => ({ ...post, schedule: post.schedule ? { ...post.schedule } : post.schedule })),
+    skipped: 0,
   };
 }
 
