@@ -35,21 +35,25 @@ export async function HistoryList({ locale, searchParams }: Props) {
   if (!list.ok) return <EngineNotice error={list.error} />;
   if (!site.ok) return <EngineNotice error={site.error} />;
 
+  // The skipped note comes first, so a page whose items were all left out never reads as empty (Review Focus 4).
   if (list.data.posts.length === 0) {
-    if (page === 1) {
-      return (
-        <p data-testid="history-empty" className="text-muted-foreground">
-          {t("empty")}
-        </p>
-      );
-    }
     return (
-      <p data-testid="list-page-empty" className="text-sm">
-        {tLists("pageEmpty")}{" "}
-        <Link href="/history" data-testid="list-first-page" className="text-primary underline">
-          {tLists("firstPage")}
-        </Link>
-      </p>
+      <div className="flex flex-col gap-4">
+        <SkippedNote count={list.data.skipped} />
+        {page === 1 && list.data.skipped === 0 && (
+          <p data-testid="history-empty" className="text-muted-foreground">
+            {t("empty")}
+          </p>
+        )}
+        {page > 1 && (
+          <p data-testid="list-page-empty" className="text-sm">
+            {tLists("pageEmpty")}{" "}
+            <Link href="/history" data-testid="list-first-page" className="text-primary underline">
+              {tLists("firstPage")}
+            </Link>
+          </p>
+        )}
+      </div>
     );
   }
 

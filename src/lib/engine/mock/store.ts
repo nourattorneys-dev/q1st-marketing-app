@@ -316,7 +316,10 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     if (!allowed.includes("publishNow") && !allowed.includes("retry")) {
       return fail(422, "invalid_input", "This post can't be published in its current status.");
     }
-    const refusal = post.status === "pending" ? approvalRefusal(post, undefined) : missingPhoto(post);
+    // A rule that can't be overridden (structure_mismatch) blocks publishing in any status: an approved twin can
+    // stop matching when its English version is edited later (spec v1.1 §5).
+    const blocked = approvalMode(post.findings) === "blocked";
+    const refusal = post.status === "pending" || blocked ? approvalRefusal(post, undefined) : missingPhoto(post);
     if (refusal) return refusal;
     if (post.platform === "instagram") return fail(422, "not_connected", "Instagram isn't connected. An admin can connect it in Settings.");
     if (failNextPublish.delete(id)) {

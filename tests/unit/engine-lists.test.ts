@@ -116,3 +116,19 @@ describe("publishing, photo and export calls (spec v1.1 §7)", () => {
     await expect(engine.exportPost("p_1", "html")).resolves.toEqual({ body: "<h1>One</h1>", contentType: "text/html; charset=utf-8", filename: "one.html" });
   });
 });
+
+describe("slow changes (final review)", () => {
+  it("gives publishing, bulk actions and photo uploads more time than a read", async () => {
+    const slow: FetchLike = async (url) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith("/sites")) return Response.json({ ok: true, data: [{ id: "site_1" }] });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const data = path.endsWith("/bulk") ? { done: ["p_1"], failed: [] } : path.endsWith("/image") ? { url: "u" } : POST;
+      return Response.json({ ok: true, data });
+    };
+    const engine = createEngineApi(createEngineClient({ baseUrl: BASE, apiKey: "k", fetch: slow, retryDelaysMs: [0, 0], timeoutMs: 20 }));
+    await expect(engine.publishPost("p_1", ctx)).resolves.toMatchObject({ id: "p_1" });
+    await expect(engine.bulkPosts("publishNow", ["p_1"], undefined, ctx)).resolves.toMatchObject({ done: ["p_1"] });
+    await expect(engine.uploadPhoto("p_1", { file: new File(["x"], "a.png", { type: "image/png" }) }, ctx)).resolves.toMatchObject({ url: "u" });
+  });
+});

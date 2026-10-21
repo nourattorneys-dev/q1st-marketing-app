@@ -51,3 +51,9 @@ test("a post the engine sent in an unknown shape is skipped with a note; the res
   await expect(page.getByTestId("list-skipped")).toHaveText("1 item couldn't be shown because the content engine sent it in an unexpected format.");
   await expect(page.getByTestId("card-p_201")).toBeVisible();
 });
+
+test("a page whose items all came in an unknown shape still says they were skipped (final review)", async ({ page, context }) => {
+  await setMockScenario(context, "drift");
+  await page.goto("/en/history?page=9");
+  await expect(page.getByTestId("list-skipped")).toBeVisible();
+});

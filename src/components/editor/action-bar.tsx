@@ -47,7 +47,8 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
   const mode = approvalMode(post.findings);
   const locked = lockedBy !== null;
   // Publishing straight from review needs what approval needs; with a critical finding, approve with a reason first.
-  const publishable = post.status !== "pending" || mode === "direct";
+  // A rule that can't be overridden blocks publishing in any status (an approved twin can stop matching later).
+  const publishable = mode !== "blocked" && (post.status !== "pending" || mode === "direct");
 
   /** A refusal because someone else took the lock shows the lock banner (with Take over) instead of an error. */
   function refusal(failure: EngineFailure): EngineFailure | null {
@@ -169,7 +170,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           />
         )}
       </div>
-      {allowed.has("approve") && mode === "blocked" && (
+      {(allowed.has("approve") || allowed.has("publishNow")) && mode === "blocked" && (
         <p data-testid="approve-blocked" className="text-sm text-bad-fg">
           {t("approveBlockedHint")}
         </p>

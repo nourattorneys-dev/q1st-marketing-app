@@ -234,3 +234,12 @@ describe("engine client: uploads and files", () => {
     expect(calls).toHaveLength(2);
   });
 });
+
+describe("engine client: slow changes (final review)", () => {
+  it("lets one request take longer than the default per-attempt limit", async () => {
+    const slow: FetchLike = () => new Promise((resolve) => setTimeout(() => resolve(okJson({ id: "p_1" })), 60));
+    const client = createEngineClient({ ...config(slow), timeoutMs: 20 });
+    await expect(client.request({ method: "POST", path: "/things", schema: Thing, body: {}, timeoutMs: 500 })).resolves.toMatchObject({ data: { id: "p_1" } });
+    expect((await failure(client.request({ method: "POST", path: "/things", schema: Thing, body: {} }))).code).toBe("network_error");
+  });
+});

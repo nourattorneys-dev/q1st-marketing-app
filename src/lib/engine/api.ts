@@ -32,6 +32,12 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 /** Who made a change (audit log) and the key that makes a retried change safe (spec v1.1 §3). */
 export type ChangeContext = { actingUser: string; idempotencyKey: string };
 
+/**
+ * A publish converts the article and uploads its media to the website, and a bulk action does that for every post, so
+ * they (and photo uploads) get far more than the default 10 s per attempt before the client gives up waiting.
+ */
+const SLOW_CHANGE_MS = 120_000;
+
 /** Bulk actions on posts (spec v1.1 §3 Bulk actions, §7 POST …/posts/bulk). */
 export const BULK_ACTIONS = ["approve", "reject", "delete", "publishNow", "hold", "resume"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
@@ -136,12 +142,14 @@ export function createEngineApi(client: EngineClient) {
         path: `${await sitePath()}/posts/bulk`,
         schema: BulkResultSchema,
         body: { action, ids, note },
+        timeoutMs: SLOW_CHANGE_MS,
         ...ctx,
       })
     ).data;
 
   const publishPost = async (id: string, ctx: ChangeContext) =>
-    (await client.request({ method: "POST", path: await postPath(id, "/publish"), schema: PostSchema, body: {}, ...ctx })).data;
+    (await client.request({ method: "POST", path: await postPath(id, "/publish"), schema: PostSchema, body: {}, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
+      .data;
 
   const holdPost = async (id: string, hold: boolean, ctx: ChangeContext) =>
     (await client.request({ method: "POST", path: await postPath(id, "/hold"), schema: PostSchema, body: { hold }, ...ctx })).data;
@@ -158,7 +166,8 @@ export function createEngineApi(client: EngineClient) {
     form.set("file", upload.file);
     if (upload.alt) form.set("alt", upload.alt);
     if (upload.credit) form.set("credit", upload.credit);
-    return (await client.request({ method: "POST", path: await postPath(id, "/image"), schema: PostImageSchema, form, ...ctx })).data;
+    return (await client.request({ method: "POST", path: await postPath(id, "/image"), schema: PostImageSchema, form, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
+      .data;
   }
 
   const removePhoto = async (id: string, ctx: ChangeContext) =>

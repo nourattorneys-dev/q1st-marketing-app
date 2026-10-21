@@ -60,3 +60,28 @@ test("an action refused because someone else took over shows the lock banner, no
   await expect(me.getByTestId("action-error")).toHaveCount(0);
   await expect(me.getByTestId("post-status")).toHaveText("Waiting for review");
 });
+
+test("an approved Arabic twin that stops matching its English version can't be published (final review)", async ({ page }) => {
+  await page.goto("/en/review/p_202");
+  await page.getByTestId("approve").click();
+  await expect(page.getByTestId("post-status")).toHaveText("Approved");
+
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("editor-body").getByText("Read the").click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("A new section.");
+  await page.getByTestId("save").click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+
+  await page.goto("/en/review/p_202");
+  await expect(page.getByTestId("publish")).toBeDisabled();
+  await expect(page.getByTestId("approve-blocked")).toBeVisible();
+
+  await page.goto("/en/scheduled");
+  await page.getByTestId("publish-p_202").click();
+  await page.getByTestId("publish-p_202-confirm").click();
+  await expect(page.getByRole("dialog").getByTestId("action-error")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("scheduled-row-p_202")).toBeVisible();
+});

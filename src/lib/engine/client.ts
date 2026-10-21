@@ -27,6 +27,8 @@ export type EngineRequest<S extends z.ZodType> = {
   form?: FormData;
   actingUser?: string;
   idempotencyKey?: string;
+  /** Per-attempt limit for this request; slow changes (publishing, bulk actions, uploads) get more than the default. */
+  timeoutMs?: number;
 };
 
 export type EngineResponse<T> = { data: T; meta: ListMeta | null };
@@ -51,10 +53,10 @@ export function createEngineClient(config: EngineClientConfig) {
   }
 
   /** Runs attempts with a timeout each; network failures are retried `attempts - 1` times, engine answers never. */
-  async function withRetries<T>(attempts: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  async function withRetries<T>(attempts: number, run: (signal: AbortSignal) => Promise<T>, limitMs = timeoutMs): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await withTimeout(timeoutMs, run);
+        return await withTimeout(limitMs, run);
       } catch (error) {
         if (error instanceof EngineError) throw error;
         if (attempt >= attempts - 1) {
@@ -85,10 +87,14 @@ export function createEngineClient(config: EngineClientConfig) {
 
     // Only reads are retried; a change is never repeated automatically (design §9).
     const attempts = req.method === "GET" ? retryDelays.length + 1 : 1;
-    return withRetries(attempts, async (signal) => {
-      const response = await config.fetch(url.toString(), { method: req.method, headers, body, cache: "no-store", signal });
-      return parseResponse(response, req.schema);
-    });
+    return withRetries(
+      attempts,
+      async (signal) => {
+        const response = await config.fetch(url.toString(), { method: req.method, headers, body, cache: "no-store", signal });
+        return parseResponse(response, req.schema);
+      },
+      req.timeoutMs,
+    );
   }
 
   async function requestFile(req: { path: string; query?: Query }): Promise<EngineFile> {

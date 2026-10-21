@@ -312,3 +312,14 @@ describe("export (spec v1.1 §7 export.html / .md)", () => {
     expect(arabic.filename).toBe("commission-payable-uae-labour-law-ar.html");
   });
 });
+
+describe("a twin that stopped matching after it was approved (final review)", () => {
+  it("can't be published, alone or in bulk (spec v1.1 §5, §10)", () => {
+    data(store.approve("p_202", undefined, ME));
+    const english = data(store.getPost("p_201"));
+    data(update("p_201", { content: `${english.content}<p>A new section.</p>` }));
+    expect(data(store.getPost("p_202")).findings.some((finding) => finding.code === "structure_mismatch")).toBe(true);
+    expect(store.publish("p_202", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
+    expect(data(store.bulk("publishNow", ["p_202"], undefined, ME)).failed).toMatchObject([{ id: "p_202", code: "framework_blocked" }]);
+  });
+});
