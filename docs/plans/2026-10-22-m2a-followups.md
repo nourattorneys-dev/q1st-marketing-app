@@ -9,7 +9,7 @@ Carry these into the M2b–M4 plans.
 - No unsaved-changes guard on Back, the language switch, Ask for changes or Reject.
 - The review queue shows only the first page (25 posts); later posts can't be reached. — handled in M2b
 - One malformed post blanks the whole queue (`PostsSchema` is a plain array), against M1's "one bad field shouldn't blank the app". — handled in M2b
-- Job/status polling and lock heartbeats use server actions, which Next runs one at a time per client; design §8 names `/api/jobs/[id]`. Move before M3/M4 add more polling.
+- Job/status polling and lock heartbeats use server actions, which Next runs one at a time per client; design §8 names `/api/jobs/[id]`. Move before M3/M4 add more polling. — job polling moved to /api/jobs/[id] in M3a (the editor's StatusWatcher still checks the post through a server action)
 - Mock mode: the `mock_store` registry grows with every cookie value (anyone can set it); on Vercel previews the state lives per server instance and resets on cold starts. Document in the README or cap the registry.
 - i18n: "1 warnings" in English; Arabic dual and 11+ plurals; `post-card.tsx` passes numbers where the rest passes `String(...)`; the dialog's screen-reader "Close" is English; `JobProgress` shows the engine's English `error.message`; the server's `INVALID` message is English only. (finding counts now use plural forms — M2b)
 - `useEngineAction` itself has no unit test (only `shouldReuseKey`). — handled in M2b

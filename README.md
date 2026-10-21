@@ -73,3 +73,20 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
   - After a photo change, the editor reloads the post. It takes the new version only if nothing else changed on the server, so a save by someone else still shows as a conflict.
 - **Export** goes through a server action and is saved in the browser, so the engine key never leaves the server.
 - **Errors:** a 401 shows one site-wide banner; an unexpected error shows a translated error page with Try again.
+
+## Decisions in M3a (keywords and topic ideas)
+
+- **Slow AI jobs** (keyword proposals, topics, drafts, redrafts) are followed through our own `GET /api/jobs/[id]`.
+  - It checks the session and keeps the engine key on the server, at `/meta.pollSeconds` (design §8).
+  - A short network blip keeps polling.
+  - A failed or unknown job, or an ended session, stops with a message.
+- **Keyword tabs:**
+  - The tabs are New, In use, Covered and Dismissed.
+  - The AI's off-strategy keywords sit with the dismissed ones, and Restore moves both back to New.
+- **Adding keywords:** the portal names the phrases that weren't added because they already existed, compared ignoring case and spacing.
+- **Drafting:**
+  - It always asks for the language (the site's languages plus "both").
+  - "both" makes a linked English–Arabic pair.
+  - In the new-request form, an article goes to the website and a social post to a social platform; the engine still checks.
+- **A 429 `quota_exceeded`** shows "Monthly limit reached for {metric}". Admins get Request upgrade; reviewers are told to ask their admin.
+- **Mock scenario `quota`:** every drafting request answers 429, so this path can be tried locally.
