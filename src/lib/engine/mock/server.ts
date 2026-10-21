@@ -4,10 +4,11 @@ import { createMockStore, type ExportFile, type MockOutcome, type MockStore, typ
 
 /**
  * normal · unauthorized (revoked key) · down (unreachable) · drift (changed shapes) · manual (auto-publish off)
- * · crash (a non-engine error) · quota (the monthly article limit is reached).
+ * · crash (a non-engine error) · quota (the monthly article limit is reached)
+ * · firstrun (a store created with no website or social connection) · performance (the feature, with Search Console).
  */
-export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash" | "quota";
-const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual", "crash", "quota"];
+export type MockScenario = "normal" | "unauthorized" | "down" | "drift" | "manual" | "crash" | "quota" | "firstrun" | "performance";
+const MOCK_SCENARIOS: readonly MockScenario[] = ["normal", "unauthorized", "down", "drift", "manual", "crash", "quota", "firstrun", "performance"];
 export const MOCK_SCENARIO_COOKIE = "mock_scenario";
 
 export function isMockScenario(value: unknown): value is MockScenario {
@@ -87,6 +88,11 @@ function planAtLimit() {
   return { ...plan, quotas: plan.quotas.map((quota) => (quota.metric === "articles" && quota.limit !== null ? { ...quota, used: quota.limit } : quota)) };
 }
 
+/** The site, with the connections the settings store has (spec v1.1 §4 Site.connections). */
+function siteOf(store: MockStore, scenario: MockScenario) {
+  return { ...mockSite(), connections: store.settings.connections(scenario === "performance") };
+}
+
 function route(
   method: string,
   path: string,
@@ -96,8 +102,8 @@ function route(
   scenario: MockScenario,
   store: MockStore,
 ): Reply {
-  if (method === "GET" && path === "/meta") return ok(mockMeta());
-  if (method === "GET" && path === "/sites") return ok([scenario === "drift" ? driftedSite() : mockSite()]);
+  if (method === "GET" && path === "/meta") return ok(scenario === "performance" ? { ...mockMeta(), features: ["performance"] } : mockMeta());
+  if (method === "GET" && path === "/sites") return ok([scenario === "drift" ? driftedSite() : siteOf(store, scenario)]);
   if (method === "GET" && path === "/account/plan") return ok(scenario === "quota" ? planAtLimit() : mockPlan());
   if (method === "POST" && path === "/account/upgrade-request") return ok({ requested: true });
 
@@ -109,7 +115,7 @@ function route(
   if (decodeURIComponent(siteRoute[1]) !== MOCK_SITE_ID) return fail(404, "not_found", "Site not found.");
   const rest = siteRoute[2] ?? "";
 
-  if (method === "GET" && rest === "") return ok(scenario === "drift" ? driftedSite() : mockSite());
+  if (method === "GET" && rest === "") return ok(scenario === "drift" ? driftedSite() : siteOf(store, scenario));
   if (method === "GET" && rest === "/scheduled") {
     const pageSize = Number(url.searchParams.get("pageSize")) || null;
     const queue = store.scheduled(scenario !== "manual", pageSize);
@@ -135,6 +141,20 @@ function route(
   if (rest === "/settings/seo/picture" && method === "DELETE") return outcome(store.settings.removeSeoPicture());
   if (rest === "/settings/publishing" && method === "GET") return outcome(store.settings.publishing());
   if (rest === "/settings/publishing" && method === "PUT") return outcome(store.settings.savePublishing(body));
+  if (rest === "/settings/website" && method === "GET") return outcome(store.settings.website());
+  if (rest === "/settings/website" && method === "PUT") return outcome(store.settings.saveWebsite(body));
+  if (rest === "/settings/website/test" && method === "POST") return outcome(store.settings.testWebsite(body));
+  if (rest === "/settings/social" && method === "GET") return outcome(store.settings.socialList());
+  if (rest.startsWith("/settings/search-console") && scenario !== "performance") return fail(404, "not_found", "Search Console needs the performance feature.");
+  if (rest === "/settings/search-console/connect" && method === "GET") {
+    return outcome(store.settings.connectSearchConsole(url.searchParams.get("returnUrl") ?? ""));
+  }
+  if (rest === "/settings/search-console" && method === "DELETE") return outcome(store.settings.disconnectSearchConsole());
+  const socialRoute = /^\/settings\/social\/([^/]+)(\/connect)?$/.exec(rest);
+  if (socialRoute?.[2] && method === "GET") {
+    return outcome(store.settings.connectSocial(decodeURIComponent(socialRoute[1]), url.searchParams.get("returnUrl") ?? ""));
+  }
+  if (socialRoute && !socialRoute[2] && method === "DELETE") return outcome(store.settings.disconnectSocial(decodeURIComponent(socialRoute[1])));
   if (rest === "/keywords" && method === "GET") {
     const { page, pageSize } = pageOf();
     const listed = store.listKeywords(statusesOf(), page, pageSize);

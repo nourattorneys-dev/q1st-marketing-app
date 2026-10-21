@@ -1,6 +1,6 @@
 import { normalizePhrase } from "@/lib/keywords/phrases";
 import { approvalMode } from "@/lib/posts/rules";
-import type { BulkResult, Category, Job, Keyword, Photo, Post, Suggestion } from "../schemas";
+import type { BulkResult, Job, Keyword, Photo, Post, Suggestion } from "../schemas";
 import { draftedContent, ideaTitleFor, PROPOSALS, topicFor } from "./drafting";
 import { exportHtml, exportMarkdown } from "./export";
 import { fail, ok, type MockFail, type MockOutcome, type UploadedFile } from "./outcome";
@@ -10,6 +10,7 @@ import { seedKeywords, seedSuggestions } from "./keyword-fixtures";
 import { SEED_DRAFTING_POST_ID, SEED_FAILING_PUBLISH, SEED_QUEUE, seedPosts } from "./post-fixtures";
 import { computeFindings, seoScore, toNeutralHtml } from "./rules";
 import { slotTimes } from "./schedule";
+import { MOCK_CATEGORIES } from "./settings-fixtures";
 import { createSettingsStore } from "./settings-store";
 
 export type { MockFail, MockOk, MockOutcome, UploadedFile } from "./outcome";
@@ -48,18 +49,11 @@ type QueueEntry = { hold: boolean; scheduledAt: string | null; position: number 
 const SLUG = /^[\p{Ll}\p{Lo}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{N}]+)*$/u;
 const EDITABLE_FIELDS = ["title", "subtitle", "slug", "metaTitle", "metaDescription", "keywords", "content", "hashtags", "section"] as const;
 
-const CATEGORIES: Category[] = [
-  { slug: "insights", name: "Insights" },
-  { slug: "labour-law", name: "Labour law" },
-  { slug: "corporate", name: "Corporate" },
-  { slug: "real-estate", name: "Real estate" },
-];
-
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
 
-export function createMockStore(options: { now?: () => number; jobDurationMs?: number } = {}) {
+export function createMockStore(options: { now?: () => number; jobDurationMs?: number; firstRun?: boolean } = {}) {
   const now = options.now ?? Date.now;
   const jobDurationMs = options.jobDurationMs ?? 2500;
   const limits = mockMeta().limits;
@@ -77,7 +71,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   let suggestionSequence = 100;
   let postSequence = 600;
   const iso = (ms: number) => new Date(ms).toISOString();
-  const settings = createSettingsStore();
+  const settings = createSettingsStore({ now, firstRun: options.firstRun });
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
 
@@ -309,7 +303,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const at = iso(now());
     if (post.platform === "website") {
       const path = `${post.language === "ar" ? "/ar" : ""}/${post.slug ?? post.id}/`;
-      return { target: "wordpress", url: `https://fakhernco.com${path}`, externalId: String(9000 + n), at };
+      return { target: settings.websiteType() ?? "wordpress", url: `https://fakhernco.com${path}`, externalId: String(9000 + n), at };
     }
     const share = `urn:li:share:${7000 + n}`;
     return { target: post.platform, url: `https://www.linkedin.com/feed/update/${share}`, externalId: share, at };
@@ -328,7 +322,12 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const blocked = approvalMode(post.findings) === "blocked";
     const refusal = post.status === "pending" || blocked ? approvalRefusal(post, undefined) : missingPhoto(post);
     if (refusal) return refusal;
-    if (post.platform === "instagram") return fail(422, "not_connected", "Instagram isn't connected. An admin can connect it in Settings.");
+    // The post's connection must be set up and working (spec v1.1 §9 not_connected); details say which one (mock-only name).
+    const connection = settings.connectionStatus(post.platform);
+    if (connection === "missing" || connection === "error") {
+      const name = post.platform === "website" ? "The website" : post.platform === "linkedin" ? "LinkedIn" : post.platform === "instagram" ? "Instagram" : post.platform;
+      return fail(422, "not_connected", `${name} isn't connected. An admin can connect it in Settings.`, { details: { connection: post.platform } });
+    }
     if (failNextPublish.delete(id)) {
       post.status = "failed";
       post.error = "WordPress refused the request: 503 Service Unavailable.";
@@ -765,7 +764,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     });
   }
 
-  const categories = () => ok(CATEGORIES);
+  const categories = () => ok(MOCK_CATEGORIES);
 
   for (const seeded of seedPosts()) posts.set(seeded.id, seeded);
   for (const seeded of posts.values()) refreshFindings(seeded);

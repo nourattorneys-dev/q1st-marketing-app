@@ -1,8 +1,8 @@
-import type { PublishingSettings, SeoSettings } from "../schemas";
+import type { PublishingSettings, PublishTarget, SeoSettings, Site, SocialConnection, TargetType } from "../schemas";
 import { mockMeta } from "./fixtures";
-import { fail, ok, type MockOutcome, type UploadedFile } from "./outcome";
-import { DAY_CODES, type SlotPlan } from "./schedule";
-import { seedPublishing, seedSeo } from "./settings-fixtures";
+import { fail, ok, type MockFail, type MockOutcome, type UploadedFile } from "./outcome";
+import { DAY_CODES, toDubaiIso, type SlotPlan } from "./schedule";
+import { ADAPTERS, MOCK_CATEGORIES, seedPublishing, seedSeo, seedSocial, seedWebsite } from "./settings-fixtures";
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const minutesOf = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
@@ -25,12 +25,23 @@ const wholeNumber = (value: unknown) => (typeof value === "number" && Number.isI
 const conflict = (what: string) => fail(409, "version_conflict", `Someone saved the ${what} first. Reload to see their version.`);
 const invalid = (fields: Record<string, string>) => fail(400, "invalid_input", "Check the highlighted fields.", { fields });
 
+const object = (value: unknown) => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {});
+const stringMap = (value: unknown) =>
+  Object.fromEntries(Object.entries(object(value)).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""));
+
+/** A test or save request's connection, checked: its type, the settings it sent and the secret it will use. */
+type Resolved = { type: TargetType; settings: Record<string, unknown>; secret: string | null };
+
 /** The site's settings (spec v1.1 §4, §7): each model has a version, and a save from an older version is a conflict. */
-export function createSettingsStore() {
+export function createSettingsStore(options: { now: () => number; firstRun?: boolean }) {
   const meta = mockMeta();
   let seo = seedSeo();
   let publishing = seedPublishing();
   let pictureSequence = 0;
+  let website = seedWebsite(options.firstRun ?? false);
+  const social = new Map(seedSocial(options.firstRun ?? false).map((account) => [account.platform, account]));
+  let searchConsole = "missing";
+  const passedTests = new Set<string>();
 
   const seoView = () => ok(structuredClone(seo));
 
@@ -138,6 +149,136 @@ export function createSettingsStore() {
     gapMinutes: publishing.gapMinutes,
   });
 
+  function websiteView(): MockOutcome<PublishTarget> {
+    const { secret, ...rest } = website;
+    return ok(structuredClone({ ...rest, secretSet: secret !== null }));
+  }
+
+  /** A known type, its required fields (the stored secret counts for the same type) and web addresses where the type says url. */
+  function resolve(input: Record<string, unknown>): Resolved | MockFail {
+    const type = meta.targetTypes.find((candidate) => candidate.type === input.type);
+    if (!type) return invalid({ type: "Choose a website type." });
+    const given = object(input.settings);
+    const secret = text(input.secret) || (website.type === type.type ? website.secret : null);
+    const fields: Record<string, string> = {};
+    for (const field of type.fields) {
+      if (field.kind === "secret") {
+        if (field.required && !secret) fields[field.key] = "Required.";
+        continue;
+      }
+      const value = text(given[field.key]);
+      if (field.required && !value) fields[field.key] = "Required.";
+      else if (value && field.kind === "url" && !isWebAddress(value)) fields[field.key] = ADDRESS;
+    }
+    if (Object.keys(fields).length > 0) return invalid(fields);
+    const settings = { ...given };
+    for (const field of type.fields) if (field.kind === "secret") delete settings[field.key];
+    return { type, settings, secret };
+  }
+
+  /** The connection a test proved: the type, its connection fields and the secret it used. */
+  const fingerprintOf = (resolved: Resolved) =>
+    JSON.stringify([resolved.type.type, resolved.type.fields.filter((field) => field.kind !== "secret").map((field) => text(resolved.settings[field.key])), resolved.secret]);
+
+  /** POST …/settings/website/test with unsaved values. A secret containing "wrong" is refused, as a website would (mock rule). */
+  function testWebsite(input: Record<string, unknown>): MockOutcome<Record<string, unknown>> {
+    const resolved = resolve(input);
+    if ("ok" in resolved) return resolved;
+    if (resolved.secret?.includes("wrong")) {
+      const secretLabel = resolved.type.fields.find((field) => field.kind === "secret")?.label ?? "secret";
+      return ok({ ok: false, error: `${resolved.type.label} refused the connection (401 Unauthorized). Check the ${secretLabel}.` });
+    }
+    passedTests.add(fingerprintOf(resolved));
+    const adapter = ADAPTERS[resolved.type.type] ?? { fields: [], blockTypes: [], suggestedFieldMap: {}, suggestedBlockMap: {} };
+    return ok({ ok: true, categories: structuredClone(MOCK_CATEGORIES), languages: meta.languages, ...structuredClone(adapter) });
+  }
+
+  /** PUT …/settings/website. A changed type, connection field or secret is saved only after a passing test of exactly those values. */
+  function saveWebsite(input: Record<string, unknown>): MockOutcome<PublishTarget> {
+    if (input.version !== website.version) return conflict("website connection");
+    const resolved = resolve(input);
+    if ("ok" in resolved) return resolved;
+    const connectionKeys = resolved.type.fields.filter((field) => field.kind !== "secret").map((field) => field.key);
+    const changed =
+      website.status === "missing" ||
+      resolved.type.type !== website.type ||
+      resolved.secret !== website.secret ||
+      connectionKeys.some((key) => text(resolved.settings[key]) !== text(website.settings[key]));
+    if (changed && !passedTests.has(fingerprintOf(resolved))) {
+      return fail(422, "not_connected", "Test the connection first: a changed connection is saved only after its test passes.");
+    }
+    const body = object(input.body);
+    const format = text(body.format);
+    const mode = text(object(input.arabic).mode);
+    const fields: Record<string, string> = {};
+    if (!resolved.type.bodyFormats.includes(format)) fields["body.format"] = `Choose one of: ${resolved.type.bodyFormats.join(", ")}.`;
+    if (!resolved.type.arabicModes.includes(mode)) fields["arabic.mode"] = `Choose one of: ${resolved.type.arabicModes.join(", ")}.`;
+    if (Object.keys(fields).length > 0) return invalid(fields);
+    website = {
+      type: resolved.type.type,
+      settings: resolved.settings,
+      secret: resolved.secret,
+      fieldMap: stringMap(input.fieldMap),
+      body: format === "blocks" ? { format, blockMap: stringMap(body.blockMap) } : { format },
+      arabic: { mode },
+      languages: meta.languages,
+      status: "ok",
+      lastCheckedAt: changed ? toDubaiIso(options.now()) : website.lastCheckedAt,
+      lastError: null,
+      version: website.version + 1,
+    };
+    return websiteView();
+  }
+
+  /** Spec v1.1 §4 Site.connections, from what's set up here. Search Console is reported only with the performance feature. */
+  function connections(withSearchConsole: boolean): Site["connections"] {
+    return {
+      website: { type: website.type, status: website.status },
+      linkedin: social.get("linkedin")?.status ?? "missing",
+      instagram: social.get("instagram")?.status ?? "missing",
+      searchConsole: withSearchConsole ? searchConsole : null,
+    };
+  }
+
+  /** Whether a post for this platform can go out: the website connection for articles, the account for social posts. */
+  const connectionStatus = (platform: string) => (platform === "website" ? website.status : (social.get(platform)?.status ?? "ok"));
+
+  /** The mock's authorize step completes at once: the browser is sent straight back with ?connected=… (mock rule). */
+  function authorize(returnUrl: string, connected: string): MockOutcome<{ authorizeUrl: string }> {
+    if (!isWebAddress(returnUrl)) return invalid({ returnUrl: "Must be a web address." });
+    const url = new URL(returnUrl);
+    url.searchParams.set("connected", connected);
+    return ok({ authorizeUrl: url.href });
+  }
+
+  function connectSocial(platform: string, returnUrl: string): MockOutcome<{ authorizeUrl: string }> {
+    if (!social.has(platform)) return fail(404, "not_found", `No social platform called ${platform}.`);
+    const result = authorize(returnUrl, platform);
+    if (result.ok) {
+      social.set(platform, { platform, accountName: "Fakher & Co", status: "ok", expiresAt: toDubaiIso(options.now() + 60 * 86_400_000), lastError: null });
+    }
+    return result;
+  }
+
+  function disconnectSocial(platform: string): MockOutcome<{ disconnected: true }> {
+    if (!social.has(platform)) return fail(404, "not_found", `No social platform called ${platform}.`);
+    social.set(platform, { platform, accountName: null, status: "missing", expiresAt: null, lastError: null });
+    return ok({ disconnected: true as const });
+  }
+
+  function connectSearchConsole(returnUrl: string): MockOutcome<{ authorizeUrl: string }> {
+    const result = authorize(returnUrl, "searchConsole");
+    if (result.ok) searchConsole = "ok";
+    return result;
+  }
+
+  function disconnectSearchConsole(): MockOutcome<{ disconnected: true }> {
+    searchConsole = "missing";
+    return ok({ disconnected: true as const });
+  }
+
+  const socialList = (): MockOutcome<SocialConnection[]> => ok(structuredClone([...social.values()]));
+
   return {
     seo: seoView,
     saveSeo,
@@ -148,6 +289,17 @@ export function createSettingsStore() {
     savePublishing,
     slotPlan,
     autoPublish: () => publishing.autoPublish,
+    website: websiteView,
+    testWebsite,
+    saveWebsite,
+    websiteType: () => website.type,
+    connections,
+    connectionStatus,
+    socialList,
+    connectSocial,
+    disconnectSocial,
+    connectSearchConsole,
+    disconnectSearchConsole,
   };
 }
 

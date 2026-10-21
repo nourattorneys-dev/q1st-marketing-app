@@ -140,3 +140,100 @@ describe("settings over HTTP (mock server)", () => {
     expect(await engine.removeSeoPicture(key(5))).toEqual({ removed: true });
   });
 });
+const WORDPRESS = {
+  type: "wordpress",
+  settings: { url: "https://fakhernco.com", username: "articles-ai", postType: "post" },
+  fieldMap: { title: "title" },
+  body: { format: "html" },
+  arabic: { mode: "translatepress" },
+};
+const STRAPI = {
+  type: "strapi",
+  settings: { url: "https://cms.fakhernco.com", collection: "posts" },
+  secret: "strapi-api-token",
+  fieldMap: {},
+  body: { format: "blocks", blockMap: {} },
+  arabic: { mode: "locale" },
+};
+
+describe("website connection (spec v1.1 §4 PublishTarget, §7, §10)", () => {
+  it("never returns the secret, only whether one is stored (Review Focus 3)", () => {
+    const website = data(store.settings.website());
+    expect(website).toMatchObject({ type: "wordpress", secretSet: true, status: "ok", version: 1 });
+    expect(JSON.stringify(website)).not.toContain("seeded-application-password");
+  });
+
+  it("a wrong application password fails the test with its message, and the changed connection is saved only after a test passes (Review Focus 1)", () => {
+    expect(data(store.settings.testWebsite({ ...WORDPRESS, secret: "wrong-password" }))).toEqual({ ok: false, error: expect.stringContaining("401 Unauthorized") });
+    expect(store.settings.saveWebsite({ ...WORDPRESS, secret: "wrong-password", version: 1 })).toMatchObject({ ok: false, status: 422, code: "not_connected" });
+    expect(data(store.settings.testWebsite({ ...WORDPRESS, secret: "new-password" }))).toMatchObject({ ok: true, suggestedFieldMap: { metaTitle: "yoast.title" } });
+    expect(data(store.settings.saveWebsite({ ...WORDPRESS, secret: "new-password", version: 1 }))).toMatchObject({ status: "ok", secretSet: true, version: 2 });
+  });
+
+  it("saves a change to the field map, the format or the Arabic mode without a new test", () => {
+    expect(data(store.settings.saveWebsite({ ...WORDPRESS, fieldMap: { title: "title", slug: "slug" }, body: { format: "boldbuilder" }, version: 1 }))).toMatchObject({
+      fieldMap: { title: "title", slug: "slug" },
+      body: { format: "boldbuilder" },
+      version: 2,
+    });
+  });
+
+  it("tests with the stored secret when none is typed, but another type needs its own (Review Focus 3)", () => {
+    expect(data(store.settings.testWebsite(WORDPRESS))).toMatchObject({ ok: true });
+    expect(store.settings.testWebsite({ ...STRAPI, secret: undefined })).toMatchObject({ ok: false, status: 400, fields: { secret: "Required." } });
+  });
+
+  it("names missing fields, addresses that aren't web addresses, and a format the type doesn't offer", () => {
+    expect(store.settings.testWebsite({ ...WORDPRESS, settings: { url: "fakhernco", username: "" } })).toMatchObject({
+      ok: false,
+      fields: { url: expect.any(String), username: "Required." },
+    });
+    expect(store.settings.saveWebsite({ ...WORDPRESS, body: { format: "blocks" }, version: 1 })).toMatchObject({ ok: false, fields: { "body.format": expect.any(String) } });
+    expect(store.settings.saveWebsite({ ...WORDPRESS, version: 0 })).toMatchObject({ ok: false, status: 409, code: "version_conflict" });
+  });
+
+  it("switching to Strapi: the test suggests both maps; published posts keep WordPress and new ones go to Strapi (Review Focus 2)", () => {
+    expect(data(store.settings.testWebsite(STRAPI))).toMatchObject({
+      ok: true,
+      blockTypes: expect.arrayContaining(["blocks.faq"]),
+      suggestedBlockMap: { heading: "blocks.heading", table: "blocks.data-table" },
+      suggestedFieldMap: { metaTitle: "seo.metaTitle" },
+    });
+    expect(data(store.settings.saveWebsite({ ...STRAPI, version: 1 }))).toMatchObject({ type: "strapi", body: { format: "blocks" }, arabic: { mode: "locale" } });
+    expect(data(store.publish("p_101", ME)).published?.target).toBe("strapi");
+    expect(data(store.getPost("p_301")).published?.target).toBe("wordpress");
+  });
+});
+
+describe("first run, connections and social accounts (spec v1.1 §6, §7)", () => {
+  it("a first-run site has no website or social connection, and publishing is refused with not_connected", () => {
+    const fresh = createMockStore({ now: () => t, firstRun: true });
+    expect(data(fresh.settings.website())).toMatchObject({ type: null, status: "missing", secretSet: false });
+    expect(fresh.settings.connections(false)).toEqual({ website: { type: null, status: "missing" }, linkedin: "missing", instagram: "missing", searchConsole: null });
+    expect(fresh.publish("p_101", ME)).toMatchObject({ ok: false, status: 422, code: "not_connected", details: { connection: "website" } });
+  });
+
+  it("connects a social account through an address that comes back to the portal, then disconnects it", () => {
+    const back = "http://localhost:3100/en/settings/social";
+    expect(data(store.settings.connectSocial("instagram", back))).toEqual({ authorizeUrl: `${back}?connected=instagram` });
+    expect(store.settings.connections(false).instagram).toBe("ok");
+    expect(data(store.settings.socialList()).find((account) => account.platform === "instagram")).toMatchObject({ status: "ok", accountName: "Fakher & Co" });
+    expect(data(store.settings.disconnectSocial("instagram"))).toEqual({ disconnected: true });
+    expect(store.settings.connections(false).instagram).toBe("missing");
+  });
+
+  it("refuses an unknown platform and a return address that isn't a web address", () => {
+    expect(store.settings.connectSocial("tiktok", "http://localhost:3100/x")).toMatchObject({ ok: false, status: 404 });
+    expect(store.settings.connectSocial("linkedin", "javascript:alert(1)")).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("over HTTP, the performance scenario lists the feature and offers Search Console; the normal one does neither", async () => {
+    const performance = httpEngine("performance");
+    expect((await performance.meta()).features).toEqual(["performance"]);
+    expect((await performance.siteConnections()).connections.searchConsole).toBe("missing");
+    expect((await performance.connectSearchConsole("http://localhost:3100/en/settings/social")).authorizeUrl).toContain("connected=searchConsole");
+    const normal = httpEngine();
+    expect((await normal.siteConnections()).connections.searchConsole).toBeNull();
+    await expect(normal.connectSearchConsole("http://localhost:3100/en/settings/social")).rejects.toMatchObject({ code: "not_found" });
+  });
+});

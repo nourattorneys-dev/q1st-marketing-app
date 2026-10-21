@@ -24,7 +24,7 @@ export const getEngine = cache(async () => {
       baseUrl: env.engineBaseUrl,
       apiKey: env.engineApiKey,
       scenario: isMockScenario(scenario) ? scenario : "normal",
-      store: mockStoreFor(jar.get(MOCK_STORE_COOKIE)?.value),
+      store: mockStoreFor(jar.get(MOCK_STORE_COOKIE)?.value, { firstRun: scenario === "firstrun" }),
     });
   } else {
     fetchImpl = (input, init) => fetch(input, init);
