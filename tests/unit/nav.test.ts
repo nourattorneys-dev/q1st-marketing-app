@@ -26,4 +26,9 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).toContain("siteHealth");
     expect(NAV_ITEMS.find((item) => item.key === "siteHealth")).toEqual({ key: "siteHealth", href: "/site-health", permission: "siteHealth.view" });
   });
+
+  it("shows Plan & usage to admins only", () => {
+    expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("plan");
+    expect(NAV_ITEMS.find((item) => item.key === "plan")).toEqual({ key: "plan", href: "/plan", permission: "plan.manage" });
+  });
 });

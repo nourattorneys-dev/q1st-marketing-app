@@ -13,7 +13,8 @@
       "keywords": "Keywords",
       "ideas": "Topic ideas",
       "settings": "Settings",
-      "siteHealth": "Site health"
+      "siteHealth": "Site health",
+      "plan": "Plan & usage"
     },
     "role": {
       "admin": "Admin",
@@ -638,5 +639,29 @@
     "dismiss": "Dismiss",
     "empty": "Nothing here.",
     "failed": "Not done:"
+  },
+  "Plan": {
+    "title": "Plan & usage",
+    "period": "{from} – {to}",
+    "usage": {
+      "title": "This site's usage",
+      "hint": "Per month, {from} to {to}.",
+      "bar": "{month}: {value}"
+    },
+    "results": {
+      "title": "This site's results",
+      "published": "articles published",
+      "keywordsCovered": "keywords covered",
+      "liveUrls": "See the live URLs in History"
+    },
+    "upgrade": {
+      "title": "Request an upgrade",
+      "hint": "Quantum1st sets the limits. Tell them what you need.",
+      "metric": "Limit",
+      "anyMetric": "Not one in particular",
+      "note": "Note (optional)",
+      "submit": "Request upgrade",
+      "requested": "Upgrade requested. Quantum1st will be in touch."
+    }
   }
 }

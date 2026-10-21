@@ -24,3 +24,30 @@ export function formatDateTime(iso: string, opts: { timeZone: string; locale: Ap
     throw error;
   }
 }
+
+/** A date without the time (a plan period's start or end), in the site's timezone. */
+export function formatDate(iso: string, opts: { timeZone: string; locale: AppLocale }): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const format = (timeZone: string) =>
+    new Intl.DateTimeFormat(INTL_LOCALE[opts.locale], { day: "numeric", month: "short", year: "numeric", timeZone, numberingSystem: "latn" }).format(date);
+  try {
+    return format(opts.timeZone);
+  } catch (error) {
+    if (error instanceof RangeError) return `${format("UTC")} UTC`;
+    throw error;
+  }
+}
+
+/** A YYYY-MM month as a short name ("Oct 2026"; "Oct" without the year), with Latin digits; unchanged if it can't be read. */
+export function formatMonth(month: string, locale: AppLocale, options: { year?: boolean } = {}): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+  if (!match) return month;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    month: "short",
+    ...(options.year === false ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+    numberingSystem: "latn",
+  }).format(date);
+}

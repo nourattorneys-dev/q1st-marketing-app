@@ -159,3 +159,11 @@ describe("site-health actions (design §5)", () => {
     expect(engine.prepareFixes).not.toHaveBeenCalled();
   });
 });
+
+describe("requesting an upgrade from the Plan page", () => {
+  it("sends the chosen limit and the note", async () => {
+    engine.requestUpgrade.mockResolvedValue({ requested: true });
+    await requestUpgradeAction({ locale: "en", metric: "articles", note: "Twenty more articles a month", idempotencyKey: key });
+    expect(engine.requestUpgrade).toHaveBeenCalledWith("articles", "Twenty more articles a month", expect.objectContaining({ idempotencyKey: key }));
+  });
+});

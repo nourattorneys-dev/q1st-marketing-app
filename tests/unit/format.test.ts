@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { asAppLocale, directionOf, isAppLocale } from "@/i18n/locales";
-import { formatDateTime } from "@/lib/format/datetime";
+import { formatDate, formatDateTime, formatMonth } from "@/lib/format/datetime";
 import { formatNumber } from "@/lib/format/number";
 
 // ICU puts a narrow no-break space before AM/PM; compare with plain spaces.
@@ -63,5 +63,21 @@ describe("formatNumber", () => {
     const out = formatNumber(812000, "ar");
     expect(out).toMatch(/^812\D000$/u);
     expect(out).not.toMatch(/[٠-٩]/u);
+  });
+});
+
+describe("formatDate and formatMonth (spec v1.1 §6 Plan & usage)", () => {
+  it("shows a plan period's dates in the site's timezone, without the time", () => {
+    expect(formatDate("2026-10-31T23:59:59+04:00", { timeZone: "Asia/Dubai", locale: "en" })).toBe("Oct 31, 2026");
+    expect(formatDate("not a date", { timeZone: "Asia/Dubai", locale: "en" })).toBe("not a date");
+  });
+
+  it("names a YYYY-MM month in the interface language with Latin digits (Review Focus 5)", () => {
+    expect([formatMonth("2026-10", "en"), formatMonth("2026-10", "en", { year: false })]).toEqual(["Oct 2026", "Oct"]);
+    const arabic = formatMonth("2026-10", "ar");
+    expect(arabic).toContain("2026");
+    expect(arabic).not.toMatch(/[٠-٩]/);
+    expect(arabic).not.toBe("Oct 2026");
+    expect(formatMonth("2026-13", "en")).toBe("2026-13");
   });
 });
