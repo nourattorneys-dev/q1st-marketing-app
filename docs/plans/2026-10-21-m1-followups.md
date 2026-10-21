@@ -8,7 +8,7 @@ Carry these into the M2–M4 plans.
 - limit 0 + used 0 shows "ok" with empty bar; in hard mode it's effectively exhausted.
 - nextSlotView invents "queue_empty" when engine sends neither nextSlotAt nor waitingReason.
 - a failed site read hides a valid next slot (could fall back to UTC).
-- no error.tsx — non-engine throws (e.g. Clerk outage) show Next's default error page.
+- no error.tsx — non-engine throws (e.g. Clerk outage) show Next's default error page. — handled in M2b
 - unmapped engine codes (not_found, engine_busy) show the engine's English message in the Arabic UI. — handled in M2a (engine_busy and not_found translated)
 - NextIntlClientProvider ships every message on every page; pass only client-needed namespaces.
 - after test-login sign-out, hidden (Activity) dashboard copies stay in the DOM until next navigation; recheck with Clerk sign-out in M4.

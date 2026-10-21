@@ -4,15 +4,15 @@ Carry these into the M2b–M4 plans.
 
 ## Deferred minor findings
 
-- Idempotency key reuse ignores input changes: after a `network_error`, a retry with an edited note or form reuses the key and gets `idempotency_mismatch`; a retried lock heartbeat replays the old lock instead of renewing it. Fingerprint the input; use a fresh key per heartbeat.
-- Lock lifetime: an idle open tab renews its lock indefinitely (spec: "while editing"); closing a tab doesn't release it (no `pagehide` handler), so it waits for the 15-minute expiry; Approve/Reject/Changes/Delete stay enabled while someone else holds the lock, and a `locked` reply from them shows the raw message instead of the banner with Take over.
+- Idempotency key reuse ignores input changes: after a `network_error`, a retry with an edited note or form reuses the key and gets `idempotency_mismatch`; a retried lock heartbeat replays the old lock instead of renewing it. Fingerprint the input; use a fresh key per heartbeat. — handled in M2b
+- Lock lifetime: an idle open tab renews its lock indefinitely (spec: "while editing"); closing a tab doesn't release it (no `pagehide` handler), so it waits for the 15-minute expiry; Approve/Reject/Changes/Delete stay enabled while someone else holds the lock, and a `locked` reply from them shows the raw message instead of the banner with Take over. (actions now wait while someone else holds the lock, and a locked reply shows the banner — M2b)
 - No unsaved-changes guard on Back, the language switch, Ask for changes or Reject.
-- The review queue shows only the first page (25 posts); later posts can't be reached.
-- One malformed post blanks the whole queue (`PostsSchema` is a plain array), against M1's "one bad field shouldn't blank the app".
+- The review queue shows only the first page (25 posts); later posts can't be reached. — handled in M2b
+- One malformed post blanks the whole queue (`PostsSchema` is a plain array), against M1's "one bad field shouldn't blank the app". — handled in M2b
 - Job/status polling and lock heartbeats use server actions, which Next runs one at a time per client; design §8 names `/api/jobs/[id]`. Move before M3/M4 add more polling.
 - Mock mode: the `mock_store` registry grows with every cookie value (anyone can set it); on Vercel previews the state lives per server instance and resets on cold starts. Document in the README or cap the registry.
-- i18n: "1 warnings" in English; Arabic dual and 11+ plurals; `post-card.tsx` passes numbers where the rest passes `String(...)`; the dialog's screen-reader "Close" is English; `JobProgress` shows the engine's English `error.message`; the server's `INVALID` message is English only.
-- `useEngineAction` itself has no unit test (only `shouldReuseKey`).
+- i18n: "1 warnings" in English; Arabic dual and 11+ plurals; `post-card.tsx` passes numbers where the rest passes `String(...)`; the dialog's screen-reader "Close" is English; `JobProgress` shows the engine's English `error.message`; the server's `INVALID` message is English only. (finding counts now use plural forms — M2b)
+- `useEngineAction` itself has no unit test (only `shouldReuseKey`). — handled in M2b
 
 ## Rulings made during M2a
 
@@ -26,3 +26,11 @@ Carry these into the M2b–M4 plans.
 - Ids that go into engine URLs must match `^[A-Za-z0-9_-]{1,64}$` (actions and the engine API), so `..` can't reach site-level endpoints.
 - Seed p_203 has an FAQ `<details>` block, so its body is read-only on the preview by design.
 - Not done, by decision: no link/table/quote tools in the toolbar yet; approve sends no version (spec §7 defines none); in the Arabic interface the side-by-side view puts English on the start (right) side.
+
+## Questions for Quantum1st (from M2b)
+
+- Action names in `post.actions`: we use `publishNow` (spec example), plus `hold`, `resume` and `retry`. Please confirm or send yours. Do `GET …/posts` list items carry `actions`?
+- Photo text: we send `image: {alt, credit}` in `PUT …/posts/{id}` to change the alt text and credit. Is that right? Do the image endpoints (`pick`, upload, `DELETE`) bump the post's `version`?
+- Photo uploads: Vercel caps a request body at 4.5 MB, and `/meta.limits.photoMaxBytes` is 5 MB. Could the engine offer a direct-upload URL?
+- Export: please confirm `Content-Disposition` carries the file name (UTF-8 `filename*` for Arabic slugs).
+- The neutral form's FAQ markup (from M2a), so the editor can keep FAQ blocks editable.

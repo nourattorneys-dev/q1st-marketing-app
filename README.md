@@ -54,3 +54,22 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 - **The side-by-side view aligns sections** with a longest-common-subsequence match on block tags, so one missing paragraph shows as one gap.
 - **The editor only counts real edits.** TipTap rewrites engine HTML into its own form (`<li>text</li>` becomes `<li><p>text</p></li>`), so "unsaved changes" is measured against the editor's form of what it loaded. StarterKit's trailing node is off because it adds an empty paragraph on the first click.
 - **In mock mode, engine reads opt out of prerendering** (`await connection()` in `getEngine`), as a real network call would. Otherwise the mock store's clock trips Next's prerender check.
+
+## Decisions in M2b (photos, publishing, Scheduled, History)
+
+- **The mock owns the publishing queue.**
+  - Slots are 10:00 and 13:00 Dubai time, Sunday to Thursday, from 22 Oct 2026, so times in tests never move.
+  - `mock_scenario=manual` turns auto-publish off; `crash` shows the error page; `drift` adds a malformed post to the lists.
+- **Buttons follow the engine's `post.actions`:** `publishNow`, `hold`, `resume`, `retry` (our names where the spec gives none; checked at M5).
+- **A list never goes blank because of one bad item.** Items the engine sends in an unknown shape are skipped, with a note saying how many.
+- **Idempotency keys:**
+  - A key is reused only for the same request after no answer.
+  - A Retry after a refusal is a new attempt, with a new key.
+  - Lock renewals always use a fresh key.
+- **Photos:**
+  - The engine checks the file type (its message is shown). The browser checks the size against `/meta.limits.photoMaxBytes`.
+  - Uploads pass through a server action limited to 6 MB. Note: Vercel caps a request at 4.5 MB.
+  - The alt text and credit are saved with Save.
+  - After a photo change, the editor reloads the post. It takes the new version only if nothing else changed on the server, so a save by someone else still shows as a conflict.
+- **Export** goes through a server action and is saved in the browser, so the engine key never leaves the server.
+- **Errors:** a 401 shows one site-wide banner; an unexpected error shows a translated error page with Try again.
