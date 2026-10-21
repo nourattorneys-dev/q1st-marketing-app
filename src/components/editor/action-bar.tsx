@@ -138,7 +138,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           <ConfirmDialog
             testId="changes"
             triggerLabel={t("changes")}
-            disabled={locked}
+            disabled={dirty || locked}
             title={t("changes")}
             description={t("changesBody")}
             confirmLabel={t("send")}
@@ -151,7 +151,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           <ConfirmDialog
             testId="reject"
             triggerLabel={t("reject")}
-            disabled={locked}
+            disabled={dirty || locked}
             title={t("rejectTitle")}
             description={t("rejectBody")}
             confirmLabel={t("reject")}
@@ -189,8 +189,10 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           {t("publishNeedsApproval")}
         </p>
       )}
-      {(allowed.has("approve") || allowed.has("publishNow")) && mode !== "blocked" && dirty && (
-        <p className="text-sm text-muted-foreground">{t("saveFirst")}</p>
+      {dirty && ["approve", "publishNow", "changes", "reject"].some((action) => allowed.has(action)) && (
+        <p data-testid="save-first" className="text-sm text-muted-foreground">
+          {t("saveFirst")}
+        </p>
       )}
       {error && <ActionError error={error} canManageSettings={canManageSettings} />}
     </div>

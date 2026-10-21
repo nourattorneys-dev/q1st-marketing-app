@@ -147,3 +147,44 @@ test("a body with content the editor can't keep stays read-only; other fields st
   await expect(page.getByTestId("editor-body")).toHaveAttribute("contenteditable", "false");
   await expect(page.getByTestId("field-title")).toBeEnabled();
 });
+
+test("with unsaved edits, Ask for changes and Reject wait for a save, and Back asks first (Review Focus 1)", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.waitForLoadState("networkidle");
+  await page.getByTestId("field-title").fill("A title I haven't saved");
+  await expect(page.getByTestId("changes")).toBeDisabled();
+  await expect(page.getByTestId("reject")).toBeDisabled();
+  await expect(page.getByTestId("save-first")).toBeVisible();
+
+  let asked = "";
+  page.once("dialog", (dialog) => {
+    asked = dialog.message();
+    void dialog.dismiss();
+  });
+  await page.getByTestId("editor-back").click();
+  await expect(page).toHaveURL(/\/en\/review\/p_201$/);
+  expect(asked).toBe("Leave without saving? Your changes to this post will be lost.");
+  await expect(page.getByTestId("field-title")).toHaveValue("A title I haven't saved");
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByTestId("editor-back").click();
+  await expect(page).toHaveURL(/\/en\/review$/);
+});
+
+test("closing the tab with unsaved edits asks first (Review Focus 1)", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.waitForLoadState("networkidle");
+  await page.getByTestId("field-title").fill("Another unsaved title");
+  const dialog = page.waitForEvent("dialog");
+  await page.close({ runBeforeUnload: true });
+  const asked = await dialog;
+  expect(asked.type()).toBe("beforeunload");
+  await asked.accept();
+});
+
+test("with nothing unsaved, Back leaves without asking", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.waitForLoadState("networkidle");
+  await page.getByTestId("editor-back").click();
+  await expect(page).toHaveURL(/\/en\/review$/);
+});

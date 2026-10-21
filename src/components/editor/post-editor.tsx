@@ -62,6 +62,14 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
   const canEdit = current.actions.includes("edit");
   const editable = canEdit && lockedBy === null;
   const dirty = unsavedFields(draft).length > 0;
+
+  // Closing the tab, reloading or switching language (a full page load) with unsaved edits asks first (M2a follow-up).
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   const dir = current.language === "ar" ? "rtl" : "ltr";
   const errors = fieldErrors(error);
 
@@ -175,7 +183,15 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/review" className="text-sm text-muted-foreground hover:underline">
+        <Link
+          href="/review"
+          data-testid="editor-back"
+          className="text-sm text-muted-foreground hover:underline"
+          onClick={(event) => {
+            // In-app navigation doesn't fire beforeunload: ask here instead.
+            if (dirty && !window.confirm(t("leaveConfirm"))) event.preventDefault();
+          }}
+        >
           {t("back")}
         </Link>
         <Badge variant="secondary" data-testid="post-status">

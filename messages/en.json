@@ -191,7 +191,7 @@
     "reviewNote": "Requested change: {note}",
     "approve": "Approve",
     "approveBlockedHint": "A critical check can't be overridden here. Fix it first (see Checks).",
-    "saveFirst": "Save your changes before approving.",
+    "saveFirst": "Save your changes first: approving, publishing, asking for changes and rejecting use the saved version.",
     "overrideTitle": "Approve with an override",
     "overrideBody": "This post has critical findings. Approving it anyway needs a reason, which is recorded in History.",
     "overrideReason": "Reason",
@@ -258,7 +258,8 @@
       "title": "Preview on {platform}",
       "empty": "Nothing to post yet.",
       "count": "{count, plural, one {{n} character} other {{n} characters}}"
-    }
+    },
+    "leaveConfirm": "Leave without saving? Your changes to this post will be lost."
   },
   "Scheduled": {
     "title": "Scheduled",
