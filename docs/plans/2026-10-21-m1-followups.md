@@ -5,7 +5,7 @@ Carry these into the M2–M4 plans.
 ## Deferred minor findings
 
 - reads don't retry non-JSON 5xx gateway pages (engine_unavailable thrown immediately).
-- limit 0 + used 0 shows "ok" with empty bar; in hard mode it's effectively exhausted.
+- limit 0 + used 0 shows "ok" with empty bar; in hard mode it's effectively exhausted. — handled in M4a
 - nextSlotView invents "queue_empty" when engine sends neither nextSlotAt nor waitingReason.
 - a failed site read hides a valid next slot (could fall back to UTC).
 - no error.tsx — non-engine throws (e.g. Clerk outage) show Next's default error page. — handled in M2b
@@ -29,7 +29,7 @@ Carry these into the M2–M4 plans.
 - Final: Ruling: reviewer challenged Task 8's ruling premise ("next build has no cache-skip flag") — correct, experimental.turbopackFileSystemCacheForBuild exists (on by default since 16.3). Repro attempt (edit a token, incremental build) did NOT reproduce stale CSS; keep Next's default build cache for real builds and keep the clean e2e build as cheap insurance; README notes the flag if it recurs — cost if wrong: a stale-CSS build could ship from a restored cache (would be caught visually; switch the flag off then).
 - Final: Ruling: declined-to-judge "new connection keys beyond the four are dropped by Zod" — spec §4 calls shapes exact, so a new connection is a contract change handled when it's added; "never hidden" applies to new values of known fields — cost if wrong: a new connection's warning wouldn't show until the UI adds it.
 - Final: Ruling: declined-to-judge "401 shows four section notices, not spec §9's site-wide banner" — M1 plan pins per-section notices; the site-wide banner belongs with the M2 layout work — cost if wrong: repeated message on a revoked key until M2.
-- Final: Ruling: declined-to-judge "dashboard 'this site's share of usage' not shown" — needs /account/usage, planned for M4 Plan & usage page — cost if wrong: dashboard lacks per-site share until M4.
+- Final: Ruling: declined-to-judge "dashboard 'this site's share of usage' not shown" — needs /account/usage, planned for M4 Plan & usage page — cost if wrong: dashboard lacks per-site share until M4. — handled in M4a (dashboard and /plan show this site's share)
 - Final: Ruling: declined-to-judge "connection warnings don't link to Settings / no first-run redirect" — Settings pages arrive in M3; add links and redirect there — cost if wrong: admins read the text but have no link until M3. — handled in M3b (warnings link to Settings; first-run redirect)
 - Final: Ruling: declined-to-judge "sign-in and no-access pages lack language/theme toggles" — UX gap; add the language switch to those pages in M2 shell work — cost if wrong: Arabic users must edit the URL to /ar/sign-in until then.
 - Final: Ruling: declined-to-judge "NEXT_LOCALE is a session cookie" — next-intl v4 default; acceptable since the URL carries the language — cost if wrong: language resets to English after browser restart.

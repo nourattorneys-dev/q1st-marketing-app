@@ -18,7 +18,7 @@ Carry these into the M4 and M5 plans.
   - Connect buttons stay disabled when the page comes back from the back/forward cache.
   - The AI proposal replaces focus keywords typed while the job ran.
   - `readProposal` refuses `cta: null`.
-  - The SEO proposal uses `ActionError`, so a 429 has no upgrade path. This is the known M3a item.
+  - The SEO proposal uses `ActionError`, so a 429 has no upgrade path. This is the known M3a item. — handled in M4a
   - The `defaultLang`, body format and Arabic mode selects show their first option when the saved value isn't in the list. The map editor already adds the saved value as an option.
 
 ## Rulings made during M3b

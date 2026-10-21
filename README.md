@@ -111,3 +111,20 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 - **Mock scenarios:**
   - `firstrun`: a fresh mock store starts with nothing connected. Use it with a new `mock_store` cookie.
   - `performance`: turns on that feature and Search Console.
+
+## Decisions in M4a (site health, plan & usage, social posts)
+
+- **Site health:**
+  - Findings are in three tabs: To do (open and prepared), Applied and Dismissed.
+  - Scan site and Prepare fixes are jobs, followed through `/api/jobs/[id]`.
+  - Both roles can scan, prepare and dismiss. Only the Admin can apply a fix, because it changes the live website; it asks for confirmation first.
+- **Plan & usage** (Admin):
+  - The plan and its period, and the quota bars from `/account/plan`, with this site's share this month.
+  - A 6-month chart of this site's usage for every metric the plan lists. The months end with the plan period's month, never the browser's clock.
+  - This site's results, and Request upgrade with an optional note.
+- **Quotas:** the dashboard shows this site's share too. A limit of 0 counts as reached. A 429 from an AI proposal or a scan shows the quota message, with Request upgrade (Admin) or "Ask your admin".
+- **Social posts:**
+  - Hashtags are chips. Typed words get a `#`, punctuation is dropped, and each tag is kept once.
+  - A preview shows the caption (text, then hashtags) with a character count.
+  - An Instagram post can't be approved or published until it has a photo.
+- **Mock scenario `quota`:** also refuses scans (`siteScans`) and AI proposals (`aiTokens`).

@@ -11,9 +11,9 @@ Carry these into the M3b–M5 plans.
   Either way the tracker shows "Still waiting for the server…" forever. Treat only `network_error`, `engine_unavailable`, `engine_busy` and 5xx as transient.
   - Related: `job.error` is shown only when it's a string. An `{code, message}` object falls back to "The job failed.", but spec §2 says to show the engine's message.
 - **Polls can overlap** (`use-job.ts`). A slow engine makes one poll take up to about 31 s, while a new one starts every 3 s. Skip a tick while a request is still running.
-- **AI keyword proposals show errors with `ActionError`, not `ActionFailure`.** A 429 there (for example on `aiTokens`) shows the raw message with no upgrade path.
+- **AI keyword proposals show errors with `ActionError`, not `ActionFailure`.** A 429 there (for example on `aiTokens`) shows the raw message with no upgrade path. — handled in M4a
 - **A per-item `quota_exceeded` inside a bulk result** shows as "title: message" without the upgrade path. Bulk Draft under quota also has no e2e test.
-- **A 429 without `details.metric`** reads "Monthly limit reached for ." Fall back to a sentence without the metric.
+- **A 429 without `details.metric`** reads "Monthly limit reached for ." Fall back to a sentence without the metric. — handled in M4a
 - **Limits give an English-only "Invalid request.":** over 50 phrases, a phrase over 100 characters, or over 20 request keywords. There's no limit hint or field message.
 - **Stale "Not done:" lines on Keywords:** the `failures` list isn't cleared on an error or a later action.
 - **`jobAction` in `review/actions.ts` is dead code** but still a public server action. Remove it and its test.
