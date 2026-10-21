@@ -1,9 +1,17 @@
 {
-  "Meta": { "title": "Articles AI" },
+  "Meta": {
+    "title": "Articles AI"
+  },
   "Shell": {
     "brand": "Articles AI",
-    "nav": { "label": "Main", "dashboard": "Dashboard" },
-    "role": { "admin": "Admin", "reviewer": "Reviewer" },
+    "nav": {
+      "label": "Main",
+      "dashboard": "Dashboard"
+    },
+    "role": {
+      "admin": "Admin",
+      "reviewer": "Reviewer"
+    },
     "signOut": "Sign out",
     "language": "العربية",
     "themeDark": "Dark mode",
@@ -42,8 +50,17 @@
     "connections": {
       "title": "Connections",
       "allGood": "All connections are working.",
-      "names": { "website": "Website", "linkedin": "LinkedIn", "instagram": "Instagram", "searchConsole": "Search Console" },
-      "statuses": { "expiring": "expiring soon", "error": "not working", "missing": "not connected" },
+      "names": {
+        "website": "Website",
+        "linkedin": "LinkedIn",
+        "instagram": "Instagram",
+        "searchConsole": "Search Console"
+      },
+      "statuses": {
+        "expiring": "expiring soon",
+        "error": "not working",
+        "missing": "not connected"
+      },
       "fixInSettings": "Fix this in Settings.",
       "askAdmin": "Ask your admin to fix this."
     },
@@ -67,6 +84,8 @@
   "Errors": {
     "serviceUnavailable": "Service unavailable, contact Quantum1st.",
     "engineUnreachable": "The content engine can't be reached right now. Try again shortly.",
-    "engineInvalid": "The content engine sent data in an unexpected format. Contact Quantum1st if this continues."
+    "engineInvalid": "The content engine sent data in an unexpected format. Contact Quantum1st if this continues.",
+    "engineBusy": "The content engine is busy. Your request is queued; try again shortly.",
+    "notFound": "This item was removed. Go back to the list."
   }
 }

@@ -1,9 +1,17 @@
 {
-  "Meta": { "title": "Articles AI" },
+  "Meta": {
+    "title": "Articles AI"
+  },
   "Shell": {
     "brand": "Articles AI",
-    "nav": { "label": "القائمة الرئيسية", "dashboard": "لوحة التحكم" },
-    "role": { "admin": "مسؤول", "reviewer": "مراجع" },
+    "nav": {
+      "label": "القائمة الرئيسية",
+      "dashboard": "لوحة التحكم"
+    },
+    "role": {
+      "admin": "مسؤول",
+      "reviewer": "مراجع"
+    },
     "signOut": "تسجيل الخروج",
     "language": "English",
     "themeDark": "الوضع الداكن",
@@ -42,8 +50,17 @@
     "connections": {
       "title": "الاتصالات",
       "allGood": "جميع الاتصالات تعمل.",
-      "names": { "website": "الموقع", "linkedin": "لينكدإن", "instagram": "إنستغرام", "searchConsole": "Search Console" },
-      "statuses": { "expiring": "تنتهي صلاحيته قريباً", "error": "لا يعمل", "missing": "غير متصل" },
+      "names": {
+        "website": "الموقع",
+        "linkedin": "لينكدإن",
+        "instagram": "إنستغرام",
+        "searchConsole": "Search Console"
+      },
+      "statuses": {
+        "expiring": "تنتهي صلاحيته قريباً",
+        "error": "لا يعمل",
+        "missing": "غير متصل"
+      },
       "fixInSettings": "أصلح ذلك من الإعدادات.",
       "askAdmin": "اطلب من المسؤول إصلاح ذلك."
     },
@@ -67,6 +84,8 @@
   "Errors": {
     "serviceUnavailable": "الخدمة غير متاحة، تواصل مع Quantum1st.",
     "engineUnreachable": "تعذّر الوصول إلى محرك المحتوى الآن. حاول مرة أخرى بعد قليل.",
-    "engineInvalid": "أرسل محرك المحتوى بيانات بصيغة غير متوقعة. تواصل مع Quantum1st إذا استمر ذلك."
+    "engineInvalid": "أرسل محرك المحتوى بيانات بصيغة غير متوقعة. تواصل مع Quantum1st إذا استمر ذلك.",
+    "engineBusy": "محرك المحتوى مشغول. طلبك في قائمة الانتظار؛ حاول مرة أخرى بعد قليل.",
+    "notFound": "تمت إزالة هذا العنصر. ارجع إلى القائمة."
   }
 }
