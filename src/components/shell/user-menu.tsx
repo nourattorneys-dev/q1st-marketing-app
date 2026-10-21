@@ -17,6 +17,9 @@ export async function UserMenu({ locale }: { locale: AppLocale }) {
       <Badge variant="secondary" data-testid="user-role">
         {t(`role.${session.role}`)}
       </Badge>
+      <Link href="/notifications" data-testid="user-notifications" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        {t("notifications")}
+      </Link>
       {/* Design §5: two-factor login is recommended for Reviewers; the link is the reminder until it's on. */}
       <Link
         href="/security"

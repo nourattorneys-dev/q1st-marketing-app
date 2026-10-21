@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { deliverEvent, flushEmails, isolateMockStore, newEmails, readOutbox, setUpWebhook, signInWithCookie } from "./helpers";
+import { deliverEvent, flushEmails, isolateMockStore, newEmails, pageInSharedStore, readOutbox, setUpWebhook, signInWithCookie } from "./helpers";
 
 test.beforeEach(async ({ context }) => {
   await isolateMockStore(context);
@@ -37,3 +37,36 @@ test("the cron refuses a call without its secret", async ({ page, context }) => 
   expect((await page.request.get("/api/cron/notifications", { headers: { Authorization: "Bearer wrong" } })).status()).toBe(401);
 });
 
+test("someone who turns email off gets none; turning it back on restores it (Review Focus 5)", async ({ browser }) => {
+  const store = `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const admin = await pageInSharedStore(browser, store, "dev_admin");
+  const reviewer = await pageInSharedStore(browser, store, "dev_reviewer");
+  await setUpWebhook(admin);
+  await flushEmails(admin);
+
+  await reviewer.goto("/en");
+  await reviewer.getByTestId("user-notifications").filter({ visible: true }).click();
+  await expect(reviewer).toHaveURL(/\/en\/notifications$/);
+  await expect(reviewer.getByTestId("email-status")).toHaveAttribute("data-enabled", "true");
+  await reviewer.getByTestId("email-toggle").click();
+  await expect(reviewer.getByTestId("email-status")).toHaveAttribute("data-enabled", "false");
+  try {
+    const before = await readOutbox(admin);
+    await deliverEvent(admin, "post.drafted", { postId: "p_301", status: "pending" });
+    expect(await flushEmails(admin)).toEqual({ batches: 1, emails: 0, failed: 0 });
+    expect(newEmails(before, await readOutbox(admin))).toEqual([]);
+  } finally {
+    // The setting is kept per person in the server's store, shared by every test: put it back.
+    await reviewer.getByTestId("email-toggle").click();
+    await expect(reviewer.getByTestId("email-status")).toHaveAttribute("data-enabled", "true");
+  }
+});
+
+test("the Email notifications page in Arabic, for an Admin", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_admin");
+  await page.goto("/ar/notifications");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("heading", { level: 1, name: "إشعارات البريد" })).toBeVisible();
+  await expect(page.getByTestId("email-status")).toHaveText("الرسائل مفعّلة.");
+  await expect(page.getByTestId("notifications-log-mode")).toBeVisible();
+});

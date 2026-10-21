@@ -27,7 +27,8 @@
     "themeLight": "Light mode",
     "loading": "Loading…",
     "security": "Security",
-    "turnOnTwoFactor": "Turn on two-factor login"
+    "turnOnTwoFactor": "Turn on two-factor login",
+    "notifications": "Email notifications"
   },
   "SignIn": {
     "title": "Sign in",
@@ -771,5 +772,18 @@
     "quotaExceeded": "{metric}: the monthly limit of {limit} is reached",
     "scan": "{count, plural, one {Site scan finished: {n} finding} other {Site scan finished: {n} findings}}",
     "footer": "You get these emails because you can sign in to Articles AI. You can turn them off on the Email notifications page."
+  },
+  "Notifications": {
+    "title": "Email notifications",
+    "cardTitle": "Your emails",
+    "what": {
+      "admin": "As an Admin you get an email when posts fail to publish, a connection breaks or is about to expire, a quota runs low, or a site scan finishes, and about new drafts when there are no Reviewers. Several updates arrive as one email.",
+      "reviewer": "As a Reviewer you get an email when new drafts are ready for review. Several drafts arrive as one email."
+    },
+    "on": "Emails are on.",
+    "off": "Emails are off. You'll still see everything in the dashboard.",
+    "turnOff": "Turn emails off",
+    "turnOn": "Turn emails on",
+    "logMode": "This server doesn't send emails yet (EMAIL_MODE=log)."
   }
 }
