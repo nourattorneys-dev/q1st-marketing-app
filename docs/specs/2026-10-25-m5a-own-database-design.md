@@ -53,9 +53,10 @@ Every copy of the dashboard keeps its small database (design §4) in a MySQL 8 d
 
 | Postgres today | MySQL |
 |---|---|
-| `text` primary or key columns (`id`, `event_id`, `email`, `user_id`) | `varchar(191)` (utf8mb4 index limit; the two-column key in `notification_deliveries` stays under InnoDB's 3072 bytes) |
-| `text` other short columns (`event`, `kind`, `audience`) | `varchar(64)` |
-| `text` long columns (`url`, `secret_cipher`) | `text` |
+| `text` key columns (`id`, `event_id`, `user_id`) | `varchar(191)` (the utf8mb4 index limit) |
+| `text` `email` (part of the `notification_deliveries` key) | `varchar(255)` (the longest valid address is 254; the two-column key stays under InnoDB's 3072 bytes) |
+| `text` internal short columns (`kind`, `audience`) | `varchar(64)` |
+| `text` other columns (`event`, which comes from the engine; `url`; `secret_cipher`) | `text` |
 | `jsonb` | `json` |
 | `timestamp with time zone` | `datetime(3)`, always UTC |
 | `boolean` | `boolean` |
@@ -141,7 +142,9 @@ Any host with MySQL 8 works the same way, set only through the settings file. Th
 - **MySQL 8.0 on the server, 8.4 on this Mac:** the tables and queries use only features both have (JSON, `datetime(3)`, `GET_LOCK`, `INSERT IGNORE`, `ON DUPLICATE KEY UPDATE`). The go-live check runs on the server's 8.0.
 - **Connection limits on shared hosting:** the pool caps at 3, which is well under the usual per-user limit.
 - **Idle connections closed by the server:** keep-alive, and the pool replaces dead connections. A test kills the pool's connections from a second connection (`KILL`), as an idle timeout would, then checks that the next query still succeeds.
-- **`INSERT IGNORE` also hides other errors** (for example data too long for a column): ids are bounded at 191 characters, and an engine id longer than that is refused before the insert with a clear error, not silently cut.
+- **`INSERT IGNORE` also hides other errors** (for example data too long for a column, which it cuts with only a warning):
+  - ids are bounded at 191 characters and emails at 255, and a longer one is refused before the insert with a clear error
+  - the engine's event name is `text`, so it's never cut
 
 ## Done when
 
