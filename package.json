@@ -29,6 +29,7 @@
     "cn": "^0.5.0",
     "drizzle-orm": "0.45.4",
     "lucide-react": "^1.60.0",
+    "mysql2": "3.24.6",
     "next": "16.4.2",
     "next-intl": "4.14.9",
     "radix-ui": "^1.8.1",
