@@ -53,6 +53,11 @@ cp -R .next/standalone/. "$OUT/"
 cp -R .next/static "$OUT/.next/static"
 cp -R public "$OUT/public"
 cp deploy/cpanel/app.cjs "$OUT/app.cjs"
+# The app creates and updates its MySQL tables from these on first use (src/lib/db/mysql.ts). Next's file tracing
+# usually brings them already; copying makes it certain, and the check stops a release that would lack them.
+mkdir -p "$OUT/drizzle"
+cp -R drizzle/. "$OUT/drizzle/"
+[ -f "$OUT/drizzle/meta/_journal.json" ] || { echo "The release has no drizzle/meta/_journal.json." >&2; exit 1; }
 mkdir -p "$OUT/tmp"
 echo "$SHA" > "$OUT/REVISION"
 echo "$AUTH" > "$OUT/AUTH_MODE" # scripts/cpanel-deploy.sh picks the web root's .htaccess from it
