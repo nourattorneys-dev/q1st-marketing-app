@@ -43,6 +43,8 @@ mkdir -p "$OUT/tmp"
 echo "$SHA" > "$OUT/REVISION"
 # The standalone copy brings no .env files; make sure, as the old CMS leaked one.
 find "$OUT" -name ".env*" -delete
+# Next brings sharp for next/image, which the dashboard doesn't use; its macOS binary couldn't load on the server.
+rm -rf "$OUT/node_modules/sharp" "$OUT/node_modules/@img"
 
 # The upload can't carry links, and the server can't load macOS-only native modules.
 if [ -n "$(find "$OUT" -type l | head -1)" ]; then
