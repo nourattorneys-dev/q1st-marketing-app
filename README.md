@@ -78,6 +78,10 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Uploads take about 9 minutes,** because SFTP sends the roughly 2,000 files one at a time. The site keeps serving the previous release until the switch.
 - **Going back:** `scripts/cpanel-deploy.sh <older commit>`. Older releases stay in `~/dashboard-releases`; delete old ones with File Manager.
 - **Log:** `~/dashboard-shared/app.log` (download it over SFTP). Settings live in `~/dashboard-shared/settings.env`, readable only by the account.
+- **Preview before Clerk:** a settings file with `AUTH_MODE=mock` and `ALLOW_TEST_LOGINS=1` (kept locally as `.env.cpanel-preview`) builds a `<commit>-preview` release with test logins.
+  - `scripts/cpanel-deploy.sh` always puts it behind `deploy/cpanel/htaccess-preview`: the browser asks for a password, kept as a bcrypt hash in `~/.htpasswds/dashboard.fakhernco.com/passwd`.
+  - The Clerk build takes the password off again, but only once it is live.
+  - The preview stores the test users' data in the same Neon database.
 - **Email schedule:** when `EMAIL_MODE=resend`, add a cPanel cron job every 15 minutes:
   `curl -fsS -H "Authorization: Bearer <CRON_SECRET>" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null`.
   `vercel.json`'s cron applies only on Vercel.
