@@ -12,6 +12,8 @@ PassengerAppEnv production
 AuthType Basic
 AuthName "Articles AI dashboard preview"
 AuthUserFile "/home/fakhernco/.htpasswds/dashboard.fakhernco.com/passwd"
+# cPanel's own 401 page doesn't exist here (the app would answer 404), and browsers only ask for a password on a 401.
+ErrorDocument 401 default
 <RequireAny>
     Require expr %{REQUEST_URI} =~ m#^/\.well-known/#
     Require valid-user
