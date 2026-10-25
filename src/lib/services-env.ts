@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 const ServicesSchema = z.object({
-  DB_MODE: z.enum(["memory", "neon"]).default("memory"),
+  DB_MODE: z.enum(["memory", "mysql"]).default("memory"),
   DATABASE_URL: z.string().optional(),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
   EMAIL_MODE: z.enum(["log", "resend"]).default("log"),
@@ -10,12 +10,13 @@ const ServicesSchema = z.object({
   EMAIL_FROM: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   NOTIFY_QUIET_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
-  VERCEL: z.string().optional(),
+  NODE_ENV: z.string().optional(),
+  ALLOW_TEST_LOGINS: z.string().optional(),
 });
 
-/** The database, webhook secret, email and cron settings (M4c). Server-only: none of these may reach the browser. */
+/** The database, webhook secret, email and cron settings (M4c, M5a). Server-only: none of these may reach the browser. */
 export type ServicesEnv = {
-  dbMode: "memory" | "neon";
+  dbMode: "memory" | "mysql";
   databaseUrl: string | null;
   /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
   encryptionKey: Buffer | null;
@@ -27,12 +28,20 @@ export type ServicesEnv = {
 
 export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
   const cleaned = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value === "" ? undefined : value]));
+  if (cleaned.DB_MODE === "neon") {
+    throw new Error("DB_MODE=neon is no longer supported: the dashboard keeps its data in the client's MySQL. Set DB_MODE=mysql and DATABASE_URL.");
+  }
   const env = ServicesSchema.parse(cleaned);
 
-  if (env.DB_MODE === "memory" && env.VERCEL === "1") {
-    throw new Error("DB_MODE=memory keeps data in one server's memory and is refused on Vercel. Set DB_MODE=neon and DATABASE_URL.");
+  if (env.DB_MODE === "memory" && env.NODE_ENV === "production" && env.ALLOW_TEST_LOGINS !== "1") {
+    throw new Error(
+      "DB_MODE=memory keeps data in one server process's memory and loses it on every restart, so it's refused in production. Set DB_MODE=mysql and DATABASE_URL.",
+    );
   }
-  if (env.DB_MODE === "neon" && !env.DATABASE_URL) throw new Error("DB_MODE=neon needs DATABASE_URL.");
+  if (env.DB_MODE === "mysql") {
+    if (!env.DATABASE_URL) throw new Error("DB_MODE=mysql needs DATABASE_URL=mysql://user:password@host:3306/database.");
+    if (!env.DATABASE_URL.startsWith("mysql://")) throw new Error("DATABASE_URL must start with mysql:// (DB_MODE=mysql).");
+  }
 
   let encryptionKey: Buffer | null = null;
   if (env.WEBHOOK_ENCRYPTION_KEY) {

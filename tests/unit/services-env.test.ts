@@ -16,10 +16,21 @@ describe("parseServicesEnv (M4c)", () => {
     });
   });
 
-  it("refuses the in-memory store on Vercel, and Neon without its address", () => {
-    expect(() => parseServicesEnv({ VERCEL: "1" })).toThrow(/refused on Vercel/);
-    expect(() => parseServicesEnv({ DB_MODE: "neon" })).toThrow(/needs DATABASE_URL/);
-    expect(parseServicesEnv({ DB_MODE: "neon", DATABASE_URL: "postgres://u:p@host/db", VERCEL: "1" }).dbMode).toBe("neon");
+  it("keeps data in MySQL: DB_MODE=mysql needs a mysql:// address, and the retired Neon mode says what to use", () => {
+    expect(() => parseServicesEnv({ DB_MODE: "mysql" })).toThrow(/needs DATABASE_URL/);
+    expect(() => parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/must start with mysql:\/\//);
+    expect(parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: "mysql://u:p@localhost:3306/db" })).toMatchObject({
+      dbMode: "mysql",
+      databaseUrl: "mysql://u:p@localhost:3306/db",
+    });
+    expect(() => parseServicesEnv({ DB_MODE: "neon", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/DB_MODE=mysql/);
+  });
+
+  it("refuses the in-memory store on a production server, which would lose its data on every restart", () => {
+    expect(() => parseServicesEnv({ NODE_ENV: "production" })).toThrow(/refused in production/);
+    expect(parseServicesEnv({ NODE_ENV: "production", ALLOW_TEST_LOGINS: "1" }).dbMode).toBe("memory");
+    expect(parseServicesEnv({ NODE_ENV: "production", DB_MODE: "mysql", DATABASE_URL: "mysql://u:p@localhost:3306/db" }).dbMode).toBe("mysql");
+    expect(parseServicesEnv({ NODE_ENV: "development" }).dbMode).toBe("memory");
   });
 
   it("takes a 32-byte encryption key and refuses any other length", () => {

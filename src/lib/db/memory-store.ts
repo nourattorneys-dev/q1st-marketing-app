@@ -10,7 +10,7 @@ const copyOf = (item: StoredNotification): StoredNotification => ({
   createdAt: new Date(item.createdAt),
 });
 
-/** DB_MODE=memory: the store in this server process's memory (local development and the e2e suite; refused on Vercel). */
+/** DB_MODE=memory: the store in this server process's memory (local development and the e2e suite; refused in production). */
 export function createMemoryStore(): AppStore {
   const events = new Map<string, { event: string; receivedAt: Date }>();
   const notifications = new Map<string, Logged>();

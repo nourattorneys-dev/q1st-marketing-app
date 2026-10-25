@@ -53,9 +53,9 @@ describe("setting up the webhook (design §11; spec v1.1 §7)", () => {
     expect(await store.webhook()).toBeNull();
   });
 
-  it("doesn't ask for a secret it couldn't keep: Neon without WEBHOOK_ENCRYPTION_KEY", async () => {
-    vi.stubEnv("DB_MODE", "neon");
-    vi.stubEnv("DATABASE_URL", "postgres://u:p@host/db");
+  it("doesn't ask for a secret it couldn't keep: MySQL without WEBHOOK_ENCRYPTION_KEY", async () => {
+    vi.stubEnv("DB_MODE", "mysql");
+    vi.stubEnv("DATABASE_URL", "mysql://u:p@localhost:3306/db");
     vi.stubEnv("WEBHOOK_ENCRYPTION_KEY", "");
     expect(await setUpWebhookAction({ locale: "en", idempotencyKey: key })).toMatchObject({ ok: false, error: { status: 503, code: "not_configured" } });
     expect(engine.saveWebhook).not.toHaveBeenCalled();
