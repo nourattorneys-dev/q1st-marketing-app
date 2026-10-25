@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMemoryStore } from "@/lib/db/memory-store";
+import { connectMysql, type MysqlConnection } from "@/lib/db/mysql";
+import { createMysqlStore } from "@/lib/db/mysql-store";
+import type { AppStore } from "@/lib/db/store";
+import { freshTestDatabase } from "./mysql-test-db";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 22, 8, minute));
 const drafted = (eventId: string, minute: number) => ({
@@ -10,9 +14,30 @@ const drafted = (eventId: string, minute: number) => ({
   createdAt: at(minute),
 });
 
-describe("the in-memory store (DB_MODE=memory)", () => {
+const TABLES = ["webhook_events", "webhook_config", "notifications", "notification_deliveries", "notification_prefs"];
+let mysql: MysqlConnection;
+
+beforeAll(async () => {
+  mysql = connectMysql(await freshTestDatabase("store"));
+  await mysql.ready();
+});
+
+afterAll(async () => {
+  await mysql?.close();
+});
+
+/** A MySQL store over emptied tables, so each case starts clean, as a new in-memory store does. */
+async function emptyMysqlStore(): Promise<AppStore> {
+  for (const table of TABLES) await mysql.pool.query(`DELETE FROM \`${table}\``);
+  return createMysqlStore(mysql);
+}
+
+describe.each([
+  { name: "the in-memory store (DB_MODE=memory)", createStore: async (): Promise<AppStore> => createMemoryStore() },
+  { name: "the MySQL store (DB_MODE=mysql)", createStore: emptyMysqlStore },
+])("$name", ({ createStore }) => {
   it("remembers a delivery once, with its notification, however often it's recorded (spec v1.1 §8: deliveries are retried)", async () => {
-    const store = createMemoryStore();
+    const store = await createStore();
     expect(await store.hasEvent("evt_1")).toBe(false);
     await store.recordEvent({ id: "evt_1", event: "post.drafted", receivedAt: at(0) }, drafted("evt_1", 0));
     await store.recordEvent({ id: "evt_1", event: "post.drafted", receivedAt: at(5) }, { ...drafted("evt_1", 5), data: { postId: "other" } });
@@ -22,7 +47,7 @@ describe("the in-memory store (DB_MODE=memory)", () => {
   });
 
   it("lists pending notifications oldest first and marks them sent once", async () => {
-    const store = createMemoryStore();
+    const store = await createStore();
     await store.recordEvent({ id: "evt_2", event: "post.drafted", receivedAt: at(2) }, drafted("evt_2", 2));
     await store.recordEvent({ id: "evt_1", event: "post.drafted", receivedAt: at(1) }, drafted("evt_1", 1));
     await store.recordEvent({ id: "evt_3", event: "post.published", receivedAt: at(3) }, null);
@@ -33,7 +58,7 @@ describe("the in-memory store (DB_MODE=memory)", () => {
   });
 
   it("forgets deliveries and sent notifications older than the cutoff, but never an unsent one", async () => {
-    const store = createMemoryStore();
+    const store = await createStore();
     await store.recordEvent({ id: "evt_old", event: "post.drafted", receivedAt: at(0) }, drafted("evt_old", 0));
     await store.recordEvent({ id: "evt_sent", event: "post.drafted", receivedAt: at(1) }, drafted("evt_sent", 1));
     await store.markSent(["evt_sent"], [], at(2));
@@ -43,7 +68,7 @@ describe("the in-memory store (DB_MODE=memory)", () => {
   });
 
   it("keeps one webhook registration and each person's email choice", async () => {
-    const store = createMemoryStore();
+    const store = await createStore();
     expect(await store.webhook()).toBeNull();
     await store.saveWebhook({ url: "https://portal.example/api/hooks/marketing", secretCipher: "v1:a", updatedAt: at(0) });
     await store.saveWebhook({ url: "https://portal.example/api/hooks/marketing", secretCipher: "v1:b", updatedAt: at(1) });
@@ -55,7 +80,7 @@ describe("the in-memory store (DB_MODE=memory)", () => {
   });
 
   it("records who got which notification, once each (final review: no one is emailed twice)", async () => {
-    const store = createMemoryStore();
+    const store = await createStore();
     expect(await store.deliveries(["evt_1"])).toEqual(new Map());
     await store.recordDelivery(["evt_1", "evt_2"], "a@example.com", at(1));
     await store.recordDelivery(["evt_1"], "b@example.com", at(2));
