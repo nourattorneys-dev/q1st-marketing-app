@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Sans+Arabic:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Noto+Naskh+Arabic:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F6F5F2;--surface:#FFFFFF;--surface-2:#F0EEE9;--border:#E4E1DA;--text:#1D1C1A;--muted:#6B675F;--accent:#1F3A5F;--accent-ink:#FFFFFF;--accent-soft:#E7ECF2;--ok-bg:oklch(0.95 0.035 155);--ok-fg:oklch(0.42 0.09 155);--warn-bg:oklch(0.95 0.04 80);--warn-fg:oklch(0.45 0.09 65);--bad-bg:oklch(0.95 0.03 25);--bad-fg:oklch(0.47 0.12 25);--info-bg:oklch(0.95 0.025 250);--info-fg:oklch(0.42 0.08 250);--neutral-bg:#EFEDE8;--neutral-fg:#55524C;--serif:'Newsreader','Noto Naskh Arabic',Georgia,serif;--sans:'IBM Plex Sans','IBM Plex Sans Arabic',system-ui,sans-serif;--shadow:0 24px 60px rgba(20,18,14,.18);color-scheme:light}
+:root[data-theme="dark"]{--bg:#131312;--surface:#1B1A19;--surface-2:#252422;--border:#34322F;--text:#ECEAE5;--muted:#A29D93;--accent:#9DB6D6;--accent-ink:#0E1826;--accent-soft:#223143;--ok-bg:oklch(0.3 0.045 155);--ok-fg:oklch(0.83 0.09 155);--warn-bg:oklch(0.3 0.045 70);--warn-fg:oklch(0.85 0.09 75);--bad-bg:oklch(0.3 0.05 25);--bad-fg:oklch(0.82 0.1 25);--info-bg:oklch(0.3 0.04 250);--info-fg:oklch(0.83 0.07 250);--neutral-bg:#2A2926;--neutral-fg:#C9C5BC;--shadow:0 24px 60px rgba(0,0,0,.55);color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+input::placeholder{color:var(--muted)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</helmet>
+<div dir="{{ dir }}" style="min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5">
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Login" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));min-height:100vh">
+  <div style="display:flex;flex-direction:column;padding:28px 40px;gap:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--serif);font-size:19px">{{ t.mark }}</div>
+        <div style="font-family:var(--serif);font-size:20px;font-weight:500">{{ t.brand }}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onClick="{{ toggleLang }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px">{{ t.langSwitch }}</button>
+        <button onClick="{{ toggleTheme }}" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px">{{ themeLabel }}</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <form onSubmit="{{ signIn }}" style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;line-height:1.15;letter-spacing:-0.01em;text-wrap:pretty">{{ t.loginTitle }}</h1>
+          <p style="margin:0;color:var(--muted)">{{ t.loginSub }}</p>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">{{ t.email }}
+          <input type="email" value="{{ loginEmail }}" onChange="{{ setLoginEmail }}" style="height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-weight:400;font-size:14px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">{{ t.password }}
+          <input type="password" value="••••••••••" readOnly="{{ true }}" style="height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-weight:400;font-size:14px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+        </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" checked="{{ remember }}" onChange="{{ toggleRemember }}" style="accent-color:var(--accent);width:16px;height:16px;margin:0">{{ t.remember }}</label>
+          <a href="#">{{ t.forgot }}</a>
+        </div>
+        <button type="submit" style="height:46px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:500;font-size:15px;cursor:pointer" style-hover="opacity:.92">{{ t.signIn }}</button>
+        <p style="margin:0;color:var(--muted);font-size:12px;text-align:center">{{ t.twoFactor }}</p>
+      </form>
+    </div>
+    <div style="color:var(--muted);font-size:12px">© 2026 {{ t.brandFull }}</div>
+  </div>
+  <div style="background:var(--accent);color:var(--accent-ink);padding:56px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;min-height:320px">
+    <div style="font-family:var(--serif);font-size:44px;line-height:1.1;letter-spacing:-0.015em;max-width:520px;text-wrap:pretty">{{ t.loginAside }}</div>
+    <div style="font-size:15px;opacity:.85;max-width:420px">{{ t.loginAsideSub }}</div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:24px;padding:20px 14px;background:var(--surface);border-inline-end:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
+      <div style="width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--serif);font-size:18px">{{ t.mark }}</div>
+      <div style="display:flex;flex-direction:column;line-height:1.2">
+        <span style="font-family:var(--serif);font-size:18px;font-weight:500">{{ t.brand }}</span>
+        <span style="font-size:11px;color:var(--muted)">{{ t.brandSub }}</span>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:20px;flex:1">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:11px;font-weight:500;color:var(--muted);padding:0 10px 6px;letter-spacing:.04em">{{ t.groupPractice }}</div>
+        <sc-for list="{{ navPractice }}" as="n" hint-placeholder-count="5">
+          <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:0;border-radius:8px;background:{{ n.bg }};color:{{ n.fg }};font-weight:{{ n.weight }};font-size:14px;cursor:pointer;text-align:start" style-hover="background:var(--surface-2)">
+            <span style="width:6px;height:6px;border-radius:2px;background:{{ n.dot }};flex:none"></span>
+            <span style="flex:1">{{ n.label }}</span>
+            <span style="font-size:12px;color:var(--muted)">{{ n.count }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:11px;font-weight:500;color:var(--muted);padding:0 10px 6px;letter-spacing:.04em">{{ t.groupFirm }}</div>
+        <sc-for list="{{ navFirm }}" as="n" hint-placeholder-count="1">
+          <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:0;border-radius:8px;background:{{ n.bg }};color:{{ n.fg }};font-weight:{{ n.weight }};font-size:14px;cursor:pointer;text-align:start" style-hover="background:var(--surface-2)">
+            <span style="width:6px;height:6px;border-radius:2px;background:{{ n.dot }};flex:none"></span>
+            <span style="flex:1">{{ n.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </nav>
+    <button onClick="{{ signOut }}" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;text-align:start;font-size:13px" style-hover="color:var(--text);background:var(--surface-2)">{{ t.signOut }}</button>
+  </aside>
+
+  <div style="display:flex;flex-direction:column;min-width:0">
+    <header style="position:sticky;top:0;z-index:5;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 32px;background:var(--bg);border-bottom:1px solid var(--border)">
+      <input value="{{ query }}" onChange="{{ setQuery }}" placeholder="{{ t.searchPh }}" style="width:100%;max-width:360px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-size:13px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+      <div style="display:flex;align-items:center;gap:8px;flex:none">
+        <button onClick="{{ toggleLang }}" style="height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px" style-hover="background:var(--surface-2)">{{ t.langSwitch }}</button>
+        <button onClick="{{ toggleTheme }}" style="height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px" style-hover="background:var(--surface-2)">{{ themeLabel }}</button>
+        <div style="display:flex;align-items:center;gap:10px;padding-inline-start:10px;margin-inline-start:4px;border-inline-start:1px solid var(--border)">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:600">{{ me.ini }}</div>
+          <div style="display:flex;flex-direction:column;line-height:1.2">
+            <span style="font-size:13px;font-weight:500">{{ me.name }}</span>
+            <span style="font-size:11px;color:var(--muted)">{{ t.userRole }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main style="padding:28px 32px 56px;width:100%;max-width:1320px">
+
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Dashboard" style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:13px;color:var(--muted)">{{ todayLabel }}</div>
+          <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ greeting }}</h1>
+          <p style="margin:0;color:var(--muted)">{{ t.dashSub }}</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+          <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+            <button onClick="{{ k.onClick }}" style="display:flex;flex-direction:column;gap:6px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:start;cursor:pointer" style-hover="border-color:var(--muted)">
+              <span style="font-size:13px;color:var(--muted)">{{ k.label }}</span>
+              <span style="font-family:var(--serif);font-size:30px;line-height:1.1">{{ k.value }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px;align-items:start">
+          <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px">
+              <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.upcoming }}</h2>
+              <button onClick="{{ goCalendar }}" style="border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:500;padding:0">{{ t.openCalendar }}</button>
+            </div>
+            <sc-for list="{{ upcoming }}" as="e" hint-placeholder-count="5">
+              <button onClick="{{ e.open }}" style="display:flex;align-items:center;gap:14px;width:100%;padding:12px 20px;border:0;border-top:1px solid var(--border);background:transparent;text-align:start;cursor:pointer" style-hover="background:var(--surface-2)">
+                <div style="width:44px;flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.1">
+                  <span style="font-family:var(--serif);font-size:22px">{{ e.day }}</span>
+                  <span style="font-size:11px;color:var(--muted)">{{ e.mon }}</span>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.title }}</span>
+                  <span style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.sub }}</span>
+                </div>
+                <span style="flex:none;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;background:{{ e.kBg }};color:{{ e.kFg }}">{{ e.kindT }}</span>
+              </button>
+            </sc-for>
+          </section>
+          <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px">
+              <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.recent }}</h2>
+              <button onClick="{{ goMatters }}" style="border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:500;padding:0">{{ t.viewMatters }}</button>
+            </div>
+            <sc-for list="{{ activity }}" as="a" hint-placeholder-count="5">
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 20px;border-top:1px solid var(--border)">
+                <div style="width:30px;height:30px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:600">{{ a.ini }}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="text-wrap:pretty"><strong style="font-weight:600">{{ a.who }}</strong> {{ a.text }}</span>
+                  <span style="font-size:12px;color:var(--muted)">{{ a.when }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </section>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isMatters }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Matters" style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ t.matters }}</h1>
+            <p style="margin:0;color:var(--muted)">{{ mattersSub }}</p>
+          </div>
+          <button onClick="{{ openNewMatter }}" style="height:38px;padding:0 16px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer" style-hover="opacity:.92">{{ t.newMatter }}</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;gap:2px;padding:3px;background:var(--surface-2);border-radius:10px;flex-wrap:wrap">
+            <sc-for list="{{ statusTabs }}" as="s" hint-placeholder-count="5">
+              <button onClick="{{ s.onClick }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:7px;border:0;background:{{ s.bg }};color:{{ s.fg }};box-shadow:{{ s.shadow }};font-size:13px;font-weight:500;cursor:pointer">{{ s.label }} <span style="color:var(--muted);font-weight:400">{{ s.count }}</span></button>
+            </sc-for>
+          </div>
+          <input value="{{ query }}" onChange="{{ setQueryLocal }}" placeholder="{{ t.filterPh }}" style="width:100%;max-width:280px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-size:13px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
+          <div style="min-width:900px">
+            <div style="display:grid;grid-template-columns:minmax(250px,2.4fr) minmax(150px,1.3fr) minmax(110px,1fr) minmax(120px,1fr) minmax(110px,.9fr) 104px;gap:16px;padding:10px 20px;font-size:12px;font-weight:500;color:var(--muted);background:var(--surface-2)">
+              <span>{{ t.colMatter }}</span><span>{{ t.colClient }}</span><span>{{ t.colType }}</span><span>{{ t.colLead }}</span><span>{{ t.colNext }}</span><span>{{ t.colStatus }}</span>
+            </div>
+            <sc-for list="{{ filteredMatters }}" as="m" hint-placeholder-count="6">
+              <div onClick="{{ m.open }}" style="display:grid;grid-template-columns:minmax(250px,2.4fr) minmax(150px,1.3fr) minmax(110px,1fr) minmax(120px,1fr) minmax(110px,.9fr) 104px;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border);cursor:pointer" style-hover="background:var(--surface-2)">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-weight:500;text-wrap:pretty">{{ m.titleT }}</span>
+                  <span style="font-size:12px;color:var(--muted)">{{ m.id }}</span>
+                </div>
+                <span>{{ m.clientT }}</span>
+                <span style="color:var(--muted)">{{ m.typeT }}</span>
+                <span>{{ m.leadT }}</span>
+                <div style="display:flex;flex-direction:column;line-height:1.3">
+                  <span>{{ m.nextT }}</span>
+                  <span style="font-size:12px;color:var(--muted)">{{ m.nextSub }}</span>
+                </div>
+                <span style="justify-self:start;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:{{ m.sBg }};color:{{ m.sFg }}">{{ m.statusT }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noMatters }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:40px 20px;border-top:1px solid var(--border);text-align:center;color:var(--muted)">{{ t.noResults }}</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isMatter }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Matter detail" style="display:flex;flex-direction:column;gap:20px">
+        <button onClick="{{ goMatters }}" style="align-self:flex-start;border:0;background:none;padding:0;color:var(--muted);cursor:pointer;font-size:13px" style-hover="color:var(--text)">{{ t.backMatters }}</button>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:10px;min-width:0;max-width:760px">
+            <span style="font-size:13px;color:var(--muted)">{{ cur.id }} · {{ cur.clientT }}</span>
+            <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;line-height:1.15;letter-spacing:-0.01em;text-wrap:pretty">{{ cur.titleT }}</h1>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:{{ cur.sBg }};color:{{ cur.sFg }}">{{ cur.statusT }}</span>
+              <span style="padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:var(--neutral-bg);color:var(--neutral-fg)">{{ cur.typeT }}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ noteToast }}" style="height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500" style-hover="background:var(--surface-2)">{{ t.addNote }}</button>
+            <button onClick="{{ uploadToast }}" style="height:38px;padding:0 14px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:500" style-hover="opacity:.92">{{ t.upload }}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:24px;border-bottom:1px solid var(--border)">
+          <sc-for list="{{ matterTabs }}" as="tb" hint-placeholder-count="3">
+            <button onClick="{{ tb.onClick }}" style="height:40px;padding:0;border:0;border-bottom:2px solid {{ tb.line }};margin-bottom:-1px;background:none;color:{{ tb.fg }};font-weight:500;cursor:pointer">{{ tb.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px">
+            <sc-if value="{{ tabOverview }}" hint-placeholder-val="{{ true }}">
+              <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px">
+                <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.stage }}</h2>
+                <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">
+                  <sc-for list="{{ stages }}" as="sg" hint-placeholder-count="5">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="height:4px;border-radius:2px;background:{{ sg.bar }}"></div>
+                      <span style="font-size:12px;color:{{ sg.fg }};font-weight:{{ sg.weight }}">{{ sg.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </section>
+              <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px">
+                <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.details }}</h2>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px 24px">
+                  <sc-for list="{{ details }}" as="d" hint-placeholder-count="6">
+                    <div style="display:flex;flex-direction:column;gap:2px">
+                      <span style="font-size:12px;color:var(--muted)">{{ d.k }}</span>
+                      <span style="font-weight:500">{{ d.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </section>
+              <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px">
+                <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.teamLbl }}</h2>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                  <sc-for list="{{ curTeam }}" as="p" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;padding-inline-start:8px;padding-inline-end:14px;border:1px solid var(--border);border-radius:999px">
+                      <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:600">{{ p.ini }}</div>
+                      <div style="display:flex;flex-direction:column;line-height:1.2">
+                        <span style="font-weight:500;font-size:13px">{{ p.nameT }}</span>
+                        <span style="font-size:11px;color:var(--muted)">{{ p.roleT }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </section>
+            </sc-if>
+            <sc-if value="{{ tabDocs }}" hint-placeholder-val="{{ false }}">
+              <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 80px;gap:16px;padding:10px 20px;font-size:12px;font-weight:500;color:var(--muted);background:var(--surface-2)">
+                  <span>{{ t.docName }}</span><span>{{ t.updated }}</span><span style="text-align:end">{{ t.size }}</span>
+                </div>
+                <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 80px;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border)" style-hover="background:var(--surface-2)">
+                    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                      <span style="flex:none;width:42px;height:24px;border-radius:5px;background:var(--neutral-bg);color:var(--neutral-fg);font-size:10px;font-weight:600;display:grid;place-items:center;letter-spacing:.04em">{{ d.ext }}</span>
+                      <span style="font-weight:500">{{ d.name }}</span>
+                    </div>
+                    <span style="color:var(--muted)">{{ d.date }}</span>
+                    <span style="color:var(--muted);text-align:end">{{ d.size }}</span>
+                  </div>
+                </sc-for>
+              </section>
+            </sc-if>
+            <sc-if value="{{ tabActivity }}" hint-placeholder-val="{{ false }}">
+              <section style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 20px">
+                <sc-for list="{{ mActivity }}" as="a" hint-placeholder-count="4">
+                  <div style="display:flex;gap:14px;padding:12px 0">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:6px">
+                      <span style="width:8px;height:8px;border-radius:50%;background:{{ a.dot }}"></span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px">
+                      <span style="font-weight:500">{{ a.text }}</span>
+                      <span style="font-size:12px;color:var(--muted)">{{ a.when }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </section>
+            </sc-if>
+          </div>
+          <aside style="flex:1 1 280px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <h2 style="margin:0;padding:16px 20px;font-family:var(--serif);font-weight:500;font-size:20px">{{ t.keyDates }}</h2>
+            <sc-for list="{{ keyDates }}" as="e" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;padding:12px 20px;border-top:1px solid var(--border);opacity:{{ e.opacity }}">
+                <div style="width:40px;flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.1">
+                  <span style="font-family:var(--serif);font-size:20px">{{ e.day }}</span>
+                  <span style="font-size:11px;color:var(--muted)">{{ e.mon }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-weight:500;font-size:13px;text-wrap:pretty">{{ e.title }}</span>
+                  <span style="align-self:flex-start;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:500;background:{{ e.kBg }};color:{{ e.kFg }}">{{ e.kindT }}</span>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noKeyDates }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 20px;border-top:1px solid var(--border);color:var(--muted)">{{ t.noEvents }}</div>
+            </sc-if>
+          </aside>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isClients }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Clients" style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ t.clients }}</h1>
+          <p style="margin:0;color:var(--muted)">{{ t.clientsSub }}</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
+          <div style="min-width:760px">
+            <div style="display:grid;grid-template-columns:minmax(220px,2fr) minmax(100px,.8fr) minmax(160px,1.4fr) minmax(100px,.8fr) minmax(100px,.8fr);gap:16px;padding:10px 20px;font-size:12px;font-weight:500;color:var(--muted);background:var(--surface-2)">
+              <span>{{ t.colName }}</span><span>{{ t.kind }}</span><span>{{ t.contact }}</span><span>{{ t.openMatters }}</span><span>{{ t.since }}</span>
+            </div>
+            <sc-for list="{{ clients }}" as="c" hint-placeholder-count="7">
+              <div onClick="{{ c.open }}" style="display:grid;grid-template-columns:minmax(220px,2fr) minmax(100px,.8fr) minmax(160px,1.4fr) minmax(100px,.8fr) minmax(100px,.8fr);gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border);cursor:pointer" style-hover="background:var(--surface-2)">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:32px;height:32px;flex:none;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-family:var(--serif);font-size:15px">{{ c.letter }}</div>
+                  <span style="font-weight:500">{{ c.name }}</span>
+                </div>
+                <span style="color:var(--muted)">{{ c.kindT }}</span>
+                <span>{{ c.contact }}</span>
+                <span>{{ c.openCount }}</span>
+                <span style="color:var(--muted)">{{ c.since }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Calendar" style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ monthLabel }}</h1>
+            <p style="margin:0;color:var(--muted)">{{ t.calendarSub }}</p>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onClick="{{ calPrev }}" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:18px" style-hover="background:var(--surface-2)">{{ t.prev }}</button>
+            <button onClick="{{ calToday }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500" style-hover="background:var(--surface-2)">{{ t.today }}</button>
+            <button onClick="{{ calNext }}" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:18px" style-hover="background:var(--surface-2)">{{ t.next }}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1 1 600px;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--surface-2)">
+              <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7">
+                <div style="padding:8px 10px;font-size:12px;font-weight:500;color:var(--muted)">{{ w }}</div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">
+              <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+                <button onClick="{{ c.onClick }}" style="min-height:104px;padding:8px;display:flex;flex-direction:column;gap:4px;align-items:stretch;text-align:start;border:0;border-top:1px solid var(--border);border-inline-end:1px solid var(--border);background:{{ c.bg }};cursor:pointer;min-width:0" style-hover="background:var(--surface-2)">
+                  <span style="align-self:flex-start;min-width:24px;height:24px;padding:0 6px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:500;background:{{ c.numBg }};color:{{ c.numFg }}">{{ c.day }}</span>
+                  <sc-for list="{{ c.evs }}" as="ev" hint-placeholder-count="0">
+                    <span style="display:block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:500;background:{{ ev.kBg }};color:{{ ev.kFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ev.title }}</span>
+                  </sc-for>
+                  <span style="font-size:11px;color:var(--muted);padding:0 6px">{{ c.more }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <aside style="flex:1 1 280px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:12px;color:var(--muted)">{{ selWeekday }}</span>
+              <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:22px">{{ selLabel }}</h2>
+            </div>
+            <sc-for list="{{ selEvents }}" as="e" hint-placeholder-count="2">
+              <button onClick="{{ e.open }}" style="display:flex;flex-direction:column;gap:6px;width:100%;padding:14px 20px;border:0;border-top:1px solid var(--border);background:transparent;text-align:start;cursor:pointer" style-hover="background:var(--surface-2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
+                  <span style="font-size:12px;color:var(--muted)">{{ e.time }}</span>
+                  <span style="padding:1px 8px;border-radius:999px;font-size:11px;font-weight:500;background:{{ e.kBg }};color:{{ e.kFg }}">{{ e.kindT }}</span>
+                </div>
+                <span style="font-weight:500;text-wrap:pretty">{{ e.title }}</span>
+                <span style="font-size:12px;color:var(--muted)">{{ e.matter }}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ noSelEvents }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 20px;border-top:1px solid var(--border);color:var(--muted)">{{ t.noEvents }}</div>
+            </sc-if>
+          </aside>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isBilling }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Billing" style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ t.billing }}</h1>
+            <p style="margin:0;color:var(--muted)">{{ t.billingSub }}</p>
+          </div>
+          <button onClick="{{ invoiceToast }}" style="height:38px;padding:0 16px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer" style-hover="opacity:.92">{{ t.newInvoice }}</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <sc-for list="{{ billSummary }}" as="k" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+              <span style="font-size:13px;color:var(--muted)">{{ k.label }}</span>
+              <span style="font-family:var(--serif);font-size:28px;line-height:1.1;color:{{ k.color }}">{{ k.value }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:2px;padding:3px;background:var(--surface-2);border-radius:10px;flex-wrap:wrap;align-self:flex-start">
+          <sc-for list="{{ invTabs }}" as="s" hint-placeholder-count="5">
+            <button onClick="{{ s.onClick }}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:7px;border:0;background:{{ s.bg }};color:{{ s.fg }};box-shadow:{{ s.shadow }};font-size:13px;font-weight:500;cursor:pointer">{{ s.label }} <span style="color:var(--muted);font-weight:400">{{ s.count }}</span></button>
+          </sc-for>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
+          <div style="min-width:820px">
+            <div style="display:grid;grid-template-columns:minmax(130px,1fr) minmax(200px,1.6fr) minmax(110px,.9fr) minmax(110px,.9fr) minmax(120px,1fr) 100px;gap:16px;padding:10px 20px;font-size:12px;font-weight:500;color:var(--muted);background:var(--surface-2)">
+              <span>{{ t.colInvoice }}</span><span>{{ t.colClient }}</span><span>{{ t.issued }}</span><span>{{ t.due }}</span><span style="text-align:end">{{ t.amount }}</span><span>{{ t.colStatus }}</span>
+            </div>
+            <sc-for list="{{ invoices }}" as="iv" hint-placeholder-count="6">
+              <div onClick="{{ iv.open }}" style="display:grid;grid-template-columns:minmax(130px,1fr) minmax(200px,1.6fr) minmax(110px,.9fr) minmax(110px,.9fr) minmax(120px,1fr) 100px;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border);cursor:pointer" style-hover="background:var(--surface-2)">
+                <span style="font-weight:500">{{ iv.id }}</span>
+                <div style="display:flex;flex-direction:column;line-height:1.3">
+                  <span>{{ iv.client }}</span>
+                  <span style="font-size:12px;color:var(--muted)">{{ iv.matter }}</span>
+                </div>
+                <span style="color:var(--muted)">{{ iv.issued }}</span>
+                <span style="color:{{ iv.dueColor }}">{{ iv.due }}</span>
+                <span style="text-align:end;font-variant-numeric:tabular-nums;font-weight:500">{{ iv.amount }}</span>
+                <span style="justify-self:start;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:{{ iv.sBg }};color:{{ iv.sFg }}">{{ iv.statusT }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTeam }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Team" style="display:flex;flex-direction:column;gap:20px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-0.01em">{{ t.team }}</h1>
+            <p style="margin:0;color:var(--muted)">{{ t.teamSub }}</p>
+          </div>
+          <button onClick="{{ openInvite }}" style="height:38px;padding:0 16px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer" style-hover="opacity:.92">{{ t.invite }}</button>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto">
+          <div style="min-width:820px">
+            <div style="display:grid;grid-template-columns:minmax(220px,1.8fr) minmax(220px,1.6fr) minmax(120px,1fr) minmax(80px,.6fr) minmax(120px,1fr);gap:16px;padding:10px 20px;font-size:12px;font-weight:500;color:var(--muted);background:var(--surface-2)">
+              <span>{{ t.colName }}</span><span>{{ t.fEmail }}</span><span>{{ t.colRole }}</span><span>{{ t.colMatters }}</span><span>{{ t.colLast }}</span>
+            </div>
+            <sc-for list="{{ teamRows }}" as="p" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:minmax(220px,1.8fr) minmax(220px,1.6fr) minmax(120px,1fr) minmax(80px,.6fr) minmax(120px,1fr);gap:16px;align-items:center;padding:12px 20px;border-top:1px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:32px;height:32px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:600">{{ p.ini }}</div>
+                  <span style="font-weight:500">{{ p.nameT }}</span>
+                </div>
+                <span style="color:var(--muted)">{{ p.email }}</span>
+                <span style="justify-self:start;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:{{ p.rBg }};color:{{ p.rFg }}">{{ p.roleT }}</span>
+                <span>{{ p.count }}</span>
+                <span style="color:var(--muted)">{{ p.lastT }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </main>
+  </div>
+</div>
+
+<sc-if value="{{ isModalMatter }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:20;background:rgba(18,17,15,.45);display:flex;align-items:center;justify-content:center;padding:16px">
+    <form onClick="{{ stop }}" onSubmit="{{ createMatter }}" style="width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:24px">{{ t.mNewTitle }}</h2>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">{{ t.fTitle }}
+        <input value="{{ nm.title }}" onChange="{{ setNmTitle }}" placeholder="{{ t.fTitlePh }}" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-weight:400;font-size:14px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+      </label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:500">{{ t.fClient }}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ clientPills }}" as="o" hint-placeholder-count="7">
+            <button type="button" onClick="{{ o.onClick }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-size:13px;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:500">{{ t.fType }}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ typePills }}" as="o" hint-placeholder-count="6">
+            <button type="button" onClick="{{ o.onClick }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-size:13px;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:500">{{ t.fLead }}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ leadPills }}" as="o" hint-placeholder-count="4">
+            <button type="button" onClick="{{ o.onClick }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-size:13px;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:4px">
+        <button type="button" onClick="{{ closeModal }}" style="height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500">{{ t.cancel }}</button>
+        <button type="submit" style="height:38px;padding:0 16px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:500;opacity:{{ createOpacity }}">{{ t.create }}</button>
+      </div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isModalInvite }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:20;background:rgba(18,17,15,.45);display:flex;align-items:center;justify-content:center;padding:16px">
+    <form onClick="{{ stop }}" onSubmit="{{ sendInvite }}" style="width:100%;max-width:460px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:var(--serif);font-weight:500;font-size:24px">{{ t.mInviteTitle }}</h2>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">{{ t.fEmail }}
+        <input type="email" value="{{ inv.email }}" onChange="{{ setInvEmail }}" placeholder="name@meridian.legal" style="height:42px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);outline:none;font-weight:400;font-size:14px" style-focus="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
+      </label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:500">{{ t.colRole }}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ rolePills }}" as="o" hint-placeholder-count="5">
+            <button type="button" onClick="{{ o.onClick }}" style="height:30px;padding:0 12px;border-radius:999px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-size:13px;cursor:pointer">{{ o.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button type="button" onClick="{{ closeModal }}" style="height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500">{{ t.cancel }}</button>
+        <button type="submit" style="height:38px;padding:0 16px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:500;opacity:{{ inviteOpacity }}">{{ t.sendInvite }}</button>
+      </div>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:24px;inset-inline-end:24px;z-index:30;padding:12px 16px;border-radius:10px;background:var(--text);color:var(--bg);font-size:13px;font-weight:500;box-shadow:var(--shadow)">{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;defaultLang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;ar&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;'en'|'ar'&quot;},&quot;skipLogin&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const KEY = 'meridian-admin-v1';
+const TODAY = '2026-10-19';
+const T = {
+  en: {
+    mark:'M', brand:'Meridian', brandFull:'Meridian Legal', brandSub:'Practice admin', langSwitch:'العربية', themeLight:'Light mode', themeDark:'Dark mode',
+    loginTitle:'Sign in to the admin', loginSub:'Use your firm account to continue.', email:'Work email', password:'Password', remember:'Keep me signed in', forgot:'Forgot password?', signIn:'Sign in', twoFactor:'Protected by two-factor authentication',
+    loginAside:'Every matter, deadline and invoice — in one place.', loginAsideSub:'Secure access for partners, associates and firm staff.',
+    groupPractice:'PRACTICE', groupFirm:'FIRM', dashboard:'Dashboard', matters:'Matters', clients:'Clients', calendar:'Calendar', billing:'Billing', team:'Team & access', signOut:'Sign out',
+    searchPh:'Search matters, clients, case numbers…', filterPh:'Filter by title, client or number', userRole:'Managing partner',
+    morning:'Good morning', afternoon:'Good afternoon', evening:'Good evening', dashSub:'Here’s what needs your attention.',
+    kpiActive:'Active matters', kpiDeadlines:'Deadlines in the next 7 days', kpiOutstanding:'Outstanding receivables', kpiOverdue:'Overdue invoices',
+    upcoming:'Upcoming deadlines', openCalendar:'Open calendar', recent:'Recent activity', viewMatters:'All matters',
+    newMatter:'New matter', all:'All', st_active:'Active', st_pending:'Pending', st_onhold:'On hold', st_closed:'Closed', mattersOf:'matters across', clientsWord:'clients',
+    colMatter:'Matter', colClient:'Client', colType:'Practice area', colLead:'Lead counsel', colNext:'Next deadline', colStatus:'Status',
+    ty_litigation:'Litigation', ty_corporate:'Corporate', ty_realestate:'Real estate', ty_employment:'Employment', ty_ip:'Intellectual property', ty_arbitration:'Arbitration',
+    noResults:'No matters match your filters.', backMatters:'← All matters', tabOverview:'Overview', tabDocs:'Documents', tabActivity:'Activity',
+    stage:'Stage', details:'Details', opened:'Opened', forum:'Forum', value:'Claim value', teamLbl:'Team', keyDates:'Key dates', addNote:'Add note', upload:'Upload document', docName:'Document', updated:'Updated', size:'Size', openedBy:'Matter opened by',
+    stages:['Intake','Research','Filing','Proceedings','Resolution'],
+    clientsSub:'Companies and individuals the firm represents.', company:'Company', individual:'Individual', contact:'Primary contact', openMatters:'Open matters', since:'Client since', kind:'Type', colName:'Name',
+    calendarSub:'Hearings, filings and meetings across all matters.', today:'Today', prev:'‹', next:'›', ev_hearing:'Hearing', ev_filing:'Filing', ev_meeting:'Meeting', noEvents:'Nothing scheduled.', allDay:'All day',
+    billingSub:'Invoices issued to clients, by matter.', newInvoice:'New invoice', billedMonth:'Billed this month', outstanding:'Outstanding', overdue:'Overdue', colInvoice:'Invoice', issued:'Issued', due:'Due', amount:'Amount', iv_paid:'Paid', iv_sent:'Sent', iv_overdue:'Overdue', iv_draft:'Draft',
+    teamSub:'Who can sign in, and what they can see.', invite:'Invite member', colRole:'Role', colMatters:'Matters', colLast:'Last active', ro_admin:'Admin', ro_partner:'Partner', ro_associate:'Associate', ro_paralegal:'Paralegal', ro_staff:'Billing', invited:'Invitation sent',
+    mNewTitle:'Open a new matter', fTitle:'Matter title', fTitlePh:'e.g. Gulf Logistics v. Harbor Freight', fClient:'Client', fType:'Practice area', fLead:'Lead counsel', cancel:'Cancel', create:'Create matter',
+    mInviteTitle:'Invite a team member', fEmail:'Email', sendInvite:'Send invite',
+    toastMatter:'Matter created', toastInvite:'Invitation sent', toastNote:'Note editor opens here', toastUpload:'Choose a file to upload', toastInvoice:'Invoice builder opens here', toastInvoiceOpen:'Opening invoice'
+  },
+  ar: {
+    mark:'م', brand:'ميريديان', brandFull:'ميريديان للمحاماة', brandSub:'إدارة الممارسة', langSwitch:'English', themeLight:'الوضع الفاتح', themeDark:'الوضع الداكن',
+    loginTitle:'تسجيل الدخول إلى لوحة الإدارة', loginSub:'استخدم حساب المكتب للمتابعة.', email:'البريد الإلكتروني للعمل', password:'كلمة المرور', remember:'تذكرني', forgot:'نسيت كلمة المرور؟', signIn:'تسجيل الدخول', twoFactor:'محمي بالتحقق بخطوتين',
+    loginAside:'كل قضية وكل موعد وكل فاتورة — في مكان واحد.', loginAsideSub:'وصول آمن للشركاء والمحامين وموظفي المكتب.',
+    groupPractice:'الممارسة', groupFirm:'المكتب', dashboard:'لوحة التحكم', matters:'القضايا', clients:'العملاء', calendar:'التقويم', billing:'الفوترة', team:'الفريق والصلاحيات', signOut:'تسجيل الخروج',
+    searchPh:'ابحث في القضايا والعملاء وأرقام الملفات…', filterPh:'تصفية حسب العنوان أو العميل أو الرقم', userRole:'الشريك المدير',
+    morning:'صباح الخير', afternoon:'مساء الخير', evening:'مساء الخير', dashSub:'إليك ما يحتاج إلى انتباهك.',
+    kpiActive:'القضايا النشطة', kpiDeadlines:'مواعيد خلال 7 أيام', kpiOutstanding:'مستحقات غير محصّلة', kpiOverdue:'فواتير متأخرة',
+    upcoming:'المواعيد القادمة', openCalendar:'فتح التقويم', recent:'آخر النشاطات', viewMatters:'كل القضايا',
+    newMatter:'قضية جديدة', all:'الكل', st_active:'نشطة', st_pending:'قيد الانتظار', st_onhold:'معلّقة', st_closed:'مغلقة', mattersOf:'قضية لدى', clientsWord:'عملاء',
+    colMatter:'القضية', colClient:'العميل', colType:'مجال الممارسة', colLead:'المحامي المسؤول', colNext:'الموعد القادم', colStatus:'الحالة',
+    ty_litigation:'تقاضٍ', ty_corporate:'شركات', ty_realestate:'عقارات', ty_employment:'قضايا عمل', ty_ip:'ملكية فكرية', ty_arbitration:'تحكيم',
+    noResults:'لا توجد قضايا مطابقة.', backMatters:'→ كل القضايا', tabOverview:'نظرة عامة', tabDocs:'المستندات', tabActivity:'النشاط',
+    stage:'المرحلة', details:'التفاصيل', opened:'تاريخ الفتح', forum:'الجهة', value:'قيمة المطالبة', teamLbl:'فريق العمل', keyDates:'المواعيد الرئيسية', addNote:'إضافة ملاحظة', upload:'رفع مستند', docName:'المستند', updated:'آخر تحديث', size:'الحجم', openedBy:'فتح القضية:',
+    stages:['الاستلام','البحث','الإيداع','الإجراءات','الحسم'],
+    clientsSub:'الشركات والأفراد الذين يمثلهم المكتب.', company:'شركة', individual:'فرد', contact:'جهة الاتصال', openMatters:'قضايا مفتوحة', since:'عميل منذ', kind:'النوع', colName:'الاسم',
+    calendarSub:'الجلسات والإيداعات والاجتماعات لجميع القضايا.', today:'اليوم', prev:'›', next:'‹', ev_hearing:'جلسة', ev_filing:'إيداع', ev_meeting:'اجتماع', noEvents:'لا توجد مواعيد.', allDay:'طوال اليوم',
+    billingSub:'الفواتير الصادرة للعملاء حسب القضية.', newInvoice:'فاتورة جديدة', billedMonth:'المفوتر هذا الشهر', outstanding:'مستحق', overdue:'متأخر', colInvoice:'الفاتورة', issued:'الإصدار', due:'الاستحقاق', amount:'المبلغ', iv_paid:'مدفوعة', iv_sent:'مرسلة', iv_overdue:'متأخرة', iv_draft:'مسودة',
+    teamSub:'من يمكنه الدخول، وما الذي يمكنه رؤيته.', invite:'دعوة عضو', colRole:'الدور', colMatters:'القضايا', colLast:'آخر نشاط', ro_admin:'مدير النظام', ro_partner:'شريك', ro_associate:'محامٍ', ro_paralegal:'مساعد قانوني', ro_staff:'الفوترة', invited:'تمت الدعوة',
+    mNewTitle:'فتح قضية جديدة', fTitle:'عنوان القضية', fTitlePh:'مثال: الخليج للخدمات اللوجستية ضد هاربر', fClient:'العميل', fType:'مجال الممارسة', fLead:'المحامي المسؤول', cancel:'إلغاء', create:'إنشاء القضية',
+    mInviteTitle:'دعوة عضو إلى الفريق', fEmail:'البريد الإلكتروني', sendInvite:'إرسال الدعوة',
+    toastMatter:'تم إنشاء القضية', toastInvite:'تم إرسال الدعوة', toastNote:'يفتح محرر الملاحظات هنا', toastUpload:'اختر ملفاً لرفعه', toastInvoice:'يفتح منشئ الفواتير هنا', toastInvoiceOpen:'جارٍ فتح الفاتورة'
+  }
+};
+const TEAM = [
+  {id:'oh', name:{en:'Omar Khalil',ar:'عمر خليل'}, email:'omar.khalil@meridian.legal', role:'admin', last:{en:'Online now',ar:'متصل الآن'}},
+  {id:'sh', name:{en:'Sara Haddad',ar:'سارة حداد'}, email:'sara.haddad@meridian.legal', role:'partner', last:{en:'12 min ago',ar:'منذ 12 دقيقة'}},
+  {id:'lm', name:{en:'Lina Mansour',ar:'لينا منصور'}, email:'lina.mansour@meridian.legal', role:'associate', last:{en:'1 h ago',ar:'منذ ساعة'}},
+  {id:'ka', name:{en:'Karim Aziz',ar:'كريم عزيز'}, email:'karim.aziz@meridian.legal', role:'associate', last:{en:'3 h ago',ar:'منذ 3 ساعات'}},
+  {id:'nf', name:{en:'Nadia Farouk',ar:'نادية فاروق'}, email:'nadia.farouk@meridian.legal', role:'paralegal', last:{en:'Yesterday',ar:'أمس'}},
+  {id:'ys', name:{en:'Yousef Saleh',ar:'يوسف صالح'}, email:'yousef.saleh@meridian.legal', role:'staff', last:{en:'2 days ago',ar:'منذ يومين'}}
+];
+const CLIENTS = [
+  {id:'c1', name:{en:'Al Hamra Holdings',ar:'الحمراء القابضة'}, kind:'company', contact:{en:'Hassan Al Hamra',ar:'حسن الحمراء'}, since:2019},
+  {id:'c2', name:{en:'Nile Crest Developments',ar:'نايل كرست للتطوير العقاري'}, kind:'company', contact:{en:'Rania Adel',ar:'رانيا عادل'}, since:2021},
+  {id:'c3', name:{en:'Sahel Pharmaceuticals',ar:'ساحل للصناعات الدوائية'}, kind:'company', contact:{en:'Dr. Tarek Nabil',ar:'د. طارق نبيل'}, since:2018},
+  {id:'c4', name:{en:'Mariam Toukan',ar:'مريم طوقان'}, kind:'individual', contact:{en:'Mariam Toukan',ar:'مريم طوقان'}, since:2025},
+  {id:'c5', name:{en:'Orbit Telecom',ar:'أوربت للاتصالات'}, kind:'company', contact:{en:'Jad Sarkis',ar:'جاد سركيس'}, since:2022},
+  {id:'c6', name:{en:'Qasr Hospitality Group',ar:'مجموعة قصر للضيافة'}, kind:'company', contact:{en:'Huda Mahmoud',ar:'هدى محمود'}, since:2020},
+  {id:'c7', name:{en:'Faisal Rahman',ar:'فيصل رحمن'}, kind:'individual', contact:{en:'Faisal Rahman',ar:'فيصل رحمن'}, since:2024}
+];
+const DASH = {en:'—',ar:'—'};
+const MATTERS = [
+  {id:'M-26-044', title:{en:'Vendor dispute — network equipment supply',ar:'نزاع مع مورّد — توريد معدات الشبكة'}, client:'c5', type:'litigation', lead:'ka', team:['ka','nf'], status:'pending', stage:0, opened:'2026-10-06', forum:{en:'Dubai Courts',ar:'محاكم دبي'}, value:1150000},
+  {id:'M-26-041', title:{en:'Al Hamra Holdings v. Vertex Construction',ar:'الحمراء القابضة ضد فيرتكس للإنشاءات'}, client:'c1', type:'litigation', lead:'sh', team:['sh','lm','nf'], status:'active', stage:3, opened:'2026-03-14', forum:{en:'Commercial Court',ar:'المحكمة التجارية'}, value:4200000},
+  {id:'M-26-038', title:{en:'Tower B land acquisition',ar:'الاستحواذ على أرض البرج ب'}, client:'c2', type:'realestate', lead:'ka', team:['ka','ys'], status:'active', stage:2, opened:'2026-02-02', forum:{en:'Land Department',ar:'دائرة الأراضي'}, value:18500000},
+  {id:'M-26-035', title:{en:'Series C financing round',ar:'جولة التمويل من الفئة C'}, client:'c3', type:'corporate', lead:'oh', team:['oh','lm'], status:'pending', stage:1, opened:'2026-01-20', forum:DASH, value:60000000},
+  {id:'M-25-033', title:{en:'Wrongful termination claim',ar:'دعوى فصل تعسفي'}, client:'c4', type:'employment', lead:'lm', team:['lm','nf'], status:'active', stage:2, opened:'2025-12-08', forum:{en:'Labour Court',ar:'محكمة العمل'}, value:380000},
+  {id:'M-25-029', title:{en:'Trademark opposition — ORBITX',ar:'اعتراض على علامة تجارية — ORBITX'}, client:'c5', type:'ip', lead:'lm', team:['lm'], status:'onhold', stage:1, opened:'2025-11-17', forum:{en:'Trademark Office',ar:'مكتب العلامات التجارية'}, value:null},
+  {id:'M-25-024', title:{en:'Qasr Hospitality v. Desert Sands Resorts',ar:'مجموعة قصر للضيافة ضد منتجعات ديزرت ساندز'}, client:'c6', type:'arbitration', lead:'sh', team:['sh','ka','nf'], status:'active', stage:3, opened:'2025-09-03', forum:{en:'DIAC',ar:'مركز دبي للتحكيم الدولي'}, value:9750000},
+  {id:'M-25-017', title:{en:'Estate property transfer',ar:'نقل ملكية عقار من التركة'}, client:'c7', type:'realestate', lead:'ka', team:['ka'], status:'closed', stage:4, opened:'2025-06-11', forum:{en:'Land Department',ar:'دائرة الأراضي'}, value:2100000},
+  {id:'M-25-012', title:{en:'Distribution agreement review',ar:'مراجعة اتفاقية توزيع'}, client:'c3', type:'corporate', lead:'oh', team:['oh'], status:'closed', stage:4, opened:'2025-04-02', forum:DASH, value:null}
+];
+const EVENTS = [
+  {date:'2026-10-08', time:'15:00', kind:'meeting', m:'M-26-035', title:{en:'Due diligence review',ar:'مراجعة العناية الواجبة'}},
+  {date:'2026-10-13', time:'', kind:'filing', m:'M-26-041', title:{en:'Reply to statement of defence',ar:'الرد على مذكرة الدفاع'}},
+  {date:'2026-10-19', time:'10:00', kind:'meeting', m:'M-26-041', title:{en:'Strategy call with Al Hamra board',ar:'اجتماع استراتيجي مع مجلس الحمراء'}},
+  {date:'2026-10-20', time:'09:00', kind:'filing', m:'M-25-033', title:{en:'Submit witness statements',ar:'تقديم إفادات الشهود'}},
+  {date:'2026-10-22', time:'11:30', kind:'hearing', m:'M-26-041', title:{en:'Hearing — Commercial Court, Hall 4',ar:'جلسة — المحكمة التجارية، القاعة 4'}},
+  {date:'2026-10-24', time:'14:00', kind:'meeting', m:'M-26-044', title:{en:'Kick-off with Orbit legal team',ar:'اجتماع افتتاحي مع الفريق القانوني لأوربت'}},
+  {date:'2026-10-27', time:'12:00', kind:'filing', m:'M-26-038', title:{en:'Lodge transfer documents',ar:'إيداع مستندات النقل'}},
+  {date:'2026-10-29', time:'10:00', kind:'hearing', m:'M-25-024', title:{en:'Arbitral hearing — day 1',ar:'جلسة التحكيم — اليوم الأول'}},
+  {date:'2026-10-30', time:'10:00', kind:'hearing', m:'M-25-024', title:{en:'Arbitral hearing — day 2',ar:'جلسة التحكيم — اليوم الثاني'}},
+  {date:'2026-11-03', time:'13:00', kind:'meeting', m:'M-26-035', title:{en:'Term sheet negotiation',ar:'التفاوض على ورقة الشروط'}},
+  {date:'2026-11-12', time:'', kind:'filing', m:'M-25-029', title:{en:'Opposition evidence deadline',ar:'الموعد النهائي لأدلة الاعتراض'}}
+];
+const INVOICES = [
+  {id:'INV-2026-119', client:'c5', m:'M-26-044', issued:'2026-10-18', due:'2026-11-17', amount:45000, status:'draft'},
+  {id:'INV-2026-118', client:'c1', m:'M-26-041', issued:'2026-10-05', due:'2026-11-04', amount:186000, status:'sent'},
+  {id:'INV-2026-117', client:'c6', m:'M-25-024', issued:'2026-10-02', due:'2026-11-01', amount:240500, status:'sent'},
+  {id:'INV-2026-116', client:'c2', m:'M-26-038', issued:'2026-09-28', due:'2026-10-12', amount:92000, status:'overdue'},
+  {id:'INV-2026-115', client:'c4', m:'M-25-033', issued:'2026-09-20', due:'2026-10-20', amount:18400, status:'sent'},
+  {id:'INV-2026-114', client:'c3', m:'M-26-035', issued:'2026-09-15', due:'2026-10-15', amount:64000, status:'paid'},
+  {id:'INV-2026-113', client:'c7', m:'M-25-017', issued:'2026-09-01', due:'2026-09-30', amount:27500, status:'overdue'},
+  {id:'INV-2026-112', client:'c1', m:'M-26-041', issued:'2026-09-01', due:'2026-10-01', amount:158000, status:'paid'}
+];
+const ACTIVITY = [
+  {who:'sh', text:{en:'filed the reply to the statement of defence in M-26-041.',ar:'قدّمت الرد على مذكرة الدفاع في M-26-041.'}, when:{en:'2 hours ago',ar:'منذ ساعتين'}},
+  {who:'ys', text:{en:'drafted invoice INV-2026-119 for Orbit Telecom.',ar:'أعدّ مسودة الفاتورة INV-2026-119 لأوربت للاتصالات.'}, when:{en:'Yesterday',ar:'أمس'}},
+  {who:'ka', text:{en:'opened a new matter for Orbit Telecom.',ar:'فتح قضية جديدة لأوربت للاتصالات.'}, when:{en:'2 days ago',ar:'منذ يومين'}},
+  {who:'lm', text:{en:'uploaded 3 witness statements to M-25-033.',ar:'رفعت 3 إفادات شهود إلى M-25-033.'}, when:{en:'3 days ago',ar:'منذ 3 أيام'}},
+  {who:'nf', text:{en:'scheduled the arbitral hearing for 29 October.',ar:'جدولت جلسة التحكيم في 29 أكتوبر.'}, when:{en:'Last week',ar:'الأسبوع الماضي'}}
+];
+const DOCS = [
+  {name:{en:'Statement of claim',ar:'صحيفة الدعوى'}, ext:'DOCX', size:'92 KB', date:'2026-10-14'},
+  {name:{en:'Evidence bundle — volume 1',ar:'حافظة المستندات — المجلد 1'}, ext:'PDF', size:'12.4 MB', date:'2026-10-09'},
+  {name:{en:'Correspondence log',ar:'سجل المراسلات'}, ext:'XLSX', size:'48 KB', date:'2026-09-22'},
+  {name:{en:'Engagement letter',ar:'خطاب التكليف'}, ext:'PDF', size:'184 KB', date:'2026-09-03'}
+];
+const ST = {active:['var(--ok-bg)','var(--ok-fg)'], pending:['var(--info-bg)','var(--info-fg)'], onhold:['var(--warn-bg)','var(--warn-fg)'], closed:['var(--neutral-bg)','var(--muted)']};
+const KD = {hearing:['var(--bad-bg)','var(--bad-fg)'], filing:['var(--warn-bg)','var(--warn-fg)'], meeting:['var(--info-bg)','var(--info-fg)']};
+const IV = {paid:['var(--ok-bg)','var(--ok-fg)'], sent:['var(--info-bg)','var(--info-fg)'], overdue:['var(--bad-bg)','var(--bad-fg)'], draft:['var(--neutral-bg)','var(--neutral-fg)']};
+const pd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const addDays = (s, n) => { const d = pd(s); d.setDate(d.getDate()+n); return iso(d); };
+
+class Component extends DCLogic {
+  state = this.initState();
+  initState() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+    const p = this.props || {};
+    return {
+      screen: saved.screen || (p.skipLogin ? 'dashboard' : 'login'),
+      theme: saved.theme || p.defaultTheme || 'light',
+      lang: saved.lang || p.defaultLang || 'en',
+      matterId: saved.matterId || 'M-26-041',
+      matterTab: 'overview', statusFilter: 'all', invFilter: 'all', query: '',
+      calY: 2026, calM: 9, selDay: TODAY,
+      matters: MATTERS, team: TEAM, modal: null, toast: null, remember: true,
+      loginEmail: 'omar.khalil@meridian.legal',
+      nm: {title:'', client:'c1', type:'litigation', lead:'sh'}, inv: {email:'', role:'associate'}
+    };
+  }
+  componentDidMount() { this.sync(); }
+  componentDidUpdate(pp) {
+    const p = this.props;
+    if (pp.defaultTheme !== p.defaultTheme && p.defaultTheme) this.setState({theme: p.defaultTheme});
+    if (pp.defaultLang !== p.defaultLang && p.defaultLang) this.setState({lang: p.defaultLang});
+    this.sync();
+  }
+  componentWillUnmount() { clearTimeout(this._tt); }
+  sync() {
+    const s = this.state, d = document.documentElement;
+    d.dataset.theme = s.theme; d.lang = s.lang; d.dir = s.lang === 'ar' ? 'rtl' : 'ltr';
+    try { localStorage.setItem(KEY, JSON.stringify({screen: s.screen, theme: s.theme, lang: s.lang, matterId: s.matterId})); } catch (e) {}
+  }
+  flash(msg) { clearTimeout(this._tt); this.setState({toast: msg}); this._tt = setTimeout(() => this.setState({toast: null}), 2400); }
+
+  renderVals() {
+    const s = this.state, L = s.lang, t = T[L];
+    const loc = L === 'ar' ? 'ar-u-nu-latn' : 'en-GB';
+    const tr = o => o ? (o[L] ?? o.en) : '—';
+    const fmt = (str, opt = {day:'numeric', month:'short', year:'numeric'}) => str ? new Intl.DateTimeFormat(loc, opt).format(pd(str)) : '—';
+    const money = n => new Intl.NumberFormat(loc, {style:'currency', currency:'AED', maximumFractionDigits:0}).format(n);
+    const person = id => s.team.find(p => p.id === id) || TEAM[0];
+    const ini = p => { const w = tr(p.name).replace('د. ','').split(' '); return L === 'ar' ? w.map(x => x[0]).slice(0,2).join('\u200C') : w.map(x => x[0]).slice(0,2).join(''); };
+    const client = id => CLIENTS.find(c => c.id === id);
+    const matterById = id => s.matters.find(m => m.id === id);
+    const nextEv = id => EVENTS.filter(e => e.m === id && e.date >= TODAY).sort((a,b) => a.date.localeCompare(b.date))[0];
+    const go = (screen, extra = {}) => () => this.setState({screen, ...extra});
+    const openMatter = id => () => this.setState({screen:'matter', matterId:id, matterTab:'overview', modal:null});
+    const pill = (sel, label, onClick) => ({label, onClick, bg: sel ? 'var(--accent)' : 'var(--surface)', fg: sel ? 'var(--accent-ink)' : 'var(--text)', bd: sel ? 'var(--accent)' : 'var(--border)'});
+    const tab = (active, label, count, onClick) => ({label, count, onClick, bg: active ? 'var(--surface)' : 'transparent', fg: active ? 'var(--text)' : 'var(--muted)', shadow: active ? '0 1px 2px rgba(0,0,0,.08)' : 'none'});
+
+    const decoM = m => {
+      const ne = nextEv(m.id); const [sb, sf] = ST[m.status];
+      return {...m, titleT: tr(m.title), clientT: tr(client(m.client).name), typeT: t['ty_' + m.type], leadT: tr(person(m.lead).name),
+        nextT: ne ? fmt(ne.date, {day:'numeric', month:'short'}) : '—', nextSub: ne ? t['ev_' + ne.kind] : '',
+        statusT: t['st_' + m.status], sBg: sb, sFg: sf, open: openMatter(m.id)};
+    };
+    const q = s.query.trim().toLowerCase();
+    const matchQ = m => !q || [m.id, m.title.en, m.title.ar, client(m.client).name.en, client(m.client).name.ar].some(x => x.toLowerCase().includes(q));
+    const qMatters = s.matters.filter(matchQ);
+    const filteredMatters = qMatters.filter(m => s.statusFilter === 'all' || m.status === s.statusFilter).map(decoM);
+    const statusTabs = ['all','active','pending','onhold','closed'].map(k => tab(s.statusFilter === k, k === 'all' ? t.all : t['st_' + k], qMatters.filter(m => k === 'all' || m.status === k).length, () => this.setState({statusFilter: k})));
+
+    const screenNav = s.screen === 'matter' ? 'matters' : s.screen;
+    const navItem = (key, count = '') => ({label: t[key], count, onClick: go(key, key === 'matters' ? {query:''} : {}),
+      bg: screenNav === key ? 'var(--surface-2)' : 'transparent', fg: screenNav === key ? 'var(--text)' : 'var(--muted)',
+      weight: screenNav === key ? 600 : 500, dot: screenNav === key ? 'var(--accent)' : 'var(--border)'});
+    const activeCount = s.matters.filter(m => m.status === 'active').length;
+    const openCount = s.matters.filter(m => m.status !== 'closed').length;
+
+    const evDeco = e => { const [kb, kf] = KD[e.kind]; const m = matterById(e.m);
+      return {day: pd(e.date).getDate(), mon: fmt(e.date, {month:'short'}), title: tr(e.title), kindT: t['ev_' + e.kind], kBg: kb, kFg: kf,
+        time: e.time || t.allDay, sub: m ? `${m.id} · ${tr(client(m.client).name)}` : '', matter: m ? `${m.id} · ${tr(m.title)}` : '', open: openMatter(e.m)}; };
+    const upcomingEv = EVENTS.filter(e => e.date >= TODAY).sort((a,b) => a.date.localeCompare(b.date));
+    const outstanding = INVOICES.filter(i => i.status === 'sent' || i.status === 'overdue').reduce((a,i) => a + i.amount, 0);
+    const overdueList = INVOICES.filter(i => i.status === 'overdue');
+    const h = new Date().getHours();
+    const me = person('oh');
+
+    const cur = decoM(matterById(s.matterId) || s.matters[0]);
+    const curEvents = EVENTS.filter(e => e.m === cur.id).sort((a,b) => a.date.localeCompare(b.date));
+
+    const first = new Date(s.calY, s.calM, 1);
+    const start = new Date(first); start.setDate(1 - first.getDay());
+    let cells = [];
+    for (let i = 0; i < 42; i++) { const d = new Date(start); d.setDate(start.getDate() + i); cells.push(d); }
+    if (cells[35].getMonth() !== s.calM) cells = cells.slice(0, 35);
+    const calCells = cells.map(d => {
+      const k = iso(d), inM = d.getMonth() === s.calM, isT = k === TODAY, isS = k === s.selDay;
+      const evs = EVENTS.filter(e => e.date === k);
+      return {day: d.getDate(), bg: isS ? 'var(--accent-soft)' : inM ? 'var(--surface)' : 'var(--bg)',
+        numBg: isT ? 'var(--accent)' : 'transparent', numFg: isT ? 'var(--accent-ink)' : inM ? 'var(--text)' : 'var(--muted)',
+        evs: evs.slice(0, 2).map(e => ({title: tr(e.title), kBg: KD[e.kind][0], kFg: KD[e.kind][1]})), more: evs.length > 2 ? `+${evs.length - 2}` : '',
+        onClick: () => this.setState({selDay: k})};
+    });
+    const weekdays = [...Array(7)].map((_, i) => fmt(addDays('2026-10-18', i), {weekday:'short'}));
+    const selEvents = EVENTS.filter(e => e.date === s.selDay).map(evDeco);
+    const shiftMonth = n => () => { const d = new Date(s.calY, s.calM + n, 1); this.setState({calY: d.getFullYear(), calM: d.getMonth()}); };
+
+    const invQ = INVOICES.filter(i => s.invFilter === 'all' || i.status === s.invFilter);
+    const billedMonth = INVOICES.filter(i => i.issued.startsWith('2026-10') && i.status !== 'draft').reduce((a,i) => a + i.amount, 0);
+
+    const roleStyle = r => r === 'admin' ? ['var(--accent-soft)','var(--accent)'] : r === 'partner' ? ['var(--info-bg)','var(--info-fg)'] : ['var(--neutral-bg)','var(--neutral-fg)'];
+    const setNm = patch => this.setState(st => ({nm: {...st.nm, ...patch}}));
+
+    return {
+      dir: L === 'ar' ? 'rtl' : 'ltr', t,
+      themeLabel: s.theme === 'light' ? t.themeDark : t.themeLight,
+      toggleTheme: () => this.setState(st => ({theme: st.theme === 'light' ? 'dark' : 'light'})),
+      toggleLang: () => this.setState(st => ({lang: st.lang === 'en' ? 'ar' : 'en'})),
+      isLogin: s.screen === 'login', isApp: s.screen !== 'login',
+      loginEmail: s.loginEmail, setLoginEmail: e => this.setState({loginEmail: e.target.value}),
+      remember: s.remember, toggleRemember: () => this.setState(st => ({remember: !st.remember})),
+      signIn: e => { e.preventDefault(); this.setState({screen:'dashboard'}); },
+      signOut: go('login'),
+      navPractice: [navItem('dashboard'), navItem('matters', openCount), navItem('clients', CLIENTS.length), navItem('calendar'), navItem('billing')],
+      navFirm: [navItem('team')],
+      me: {name: tr(me.name), ini: ini(me)},
+      query: s.query,
+      setQuery: e => this.setState({query: e.target.value, screen: 'matters', statusFilter: 'all'}),
+      setQueryLocal: e => this.setState({query: e.target.value}),
+      isDashboard: s.screen === 'dashboard', isMatters: s.screen === 'matters', isMatter: s.screen === 'matter',
+      isClients: s.screen === 'clients', isCalendar: s.screen === 'calendar', isBilling: s.screen === 'billing', isTeam: s.screen === 'team',
+      todayLabel: fmt(TODAY, {weekday:'long', day:'numeric', month:'long', year:'numeric'}),
+      greeting: `${h < 12 ? t.morning : h < 18 ? t.afternoon : t.evening}، ${tr(me.name).split(' ')[0]}`.replace('، ', L === 'ar' ? '، ' : ', '),
+      kpis: [
+        {label: t.kpiActive, value: activeCount, onClick: go('matters', {statusFilter:'active', query:''})},
+        {label: t.kpiDeadlines, value: upcomingEv.filter(e => e.date <= addDays(TODAY, 7)).length, onClick: go('calendar')},
+        {label: t.kpiOutstanding, value: money(outstanding), onClick: go('billing', {invFilter:'sent'})},
+        {label: t.kpiOverdue, value: overdueList.length, onClick: go('billing', {invFilter:'overdue'})}
+      ],
+      upcoming: upcomingEv.slice(0, 5).map(evDeco),
+      activity: ACTIVITY.map(a => ({who: tr(person(a.who).name), ini: ini(person(a.who)), text: tr(a.text), when: tr(a.when)})),
+      goCalendar: go('calendar'), goMatters: go('matters'),
+      mattersSub: `${s.matters.length} ${t.mattersOf} ${new Set(s.matters.map(m => m.client)).size} ${t.clientsWord}`,
+      statusTabs, filteredMatters, noMatters: filteredMatters.length === 0,
+      openNewMatter: () => this.setState({modal:'matter', nm: {title:'', client:'c1', type:'litigation', lead:'sh'}}),
+      cur,
+      matterTabs: [['overview', t.tabOverview], ['docs', t.tabDocs], ['activity', t.tabActivity]].map(([k, label]) => ({label, onClick: () => this.setState({matterTab: k}),
+        line: s.matterTab === k ? 'var(--accent)' : 'transparent', fg: s.matterTab === k ? 'var(--text)' : 'var(--muted)'})),
+      tabOverview: s.matterTab === 'overview', tabDocs: s.matterTab === 'docs', tabActivity: s.matterTab === 'activity',
+      stages: t.stages.map((label, i) => ({label, bar: i <= cur.stage ? 'var(--accent)' : 'var(--border)', fg: i === cur.stage ? 'var(--text)' : 'var(--muted)', weight: i === cur.stage ? 600 : 400})),
+      details: [
+        {k: t.colClient, v: cur.clientT}, {k: t.colType, v: cur.typeT}, {k: t.colLead, v: cur.leadT},
+        {k: t.opened, v: fmt(cur.opened)}, {k: t.forum, v: tr(cur.forum)}, {k: t.value, v: cur.value ? money(cur.value) : '—'}
+      ],
+      curTeam: cur.team.map(id => { const p = person(id); return {nameT: tr(p.name), ini: ini(p), roleT: t['ro_' + p.role]}; }),
+      docs: DOCS.map(d => ({name: tr(d.name), ext: d.ext, size: d.size, date: fmt(d.date)})),
+      mActivity: [...curEvents.filter(e => e.date <= TODAY).reverse().map(e => ({text: `${t['ev_' + e.kind]} — ${tr(e.title)}`, when: fmt(e.date), dot: KD[e.kind][1]})),
+        {text: `${t.openedBy} ${cur.leadT}`, when: fmt(cur.opened), dot: 'var(--muted)'}],
+      keyDates: curEvents.map(e => ({...evDeco(e), opacity: e.date < TODAY ? 0.55 : 1})),
+      noKeyDates: curEvents.length === 0,
+      noteToast: () => this.flash(t.toastNote), uploadToast: () => this.flash(t.toastUpload),
+      clients: CLIENTS.map(c => ({name: tr(c.name), letter: tr(c.name)[0], kindT: t[c.kind], contact: tr(c.contact),
+        openCount: s.matters.filter(m => m.client === c.id && m.status !== 'closed').length, since: c.since,
+        open: go('matters', {query: tr(c.name), statusFilter:'all'})})),
+      monthLabel: new Intl.DateTimeFormat(loc, {month:'long', year:'numeric'}).format(first),
+      calPrev: shiftMonth(-1), calNext: shiftMonth(1), calToday: () => this.setState({calY: 2026, calM: 9, selDay: TODAY}),
+      weekdays, calCells,
+      selWeekday: fmt(s.selDay, {weekday:'long'}), selLabel: fmt(s.selDay, {day:'numeric', month:'long'}),
+      selEvents, noSelEvents: selEvents.length === 0,
+      billSummary: [
+        {label: t.billedMonth, value: money(billedMonth), color: 'var(--text)'},
+        {label: t.outstanding, value: money(outstanding), color: 'var(--text)'},
+        {label: t.overdue, value: money(overdueList.reduce((a,i) => a + i.amount, 0)), color: 'var(--bad-fg)'}
+      ],
+      invTabs: ['all','sent','overdue','paid','draft'].map(k => tab(s.invFilter === k, k === 'all' ? t.all : t['iv_' + k], INVOICES.filter(i => k === 'all' || i.status === k).length, () => this.setState({invFilter: k}))),
+      invoices: invQ.map(i => ({id: i.id, client: tr(client(i.client).name), matter: i.m, issued: fmt(i.issued), due: fmt(i.due),
+        dueColor: i.status === 'overdue' ? 'var(--bad-fg)' : 'var(--muted)', amount: money(i.amount), statusT: t['iv_' + i.status],
+        sBg: IV[i.status][0], sFg: IV[i.status][1], open: openMatter(i.m)})),
+      invoiceToast: () => this.flash(t.toastInvoice),
+      teamRows: s.team.map(p => ({nameT: tr(p.name), ini: ini(p), email: p.email, roleT: t['ro_' + p.role], rBg: roleStyle(p.role)[0], rFg: roleStyle(p.role)[1],
+        count: s.matters.filter(m => m.team.includes(p.id) && m.status !== 'closed').length, lastT: p.invited ? t.invited : tr(p.last)})),
+      openInvite: () => this.setState({modal:'invite', inv: {email:'', role:'associate'}}),
+      isModalMatter: s.modal === 'matter', isModalInvite: s.modal === 'invite',
+      closeModal: () => this.setState({modal: null}), stop: e => e.stopPropagation(),
+      nm: s.nm, setNmTitle: e => setNm({title: e.target.value}),
+      clientPills: CLIENTS.map(c => pill(s.nm.client === c.id, tr(c.name), () => setNm({client: c.id}))),
+      typePills: ['litigation','corporate','realestate','employment','ip','arbitration'].map(k => pill(s.nm.type === k, t['ty_' + k], () => setNm({type: k}))),
+      leadPills: s.team.filter(p => ['admin','partner','associate'].includes(p.role) && !p.invited).map(p => pill(s.nm.lead === p.id, tr(p.name), () => setNm({lead: p.id}))),
+      createOpacity: s.nm.title.trim() ? 1 : 0.5,
+      createMatter: e => {
+        e.preventDefault(); const title = s.nm.title.trim(); if (!title) return;
+        const id = `M-26-0${45 + s.matters.length - MATTERS.length}`;
+        const m = {id, title: {en: title, ar: title}, client: s.nm.client, type: s.nm.type, lead: s.nm.lead, team: [s.nm.lead], status: 'pending', stage: 0, opened: TODAY, forum: DASH, value: null};
+        this.setState(st => ({matters: [m, ...st.matters], modal: null, screen: 'matter', matterId: id, matterTab: 'overview'}));
+        this.flash(t.toastMatter);
+      },
+      inv: s.inv, setInvEmail: e => { const v = e.target.value; this.setState(st => ({inv: {...st.inv, email: v}})); },
+      rolePills: ['partner','associate','paralegal','staff','admin'].map(k => pill(s.inv.role === k, t['ro_' + k], () => this.setState(st => ({inv: {...st.inv, role: k}})))),
+      inviteOpacity: /.+@.+\..+/.test(s.inv.email) ? 1 : 0.5,
+      sendInvite: e => {
+        e.preventDefault(); const email = s.inv.email.trim(); if (!/.+@.+\..+/.test(email)) return;
+        const nm = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        this.setState(st => ({team: [...st.team, {id: 'u' + Date.now(), name: {en: nm, ar: nm}, email, role: st.inv.role, invited: true, last: DASH}], modal: null}));
+        this.flash(t.toastInvite);
+      },
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

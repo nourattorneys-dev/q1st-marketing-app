@@ -23,6 +23,8 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 - Design: `docs/specs/2026-10-21-marketing-dashboard-design.md`
 - API contract: `docs/specs/Marketing Portal Build Spec v1.1.html`
 - Plans: `docs/plans/`
+- From Quantum1st: their original spec (`docs/quantum1st/Marketing Portal Build Spec v1.0 (from Quantum1st).html`), and our draft reply proposing v1.1 (`docs/quantum1st/message-to-quantum1st.md`, not sent yet)
+- Design reference: `docs/design-reference/` (the portal prototype the look is based on; style only, its names are placeholders)
 
 ## Real sign-in (Clerk)
 
