@@ -41,6 +41,10 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
   if (env.DB_MODE === "mysql") {
     if (!env.DATABASE_URL) throw new Error("DB_MODE=mysql needs DATABASE_URL=mysql://user:password@host:3306/database.");
     if (!env.DATABASE_URL.startsWith("mysql://")) throw new Error("DATABASE_URL must start with mysql:// (DB_MODE=mysql).");
+    // The message never repeats the address: it holds the database password (M5a final review).
+    if (!URL.canParse(env.DATABASE_URL)) {
+      throw new Error("DATABASE_URL isn't a valid address. URL-encode special characters in the password (for example # as %23, / as %2F, ? as %3F).");
+    }
   }
 
   let encryptionKey: Buffer | null = null;

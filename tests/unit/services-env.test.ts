@@ -26,6 +26,21 @@ describe("parseServicesEnv (M4c)", () => {
     expect(() => parseServicesEnv({ DB_MODE: "neon", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/DB_MODE=mysql/);
   });
 
+  it("refuses a DATABASE_URL that isn't a valid address, without repeating it (final review: a password with # / ? not encoded)", () => {
+    // What the settings file holds when a password's #, / or ? isn't URL-encoded (a # even starts a comment there).
+    for (const url of ["mysql://dash:Secret", "mysql://dash:pa/ss9@localhost:3306/db", "mysql://dash:pa?ss9@localhost:3306/db"]) {
+      let message = "";
+      try {
+        parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: url });
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).toMatch(/URL-encode/);
+      expect(message).not.toMatch(/Secret|pa\/ss9|pa\?ss9/);
+    }
+    expect(parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: `mysql://dash:${encodeURIComponent("pa/ss?9#")}@localhost:3306/db` }).dbMode).toBe("mysql");
+  });
+
   it("refuses the in-memory store on a production server, which would lose its data on every restart", () => {
     expect(() => parseServicesEnv({ NODE_ENV: "production" })).toThrow(/refused in production/);
     expect(parseServicesEnv({ NODE_ENV: "production", ALLOW_TEST_LOGINS: "1" }).dbMode).toBe("memory");
