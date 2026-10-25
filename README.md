@@ -11,7 +11,7 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 - `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
 - Mock scenario `signin_down` (the same `mock_scenario` cookie): the sign-in service can't be reached. The Users page shows a notice; the engine stays normal.
-- `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; see "Database, webhook and email" for Vercel.
+- `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; a server keeps its data in MySQL (see "Database, webhook and email").
 - With test logins, `POST /api/dev/mock-webhook` with `{ "event": "post.drafted", "data": { "postId": "p_201", "status": "pending" } }` makes the mock engine deliver a signed webhook (set the webhook up first, in Settings → Webhook). `GET /api/cron/notifications` with `Authorization: Bearer $CRON_SECRET` sends what's due.
 
 ## Checks
@@ -43,18 +43,20 @@ One Clerk application per website copy (design §5).
 
 Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then. Clerk mode is unit-tested against a fake client only: check these steps end to end with real keys before go-live (`docs/plans/2026-10-22-m4b-followups.md`).
 
-## Database, webhook and email (Vercel)
+## Database, webhook and email
 
-1. **Database:** add Neon from the Vercel Marketplace (it sets `DATABASE_URL`), and set `DB_MODE=neon`.
+1. **Database:** the client's MySQL 8.
+   - Settings: `DB_MODE=mysql` and `DATABASE_URL=mysql://user:password@host:3306/database` (URL-encode special characters in the password).
+   - **The app creates and updates its own tables** the first time it uses the database after a release, from `drizzle/`, under the MySQL lock `articles_ai_migrations`. Locally, `pnpm db:migrate` does the same for the database in `DATABASE_URL`.
    - Set `WEBHOOK_ENCRYPTION_KEY` to `openssl rand -base64 32`. Keep it: changing it means getting a new webhook secret.
-   - Apply the migrations once, and after every schema change: `DATABASE_URL=… pnpm db:migrate`.
-   - Pull `DATABASE_URL` from the Neon dashboard, not with `vercel env pull`, which can also write `VERCEL="1"` locally.
+   - **Backups:** the host's backups of the database. cPanel's account backups include MySQL databases.
+   - **Tests:** `pnpm test` needs a local MySQL, set by `TEST_DATABASE_URL` (default `mysql://root@127.0.0.1:3306/articles_ai_test`; start it with `brew services start mysql@8.4`). Each test file uses its own `articles_ai_test_<name>` database.
 2. **Email:** in Resend, add the sending domain (for example `notifications.fakhernco.com`). Add the DNS records Resend lists (DKIM, and its SPF/MX for the sending subdomain) in **Cloudflare**; the Microsoft 365 mail setup is unaffected. Then set:
    - `EMAIL_MODE=resend`
    - `RESEND_API_KEY`
    - `EMAIL_FROM` (for example `Articles AI <notifications@notifications.fakhernco.com>`)
-3. **Cron:** set `CRON_SECRET` (a long random string). `vercel.json` calls `/api/cron/notifications` every 15 minutes. That needs Vercel Pro: on Hobby a cron that runs more than once a day makes the deployment fail. Every 15 minutes lets Neon's database sleep between runs, so the Free plan's monthly compute lasts the month; every 5 minutes would keep it awake and use it up by mid-month.
-4. **Webhook:** after deploying, open **Settings → Webhook** on the production address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted. A preview deployment that does the same takes the webhook over (one webhook per site): set it up again on production afterwards.
+3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). `vercel.json` holds the same schedule for Vercel, which is no longer the hosting path.
+4. **Webhook:** after a release, open **Settings → Webhook** on the live address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted.
 
 ## Hosting on cPanel (dashboard.fakhernco.com)
 
@@ -64,12 +66,13 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 
 1. cPanel → **Domains**: create `dashboard.fakhernco.com` with the document root `/home/fakhernco/dashboard.fakhernco.com`. Upload `deploy/cpanel/htaccess` as that folder's `.htaccess`: it points Passenger at `~/dashboard-app` and Node 22. Nothing else in the web root belongs to the app.
 2. **Cloudflare DNS:** add an `A` record `dashboard` pointing to the server's IP (the one fakhernco.com uses), set to **DNS only**. cPanel's AutoSSL then issues the certificate; cPanel → SSL/TLS Status → **Run AutoSSL** hurries it.
-3. **`.env.cpanel`** in the repo root (never committed). Start from `.env.example` and set:
+3. **MySQL:** cPanel → **MySQL Databases**: create a database (for example `fakhernco_dashboard`; cPanel adds the account prefix) and a user, and give the user **All Privileges** on it, since the app creates its own tables. Then `DATABASE_URL=mysql://<user>:<password>@localhost:3306/<database>`.
+4. **`.env.cpanel`** in the repo root (never committed). Start from `.env.example` and set:
    - `AUTH_MODE=clerk`, with the Clerk keys
    - `TWO_FACTOR=off` on Clerk's free plan
-   - `DB_MODE=neon` with `DATABASE_URL`
+   - `DB_MODE=mysql` with `DATABASE_URL`
    - `WEBHOOK_ENCRYPTION_KEY`, `EMAIL_MODE` and `CRON_SECRET`
-4. **SFTP:** an entry `fakher` in `~/.ssh/config` (host, port, user `fakhernco`, and a key authorized in cPanel → SSH Access).
+5. **SFTP:** an entry `fakher` in `~/.ssh/config` (host, port, user `fakhernco`, and a key authorized in cPanel → SSH Access).
 
 **Each release**
 
@@ -83,7 +86,7 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Preview before Clerk:** a settings file with `AUTH_MODE=mock` and `ALLOW_TEST_LOGINS=1` (kept locally as `.env.cpanel-preview`) builds a `<commit>-preview` release with test logins.
   - `scripts/cpanel-deploy.sh` always puts it behind `deploy/cpanel/htaccess-preview`: the browser asks for a password, kept as a bcrypt hash in `~/.htpasswds/dashboard.fakhernco.com/passwd`.
   - The Clerk build takes the password off again, but only once it is live.
-  - The preview stores the test users' data in the same Neon database.
+  - The preview stores the test users' data in the same MySQL database.
 - **Email schedule:** when `EMAIL_MODE=resend`, add a cPanel cron job every 15 minutes:
   `curl -fsS -H "Authorization: Bearer <CRON_SECRET>" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null`.
   `vercel.json`'s cron applies only on Vercel.
@@ -251,3 +254,13 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
   - Clerk's sign-in and account screens are in Arabic on `/ar` (`@clerk/localizations`, plus Arabic for what it leaves in English: placeholders, the wrong-password and wrong-code errors, the sign-in title, dates).
   - The dashboard's own refusals, the plural counts, the keyword limits and the dialog's Close label are translated.
 - **Photos** are limited to 4 MB, under Vercel's 4.5 MB request limit, whatever the engine allows.
+
+## Decisions in M5a (own database)
+
+- **The client's MySQL instead of Neon,** so a copy depends on no outside database service. Any host with MySQL 8 works; the settings file is the only difference.
+- **The app creates its own tables** on first use after a release, under the MySQL lock `articles_ai_migrations`, because the cPanel account has no shell. A failed attempt is retried on the next request, and its error names the migrations folder.
+- **utf8mb4 tables whatever the database's default,** so Arabic and emoji are safe on hosts that default to latin1.
+- **At most 3 connections,** leaving room for WordPress on the same account.
+- **Ids are capped at 191 characters and emails at 255.** A longer one is refused with an error rather than cut, since `INSERT IGNORE` would cut it silently. The engine's event names are `text`.
+- **Settings are read at request time only:** the cron route waits for a request (`await connection()`) before reading them, so the production build, which tries to prerender it, never does.
+- **The in-memory store is refused on production servers,** where it would lose its data on every restart. The exception is `ALLOW_TEST_LOGINS=1`, which the e2e suite sets.
