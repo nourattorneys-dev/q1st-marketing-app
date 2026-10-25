@@ -2,7 +2,7 @@ import type { RowDataPacket } from "mysql2/promise";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectMysql, type MysqlConnection } from "@/lib/db/mysql";
 import { createMysqlStore, MAX_EMAIL_LENGTH, MAX_KEY_LENGTH, queries } from "@/lib/db/mysql-store";
-import { freshTestDatabase } from "./mysql-test-db";
+import { adminQuery, freshTestDatabase, testDatabaseName } from "./mysql-test-db";
 
 const AT = new Date("2026-10-22T08:00:00.123Z");
 
@@ -78,5 +78,27 @@ describe("the MySQL store on a real database", () => {
     await expect(store.recordDelivery(["evt_mail"], `${"a".repeat(MAX_EMAIL_LENGTH)}@example.com`, AT)).rejects.toThrow(
       `longer than ${MAX_EMAIL_LENGTH} characters`,
     );
+  });
+});
+
+describe("preparing the dashboard's tables after an interrupted first attempt", () => {
+  it("finishes the job when a first attempt was cut off after some tables (final review: CREATE TABLE commits each statement)", async () => {
+    const url = await freshTestDatabase("half_prepared");
+    // What a first preparation leaves if the process dies after its first CREATE TABLE: one table, no migration recorded.
+    await adminQuery(
+      `CREATE TABLE \`${testDatabaseName("half_prepared")}\`.\`notification_deliveries\` (\`event_id\` varchar(191) NOT NULL, \`email\` varchar(255) NOT NULL, \`sent_at\` datetime(3) NOT NULL, PRIMARY KEY (\`event_id\`, \`email\`)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`,
+    );
+    const connection = connectMysql(url);
+    try {
+      await connection.ready();
+      const [tables] = await connection.pool.query<RowDataPacket[]>(
+        "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> '__drizzle_migrations'",
+      );
+      expect(Number(tables[0]?.n)).toBe(5);
+      const [applied] = await connection.pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM __drizzle_migrations");
+      expect(Number(applied[0]?.n)).toBe(1);
+    } finally {
+      await connection.close();
+    }
   });
 });
