@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Builds the dashboard for the cPanel server (README, "Hosting on cPanel"): Next's standalone server, made from the
 # committed code in a clean clone with a flat node_modules, since pnpm's links don't survive an SFTP upload.
-# Reads AUTH_MODE, ENGINE_MODE, TWO_FACTOR and NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from .env.cpanel, or the file named by
-# CPANEL_SETTINGS (the build bakes them in); nothing secret goes into the build.
-# Usage: scripts/cpanel-build.sh   → dist/cpanel/<commit>/
+# Reads AUTH_MODE, ENGINE_MODE, TWO_FACTOR, ALLOW_TEST_LOGINS and NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from .env.cpanel, or
+# the file named by CPANEL_SETTINGS (the build bakes them in); nothing secret goes into the build.
+# AUTH_MODE=mock makes a preview with test logins, which scripts/cpanel-deploy.sh always puts behind a password.
+# Usage: scripts/cpanel-build.sh   → dist/cpanel/<commit>/ (or <commit>-preview/)
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -17,8 +18,20 @@ SETTINGS=${CPANEL_SETTINGS:-$ROOT/.env.cpanel}
 setting() { sed -n "s/^$1=//p" "$SETTINGS" | tail -1; }
 PUBLISHABLE_KEY=$(setting NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 AUTH=$(setting AUTH_MODE)
-[ "$AUTH" = "clerk" ] || { echo "AUTH_MODE must be clerk in $SETTINGS: test logins never go on a server." >&2; exit 1; }
-[ -n "$PUBLISHABLE_KEY" ] || { echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is empty in $SETTINGS." >&2; exit 1; }
+case "$AUTH" in
+  clerk)
+    [ -n "$PUBLISHABLE_KEY" ] || { echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is empty in $SETTINGS." >&2; exit 1; }
+    SUFFIX=""
+    ;;
+  mock)
+    [ "$(setting ALLOW_TEST_LOGINS)" = "1" ] || { echo "A preview with test logins needs ALLOW_TEST_LOGINS=1 in $SETTINGS." >&2; exit 1; }
+    SUFFIX="-preview"
+    ;;
+  *)
+    echo "AUTH_MODE must be clerk or mock in $SETTINGS." >&2
+    exit 1
+    ;;
+esac
 
 SHA=$(git rev-parse --short HEAD)
 WORK=$(mktemp -d)
@@ -28,11 +41,11 @@ cd "$WORK/app"
 git checkout --quiet "$SHA"
 pnpm install --frozen-lockfile --config.node-linker=hoisted --reporter=silent
 env -i PATH="$PATH" HOME="$HOME" NEXT_TELEMETRY_DISABLED=1 NEXT_OUTPUT=standalone \
-  AUTH_MODE=clerk ENGINE_MODE="$(setting ENGINE_MODE)" TWO_FACTOR="$(setting TWO_FACTOR)" \
+  AUTH_MODE="$AUTH" ALLOW_TEST_LOGINS="$(setting ALLOW_TEST_LOGINS)" ENGINE_MODE="$(setting ENGINE_MODE)" TWO_FACTOR="$(setting TWO_FACTOR)" \
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" \
   pnpm build
 
-OUT="$ROOT/dist/cpanel/$SHA"
+OUT="$ROOT/dist/cpanel/$SHA$SUFFIX"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -R .next/standalone/. "$OUT/"
@@ -41,6 +54,7 @@ cp -R public "$OUT/public"
 cp deploy/cpanel/app.cjs "$OUT/app.cjs"
 mkdir -p "$OUT/tmp"
 echo "$SHA" > "$OUT/REVISION"
+echo "$AUTH" > "$OUT/AUTH_MODE" # scripts/cpanel-deploy.sh picks the web root's .htaccess from it
 # The standalone copy brings no .env files; make sure, as the old CMS leaked one.
 find "$OUT" -name ".env*" -delete
 # Next brings sharp for next/image, which the dashboard doesn't use; its macOS binary couldn't load on the server.
