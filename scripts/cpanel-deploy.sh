@@ -12,11 +12,11 @@
 set -euo pipefail
 
 HOST=${CPANEL_SFTP_HOST:-fakher} # an entry in ~/.ssh/config
+SETTINGS_FILE=$(realpath "${CPANEL_SETTINGS:-$(git rev-parse --show-toplevel)/.env.cpanel}" 2>/dev/null || true)
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
 SETTINGS=false
-SETTINGS_FILE=${CPANEL_SETTINGS:-.env.cpanel}
 if [ "${1:-}" = "--settings" ]; then
   SETTINGS=true
   shift
@@ -29,7 +29,7 @@ case "$(cat "dist/cpanel/$SHA/AUTH_MODE" 2>/dev/null)" in
   *) echo "dist/cpanel/$SHA has no AUTH_MODE: rebuild it with scripts/cpanel-build.sh." >&2; exit 1 ;;
 esac
 if $SETTINGS && [ ! -f "$SETTINGS_FILE" ]; then
-  echo "Missing $SETTINGS_FILE." >&2
+  echo "Missing ${CPANEL_SETTINGS:-.env.cpanel}." >&2
   exit 1
 fi
 

@@ -7,14 +7,15 @@
 # Usage: scripts/cpanel-build.sh   → dist/cpanel/<commit>/ (or <commit>-preview/)
 set -euo pipefail
 
+# Resolved before any cd: the build runs in a clone elsewhere.
+SETTINGS=$(realpath "${CPANEL_SETTINGS:-$(git rev-parse --show-toplevel)/.env.cpanel}" 2>/dev/null || true)
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 if [ -n "$(git status --porcelain)" ]; then
   echo "Commit your changes first: the build uses the committed code." >&2
   exit 1
 fi
-SETTINGS=${CPANEL_SETTINGS:-$ROOT/.env.cpanel}
-[ -f "$SETTINGS" ] || { echo "Missing $SETTINGS (README, Hosting on cPanel)." >&2; exit 1; }
+[ -f "$SETTINGS" ] || { echo "Missing ${CPANEL_SETTINGS:-.env.cpanel} (README, Hosting on cPanel)." >&2; exit 1; }
 setting() { sed -n "s/^$1=//p" "$SETTINGS" | tail -1; }
 PUBLISHABLE_KEY=$(setting NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 AUTH=$(setting AUTH_MODE)
