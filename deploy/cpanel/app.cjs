@@ -25,6 +25,8 @@ for (const stream of [process.stdout, process.stderr]) {
 try {
   process.loadEnvFile(path.join(shared, "settings.env"));
   process.env.NODE_ENV = "production";
+  // Next listens on HOSTNAME, which a host may set to its own name; the app's internal rewrites need the default.
+  process.env.HOSTNAME = "0.0.0.0";
   console.log(`${new Date().toISOString()} starting release ${path.basename(__dirname)} on Node ${process.version}`);
   process.chdir(__dirname);
   require("./server.js");
