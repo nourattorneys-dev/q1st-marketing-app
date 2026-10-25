@@ -7,6 +7,8 @@ import { DirectoryError } from "@/lib/users/types";
 let store: AppStore;
 const directory = { list: vi.fn() };
 vi.mock("@/lib/db", () => ({ getStore: () => store }));
+// The route waits for a request (connection()) so the build never runs it; here every call is a request.
+vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("@/lib/users/directory", () => ({ getDirectory: async () => directory }));
 
 const { GET } = await import("@/app/api/cron/notifications/route");

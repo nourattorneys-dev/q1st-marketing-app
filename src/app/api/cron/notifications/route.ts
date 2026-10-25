@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { connection } from "next/server";
 import { getStore } from "@/lib/db";
 import { flushNotifications } from "@/lib/notifications/flush";
 import { mailerFor } from "@/lib/notifications/mailer";
@@ -18,6 +19,9 @@ function authorized(header: string | null, secret: string | null): boolean {
 
 /** GET /api/cron/notifications: every 15 minutes (vercel.json), sends the notification emails that are due (design §10). */
 export async function GET(request: Request) {
+  // Request time only: at build Next calls a GET to try to prerender it, and the settings must not be read then
+  // (DB_MODE refuses the in-memory store in production; M5a).
+  await connection();
   const env = servicesEnv();
   if (!authorized(request.headers.get("Authorization"), env.cronSecret)) {
     return Response.json({ ok: false, error: { status: 401, code: "unauthorized", message: "Missing or wrong CRON_SECRET." } }, { status: 401, headers: NO_STORE });
