@@ -18,10 +18,11 @@ const NONE = "none";
 export type UserRow = { id: string; name: string; email: string; role: Role | null; twoFactor: boolean; lastSignIn: string | null };
 export type InviteRow = { id: string; email: string; role: Role | null; sentOn: string };
 
-type Props = { locale: string; selfId: string; testLogins: boolean; users: UserRow[]; invites: InviteRow[] };
+/** `showTwoFactor`: false with TWO_FACTOR=off, which drops the two-factor column. */
+type Props = { locale: string; selfId: string; testLogins: boolean; showTwoFactor: boolean; users: UserRow[]; invites: InviteRow[] };
 
 /** Design §7 /users: change someone's access, invite by email with a role, revoke a pending invitation. */
-export function UsersBoard({ locale, selfId, testLogins, users, invites }: Props) {
+export function UsersBoard({ locale, selfId, testLogins, showTwoFactor, users, invites }: Props) {
   const t = useTranslations("Users");
   // Which row's change went through last; kept here because a row remounts when its role comes back changed.
   const [changed, setChanged] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export function UsersBoard({ locale, selfId, testLogins, users, invites }: Props
             <thead className="text-muted-foreground">
               <tr>
                 <th className="pb-2 pe-4 text-start font-medium">{t("table.person")}</th>
-                <th className="pb-2 pe-4 text-start font-medium">{t("table.twoFactor")}</th>
+                {showTwoFactor && <th className="pb-2 pe-4 text-start font-medium">{t("table.twoFactor")}</th>}
                 <th className="pb-2 pe-4 text-start font-medium">{t("table.lastSignIn")}</th>
                 <th className="pb-2 text-start font-medium">{t("table.access")}</th>
               </tr>
@@ -53,6 +54,7 @@ export function UsersBoard({ locale, selfId, testLogins, users, invites }: Props
                   key={`${user.id}:${user.role ?? NONE}`}
                   locale={locale}
                   user={user}
+                  showTwoFactor={showTwoFactor}
                   self={user.id === selfId}
                   changed={changed === user.id}
                   onStart={() => setChanged(null)}
@@ -74,9 +76,9 @@ function useFailureText() {
   return (error: EngineFailure) => (t.has(error.code) ? t(error.code) : error.message);
 }
 
-type RowProps = { locale: string; user: UserRow; self: boolean; changed: boolean; onStart: () => void; onDone: () => void };
+type RowProps = { locale: string; user: UserRow; showTwoFactor: boolean; self: boolean; changed: boolean; onStart: () => void; onDone: () => void };
 
-function UserRowView({ locale, user, self, changed, onStart, onDone }: RowProps) {
+function UserRowView({ locale, user, showTwoFactor, self, changed, onStart, onDone }: RowProps) {
   const t = useTranslations("Users");
   const failureText = useFailureText();
   const setRole = useEngineAction(setUserRoleAction);
@@ -107,9 +109,11 @@ function UserRowView({ locale, user, self, changed, onStart, onDone }: RowProps)
           <bdi>{user.email}</bdi>
         </p>
       </td>
-      <td className="py-3 pe-4" data-testid={`user-twofactor-${user.id}`}>
-        {user.twoFactor ? t("twoFactorOn") : t("twoFactorOff")}
-      </td>
+      {showTwoFactor && (
+        <td className="py-3 pe-4" data-testid={`user-twofactor-${user.id}`}>
+          {user.twoFactor ? t("twoFactorOn") : t("twoFactorOff")}
+        </td>
+      )}
       <td className="py-3 pe-4" data-testid={`user-last-${user.id}`}>
         {user.lastSignIn ?? t("never")}
       </td>

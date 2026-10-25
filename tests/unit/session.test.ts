@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { getSession, requirePermission, requireSession } from "@/lib/auth/session";
+import { getSession, getTwoFactorPolicy, requirePermission, requireSession } from "@/lib/auth/session";
 import { enableMockTwoFactor } from "@/lib/auth/mock-actions";
 
 describe("session guards (test logins)", () => {
@@ -74,5 +74,27 @@ describe("session guards (test logins)", () => {
     await expect(requireSession("ar")).resolves.toMatchObject({ userId: "dev_admin_no2fa", role: "admin", twoFactor: true });
     cookieJar.set("mock_store", `other${Date.now().toString(36)}`);
     await expect(requireSession("ar")).rejects.toThrow("REDIRECT:/ar/security");
+  });
+
+  it("lets an admin without two-factor login straight in when it's switched off (TWO_FACTOR=off)", async () => {
+    vi.stubEnv("TWO_FACTOR", "off");
+    cookieJar.set("dev_session", "dev_admin_no2fa");
+    await expect(requireSession("en")).resolves.toMatchObject({ userId: "dev_admin_no2fa", role: "admin", twoFactor: false });
+    await expect(requirePermission("ar", "settings.manage")).resolves.toMatchObject({ role: "admin" });
+  });
+
+  it("lets test logins try the switched-off mode through the twofactor_off scenario", async () => {
+    cookieJar.set("dev_session", "dev_admin_no2fa");
+    cookieJar.set("mock_scenario", "twofactor_off");
+    await expect(requireSession("en")).resolves.toMatchObject({ role: "admin", twoFactor: false });
+    await expect(getTwoFactorPolicy()).resolves.toBe("off");
+    cookieJar.delete("mock_scenario");
+    await expect(getTwoFactorPolicy()).resolves.toBe("required");
+  });
+
+  it("ignores the twofactor_off scenario with real sign-in", async () => {
+    vi.stubEnv("AUTH_MODE", "clerk");
+    cookieJar.set("mock_scenario", "twofactor_off");
+    await expect(getTwoFactorPolicy()).resolves.toBe("required");
   });
 });

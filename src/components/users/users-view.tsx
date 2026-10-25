@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { AppLocale } from "@/i18n/locales";
-import { requirePermission } from "@/lib/auth/session";
+import { getTwoFactorPolicy, requirePermission } from "@/lib/auth/session";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
 import { serverEnv } from "@/lib/env";
@@ -32,6 +32,7 @@ export async function UsersView({ locale }: { locale: AppLocale }) {
       locale={locale}
       selfId={session.userId}
       testLogins={serverEnv().authMode === "mock"}
+      showTwoFactor={(await getTwoFactorPolicy()) !== "off"}
       users={listed.data.users.map((user) => ({
         id: user.id,
         name: user.name,

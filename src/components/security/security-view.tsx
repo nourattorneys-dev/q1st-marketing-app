@@ -6,33 +6,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/locales";
 import { enableMockTwoFactor } from "@/lib/auth/mock-actions";
-import { getSession } from "@/lib/auth/session";
+import { getSession, getTwoFactorPolicy } from "@/lib/auth/session";
+import { twoFactorStatus } from "@/lib/auth/two-factor";
 import { serverEnv } from "@/lib/env";
 import { ClerkSecurity } from "./clerk-security";
 
 /**
  * Design §5, §11: two-factor login is required for the Admin (this is the only page they reach until it's on) and
- * recommended for Reviewers. Call only under <Suspense>.
+ * recommended for Reviewers. With TWO_FACTOR=off it's just the account page. Call only under <Suspense>.
  */
 export async function SecurityView({ locale }: { locale: AppLocale }) {
   const session = await getSession();
   if (!session) redirect(`/${locale}/sign-in`);
   if (!session.role) redirect(`/${locale}/no-access`);
   const t = await getTranslations("Security");
-  const status = session.twoFactor ? "on" : session.role === "admin" ? "required" : "recommended";
+  const status = twoFactorStatus(await getTwoFactorPolicy(), session);
   const clerk = serverEnv().authMode === "clerk";
 
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
         <CardTitle className="font-heading text-2xl">{t("title")}</CardTitle>
-        <CardDescription data-testid="security-status" data-status={status}>
-          {t(status)}
-        </CardDescription>
+        {status && (
+          <CardDescription data-testid="security-status" data-status={status}>
+            {t(status)}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {clerk && <ClerkSecurity />}
-        {!clerk && !session.twoFactor && (
+        {!clerk && (status === "required" || status === "recommended") && (
           <form action={enableMockTwoFactor} className="flex flex-col gap-2">
             <input type="hidden" name="locale" value={locale} />
             <p className="text-sm text-muted-foreground">{t("testNotice")}</p>

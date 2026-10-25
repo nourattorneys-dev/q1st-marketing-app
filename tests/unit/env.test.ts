@@ -8,7 +8,17 @@ describe("parseServerEnv", () => {
       engineBaseUrl: MOCK_ENGINE_BASE_URL,
       engineApiKey: "mock-key",
       authMode: "mock",
+      twoFactor: "required",
     });
+  });
+
+  it("can switch two-factor login off (TWO_FACTOR=off, for Clerk's free plan)", () => {
+    expect(parseServerEnv({ TWO_FACTOR: "off" }).twoFactor).toBe("off");
+    expect(parseServerEnv({ TWO_FACTOR: "" }).twoFactor).toBe("required");
+    expect(
+      parseServerEnv({ ENGINE_MODE: "live", ENGINE_BASE_URL: "https://api.example.com/api/v1", ENGINE_API_KEY: "k", TWO_FACTOR: "off" }).twoFactor,
+    ).toBe("off");
+    expect(() => parseServerEnv({ TWO_FACTOR: "optional" })).toThrow();
   });
 
   it("treats empty strings as unset", () => {

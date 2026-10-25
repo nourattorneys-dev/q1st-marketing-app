@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { isolateMockStore, signInWithCookie } from "./helpers";
+import { isolateMockStore, setMockScenario, signInWithCookie } from "./helpers";
 
 const REQUIRED = "Your role is Admin, so two-factor login is required. Turn it on to continue: you'll enter a code from an authenticator app each time you sign in.";
 const RECOMMENDED = "Two-factor login is recommended: each time you sign in, you'll also enter a code from an authenticator app.";
@@ -45,6 +45,22 @@ test("someone with two-factor login on sees Security in the menu", async ({ page
   await page.goto("/en/security");
   await expect(page.getByTestId("security-status")).toHaveText("Two-factor login is on.");
   await expect(page.getByTestId("security-enable")).toHaveCount(0);
+});
+
+test("with two-factor login switched off (TWO_FACTOR=off), nothing asks for it", async ({ page, context }) => {
+  await setMockScenario(context, "twofactor_off");
+  await signInWithCookie(context, "dev_admin_no2fa");
+  await page.goto("/en/users");
+  await expect(page.getByTestId("user-dev_admin_no2fa")).toBeVisible();
+  await expect(page).toHaveURL(/\/en\/users$/);
+  await expect(page.getByTestId("user-security")).toHaveText("Security");
+  await expect(page.getByRole("columnheader", { name: "Two-factor login" })).toHaveCount(0);
+  await expect(page.getByTestId("user-twofactor-dev_admin_no2fa")).toHaveCount(0);
+
+  await page.goto("/en/security");
+  await expect(page.getByTestId("security-status")).toHaveCount(0);
+  await expect(page.getByTestId("security-enable")).toHaveCount(0);
+  await expect(page.getByTestId("security-continue")).toHaveText("Continue to the dashboard");
 });
 
 test("the security page sends signed-out visitors to sign-in, and people without a role to no-access", async ({ page, context }) => {

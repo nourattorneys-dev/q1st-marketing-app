@@ -33,6 +33,7 @@ One Clerk application per website copy (design §5).
    - Also turn off **Allow users to delete their accounts**. Otherwise Clerk's account page on `/security` offers "Delete account", and the only Admin could delete themselves, which "nobody changes their own access" is meant to prevent.
    - Invitation emails link to Clerk's hosted sign-up page (the Account Portal), because the portal has no sign-up page of its own. Keep the Account Portal on, and point its after-sign-up and after-sign-in redirects (**Paths**) at the dashboard's URL.
 3. **Multi-factor:** turn on **Authenticator application** and **Backup codes**. The portal sends an Admin without two-factor login to `/security` (Clerk's account page) until it's on.
+   - Clerk's free plan has no two-factor login. On it, set `TWO_FACTOR=off`: nothing asks for two-factor login, and Users has no two-factor column. Switch back to the default (`required`) after moving to Clerk Pro.
 4. **Sessions → Customize session token:** `{ "metadata": "{{user.public_metadata}}" }`. `/api/jobs` then reads the role from the token instead of asking Clerk on every poll. Without it the portal still works, with one Clerk call per poll.
 5. Put the keys in `.env.local` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and set `AUTH_MODE=clerk`.
 6. Rebuild (`pnpm build`). `AUTH_MODE` is read at build time.

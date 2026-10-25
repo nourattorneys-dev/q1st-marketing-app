@@ -9,6 +9,7 @@ import { createMockDirectory } from "@/lib/users/mock-directory";
 import { roleFromClaims, sessionFromClerkUser } from "./clerk-session";
 import { decodeMockSession, MOCK_SESSION_COOKIE } from "./mock-session";
 import { can, type Permission, type Role } from "./roles";
+import { twoFactorStatus, type TwoFactorPolicy } from "./two-factor";
 import type { AuthedSession, Session } from "./types";
 
 /** Reads the signed-in person once per request (React cache), so a page's many guards make one Clerk lookup. Call only under <Suspense>. */
@@ -27,12 +28,25 @@ export const getSession = cache(async (): Promise<Session | null> => {
   return user ? sessionFromClerkUser(user) : null;
 });
 
-/** Signed in with a role, or redirected. An Admin without two-factor login is sent to set it up first (design §5, §11). */
+/**
+ * TWO_FACTOR, which test logins can also switch off through the `twofactor_off` scenario cookie, so the e2e suite sees
+ * both modes on one server. Call only under <Suspense>.
+ */
+export async function getTwoFactorPolicy(): Promise<TwoFactorPolicy> {
+  const env = serverEnv();
+  if (env.authMode === "mock" && (await cookies()).get(MOCK_SCENARIO_COOKIE)?.value === "twofactor_off") return "off";
+  return env.twoFactor;
+}
+
+/**
+ * Signed in with a role, or redirected. While two-factor login is required, an Admin without it is sent to set it up
+ * first (design §5, §11).
+ */
 export async function requireSession(locale: string): Promise<AuthedSession> {
   const session = await getSession();
   if (!session) redirect(`/${locale}/sign-in`);
   if (!session.role) redirect(`/${locale}/no-access`);
-  if (session.role === "admin" && !session.twoFactor) redirect(`/${locale}/security`);
+  if (twoFactorStatus(await getTwoFactorPolicy(), session) === "required") redirect(`/${locale}/security`);
   return { ...session, role: session.role };
 }
 

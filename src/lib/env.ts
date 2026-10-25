@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import type { TwoFactorPolicy } from "@/lib/auth/two-factor";
 
 export const MOCK_ENGINE_BASE_URL = "https://mock.engine.local/api/v1";
 const MOCK_ENGINE_DEFAULT_KEY = "mock-key";
@@ -12,6 +13,7 @@ const EnvSchema = z.object({
   VERCEL: z.string().optional(),
   NODE_ENV: z.string().optional(),
   ALLOW_TEST_LOGINS: z.string().optional(),
+  TWO_FACTOR: z.enum(["required", "off"]).default("required"),
 });
 
 export type ServerEnv = {
@@ -19,6 +21,7 @@ export type ServerEnv = {
   engineBaseUrl: string;
   engineApiKey: string;
   authMode: "mock" | "clerk";
+  twoFactor: TwoFactorPolicy;
 };
 
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
@@ -47,6 +50,7 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
       engineBaseUrl: env.ENGINE_BASE_URL,
       engineApiKey: env.ENGINE_API_KEY,
       authMode: env.AUTH_MODE,
+      twoFactor: env.TWO_FACTOR,
     };
   }
 
@@ -55,6 +59,7 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
     engineBaseUrl: MOCK_ENGINE_BASE_URL,
     engineApiKey: env.ENGINE_API_KEY ?? MOCK_ENGINE_DEFAULT_KEY,
     authMode: env.AUTH_MODE,
+    twoFactor: env.TWO_FACTOR,
   };
 }
 
