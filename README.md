@@ -54,6 +54,34 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
 3. **Cron:** set `CRON_SECRET` (a long random string). `vercel.json` calls `/api/cron/notifications` every 15 minutes. That needs Vercel Pro: on Hobby a cron that runs more than once a day makes the deployment fail. Every 15 minutes lets Neon's database sleep between runs, so the Free plan's monthly compute lasts the month; every 5 minutes would keep it awake and use it up by mid-month.
 4. **Webhook:** after deploying, open **Settings → Webhook** on the production address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted. A preview deployment that does the same takes the webhook over (one webhook per site): set it up again on production afterwards.
 
+## Hosting on cPanel (dashboard.fakhernco.com)
+
+The dashboard runs as a Node app under Passenger on the fakhernco cPanel account. The account has no shell (SFTP only) and 2 GB of memory, shared with the WordPress site, so everything is built on a Mac and uploaded ready to run.
+
+**One-time setup**
+
+1. cPanel → **Domains**: create `dashboard.fakhernco.com` with the document root `/home/fakhernco/dashboard.fakhernco.com`. Upload `deploy/cpanel/htaccess` as that folder's `.htaccess`: it points Passenger at `~/dashboard-app` and Node 22. Nothing else in the web root belongs to the app.
+2. **Cloudflare DNS:** add an `A` record `dashboard` pointing to the server's IP (the one fakhernco.com uses), set to **DNS only**. cPanel's AutoSSL then issues the certificate; cPanel → SSL/TLS Status → **Run AutoSSL** hurries it.
+3. **`.env.cpanel`** in the repo root (never committed). Start from `.env.example` and set:
+   - `AUTH_MODE=clerk`, with the Clerk keys
+   - `TWO_FACTOR=off` on Clerk's free plan
+   - `DB_MODE=neon` with `DATABASE_URL`
+   - `WEBHOOK_ENCRYPTION_KEY`, `EMAIL_MODE` and `CRON_SECRET`
+4. **SFTP:** an entry `fakher` in `~/.ssh/config` (host, port, user `fakhernco`, and a key authorized in cPanel → SSH Access).
+
+**Each release**
+
+    scripts/cpanel-build.sh                # committed code → dist/cpanel/<commit>
+    scripts/cpanel-deploy.sh               # uploads it, switches to it, restarts the app
+    scripts/cpanel-deploy.sh --settings    # the same, and uploads .env.cpanel as ~/dashboard-shared/settings.env
+
+- **Uploads take about 9 minutes,** because SFTP sends the roughly 2,000 files one at a time. The site keeps serving the previous release until the switch.
+- **Going back:** `scripts/cpanel-deploy.sh <older commit>`. Older releases stay in `~/dashboard-releases`; delete old ones with File Manager.
+- **Log:** `~/dashboard-shared/app.log` (download it over SFTP). Settings live in `~/dashboard-shared/settings.env`, readable only by the account.
+- **Email schedule:** when `EMAIL_MODE=resend`, add a cPanel cron job every 15 minutes:
+  `curl -fsS -H "Authorization: Bearer <CRON_SECRET>" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null`.
+  `vercel.json`'s cron applies only on Vercel.
+
 ## Decisions in M1
 
 - **Language in the URL** (`/en`, `/ar`). Next 16 Cache Components forbids reading cookies in the root layout, so the URL drives `<html lang dir>`. The last choice is remembered in the `NEXT_LOCALE` cookie.
