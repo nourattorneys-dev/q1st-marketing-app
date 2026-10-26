@@ -80,7 +80,7 @@ describe("parseServicesEnv (M4c)", () => {
         port: 587,
         user: "notifications@dashboard.fakhernco.com",
         password: "Secret#Pa$$=1",
-        from: "Articles AI <notifications@dashboard.fakhernco.com>",
+        fromName: "Articles AI",
         fromAddress: "notifications@dashboard.fakhernco.com",
       },
     });
@@ -105,9 +105,12 @@ describe("parseServicesEnv (M4c)", () => {
     for (const from of ["Articles AI", "a@example.com, b@example.com", "A <a@example.com>, B <b@example.com>", "Articles AI <>", "<a@example.com"]) {
       expect(refusal({ ...SMTP, EMAIL_FROM: from })).toMatch(/^EMAIL_FROM must be one address/);
     }
-    expect(parseServicesEnv({ ...SMTP, EMAIL_FROM: '"Fakher & Co, فخر" <n@dashboard.fakhernco.com>' }).smtp?.fromAddress).toBe("n@dashboard.fakhernco.com");
+    expect(parseServicesEnv({ ...SMTP, EMAIL_FROM: '"Fakher & Co, فخر" <n@dashboard.fakhernco.com>' }).smtp).toMatchObject({
+      fromName: "Fakher & Co, فخر",
+      fromAddress: "n@dashboard.fakhernco.com",
+    });
     expect(parseServicesEnv({ ...SMTP, EMAIL_FROM: "n@dashboard.fakhernco.com" }).smtp).toMatchObject({
-      from: "n@dashboard.fakhernco.com",
+      fromName: null,
       fromAddress: "n@dashboard.fakhernco.com",
     });
   });

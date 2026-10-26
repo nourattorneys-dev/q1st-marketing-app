@@ -2,6 +2,7 @@ import { createServer, type AddressInfo, type Socket } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MailError } from "@/lib/notifications/mail-error";
 import { createLogMailer, createSmtpMailer, mailerFor, smtpTransportOptions, type Email, type SmtpSettings } from "@/lib/notifications/mailer";
+import { parseServicesEnv } from "@/lib/services-env";
 import { FAKE_PASSWORD, FAKE_USER, startFakeSmtp, type FakeSmtp } from "./fake-smtp";
 
 const SENDER = "notifications@dashboard.example.com";
@@ -21,7 +22,7 @@ const settings = (port: number, changes: Partial<SmtpSettings> = {}): SmtpSettin
   port,
   user: FAKE_USER,
   password: FAKE_PASSWORD,
-  from: `Articles AI <${SENDER}>`,
+  fromName: "Articles AI",
   fromAddress: SENDER,
   ...changes,
 });
@@ -79,8 +80,24 @@ describe("the SMTP mailer (M5b)", () => {
   });
 
   it("keeps a sender name with Arabic, a comma or quotes intact (Review Focus 2)", async () => {
-    await createSmtpMailer(settings(plain.port, { from: `"Articles AI, فخر & Co" <${SENDER}>` })).send(email({ idempotencyKey: "named" }));
+    await createSmtpMailer(settings(plain.port, { fromName: "Articles AI, فخر & Co" })).send(email({ idempotencyKey: "named" }));
     expect(plain.received.at(-1)?.mail.from?.value).toMatchObject([{ name: "Articles AI, فخر & Co", address: SENDER }]);
+  });
+
+  it("sends the sender's name exactly as EMAIL_FROM gives it, even with a colon, a lone quote, brackets or a semicolon (final review)", async () => {
+    for (const name of ["Fakher & Co: Articles AI", 'Fakher "Co', "Fakher (Co)", "A; B"]) {
+      const { smtp } = parseServicesEnv({
+        EMAIL_MODE: "smtp",
+        SMTP_HOST: "localhost",
+        SMTP_PORT: String(plain.port),
+        SMTP_USER: FAKE_USER,
+        SMTP_PASSWORD: FAKE_PASSWORD,
+        EMAIL_FROM: `${name} <${SENDER}>`,
+      });
+      if (!smtp) throw new Error("EMAIL_MODE=smtp should give SMTP settings.");
+      await createSmtpMailer(smtp).send(email({ idempotencyKey: `name-${name.length}` }));
+      expect(plain.received.at(-1)?.mail.from?.value).toEqual([{ name, address: SENDER }]);
+    }
   });
 
   it("a wrong password gives login, with the server's reply and never the password", async () => {

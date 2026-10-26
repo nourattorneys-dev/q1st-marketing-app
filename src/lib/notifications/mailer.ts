@@ -23,8 +23,11 @@ export function createLogMailer(): Mailer & { outbox(): Email[] } {
   };
 }
 
-/** EMAIL_MODE=smtp (M5b): the client's own mail server. `from` is EMAIL_FROM as written; `fromAddress` is its address. */
-export type SmtpSettings = { host: string; port: number; user: string; password: string; from: string; fromAddress: string };
+/**
+ * EMAIL_MODE=smtp (M5b): the client's own mail server. The sender's name and address come from EMAIL_FROM, kept apart so
+ * nodemailer quotes the name itself: re-reading the written form made "Fakher & Co: Articles AI" a group (final review).
+ */
+export type SmtpSettings = { host: string; port: number; user: string; password: string; fromName: string | null; fromAddress: string };
 
 /** The time limits for one send (spec M5b); the tests shorten them. */
 export const SMTP_LIMITS = { connectMs: 10_000, greetingMs: 10_000, socketMs: 30_000 };
@@ -83,7 +86,7 @@ export function createSmtpMailer(settings: SmtpSettings, limits = SMTP_LIMITS): 
     async send(email) {
       try {
         await transport.sendMail({
-          from: settings.from,
+          from: settings.fromName ? { name: settings.fromName, address: settings.fromAddress } : settings.fromAddress,
           to: email.to,
           envelope: { from: settings.fromAddress, to: email.to },
           subject: email.subject,

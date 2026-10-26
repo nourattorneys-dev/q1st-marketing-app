@@ -33,12 +33,20 @@ export type ServicesEnv = {
 
 const ADDRESS = /^[^\s<>@,;"]+@[^\s<>@,;"]+$/;
 
-/** The address in "Name <address>" or a bare address; null unless EMAIL_FROM holds exactly one. */
-function senderAddress(from: string): string | null {
+/** The name and address in "Name <address>", or a bare address; null unless EMAIL_FROM holds exactly one. */
+function sender(from: string): { name: string | null; address: string } | null {
   const named = /^(.*)<([^<>]+)>$/.exec(from.trim());
   if (named && /[<>]/.test(named[1])) return null;
   const address = (named ? named[2] : from).trim();
-  return ADDRESS.test(address) ? address : null;
+  if (!ADDRESS.test(address)) return null;
+  return { name: named ? displayName(named[1]) : null, address };
+}
+
+/** A display name as written, without the quotes around a quoted one ("Fakher & Co, Legal"). */
+function displayName(written: string): string | null {
+  const name = written.trim();
+  const quoted = /^"(.*)"$/.exec(name);
+  return (quoted ? quoted[1].replace(/\\(.)/g, "$1") : name) || null;
 }
 
 /** EMAIL_MODE=smtp (M5b). No message repeats SMTP_PASSWORD. */
@@ -52,11 +60,11 @@ function smtpSettings(env: z.infer<typeof ServicesSchema>): SmtpSettings {
   }
   const port = env.SMTP_PORT === undefined ? 587 : Number(env.SMTP_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("SMTP_PORT must be a whole number from 1 to 65535.");
-  const fromAddress = senderAddress(from);
-  if (!fromAddress) {
+  const parsed = sender(from);
+  if (!parsed) {
     throw new Error("EMAIL_FROM must be one address, like Articles AI <notifications@dashboard.example.com> or notifications@dashboard.example.com.");
   }
-  return { host, port, user, password, from, fromAddress };
+  return { host, port, user, password, fromName: parsed.name, fromAddress: parsed.address };
 }
 
 export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
