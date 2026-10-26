@@ -1,4 +1,3 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { MailError, type MailErrorKind } from "./mail-error";
 
@@ -99,29 +98,7 @@ export function createSmtpMailer(settings: SmtpSettings, limits = SMTP_LIMITS): 
   };
 }
 
-/** The part of Resend's client this uses; `new Resend(key)` satisfies it. */
-type ResendLike = {
-  emails: {
-    send(
-      payload: { from: string; to: string; subject: string; html: string; text: string },
-      options: { idempotencyKey: string },
-    ): Promise<{ error: { message: string } | null }>;
-  };
-};
-
-/** EMAIL_MODE=resend (design §10). The idempotency key stops a retried batch from emailing anyone twice. */
-export function createResendMailer(options: { apiKey: string; from: string }, client: ResendLike = new Resend(options.apiKey)): Mailer {
-  return {
-    async send(email) {
-      const { error } = await client.emails.send(
-        { from: options.from, to: email.to, subject: email.subject, html: email.html, text: email.text },
-        { idempotencyKey: email.idempotencyKey },
-      );
-      if (error) throw new Error(`Resend refused the email: ${error.message}`);
-    },
-  };
-}
-
-export function mailerFor(env: { emailMode: "log" | "resend"; resend: { apiKey: string; from: string } | null }): Mailer {
-  return env.emailMode === "resend" && env.resend ? createResendMailer(env.resend) : createLogMailer();
+/** The mailer the settings ask for (M5b): the client's mail server for EMAIL_MODE=smtp, otherwise the log. */
+export function mailerFor(env: { emailMode: "log" | "smtp"; smtp: SmtpSettings | null }): Mailer {
+  return env.emailMode === "smtp" && env.smtp ? createSmtpMailer(env.smtp) : createLogMailer();
 }

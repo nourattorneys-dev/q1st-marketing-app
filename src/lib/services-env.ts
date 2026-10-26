@@ -1,12 +1,16 @@
 import "server-only";
 import { z } from "zod";
+import type { SmtpSettings } from "@/lib/notifications/mailer";
 
 const ServicesSchema = z.object({
   DB_MODE: z.enum(["memory", "mysql"]).default("memory"),
   DATABASE_URL: z.string().optional(),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
-  EMAIL_MODE: z.enum(["log", "resend"]).default("log"),
-  RESEND_API_KEY: z.string().optional(),
+  EMAIL_MODE: z.enum(["log", "smtp"]).default("log"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   NOTIFY_QUIET_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
@@ -14,22 +18,56 @@ const ServicesSchema = z.object({
   ALLOW_TEST_LOGINS: z.string().optional(),
 });
 
-/** The database, webhook secret, email and cron settings (M4c, M5a). Server-only: none of these may reach the browser. */
+/** The database, webhook secret, email and cron settings (M4c, M5a, M5b). Server-only: none of these may reach the browser. */
 export type ServicesEnv = {
   dbMode: "memory" | "mysql";
   databaseUrl: string | null;
   /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
   encryptionKey: Buffer | null;
-  emailMode: "log" | "resend";
-  resend: { apiKey: string; from: string } | null;
+  emailMode: "log" | "smtp";
+  /** The client's mail server (EMAIL_MODE=smtp), or null while emails are only logged. */
+  smtp: SmtpSettings | null;
   cronSecret: string | null;
   notifyQuietMs: number;
 };
+
+const ADDRESS = /^[^\s<>@,;"]+@[^\s<>@,;"]+$/;
+
+/** The address in "Name <address>" or a bare address; null unless EMAIL_FROM holds exactly one. */
+function senderAddress(from: string): string | null {
+  const named = /^(.*)<([^<>]+)>$/.exec(from.trim());
+  if (named && /[<>]/.test(named[1])) return null;
+  const address = (named ? named[2] : from).trim();
+  return ADDRESS.test(address) ? address : null;
+}
+
+/** EMAIL_MODE=smtp (M5b). No message repeats SMTP_PASSWORD. */
+function smtpSettings(env: z.infer<typeof ServicesSchema>): SmtpSettings {
+  const { SMTP_HOST: host, SMTP_USER: user, SMTP_PASSWORD: password, EMAIL_FROM: from } = env;
+  if (!host || !user || !password || !from) {
+    const missing = Object.entries({ SMTP_HOST: host, SMTP_USER: user, SMTP_PASSWORD: password, EMAIL_FROM: from })
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+    throw new Error(`EMAIL_MODE=smtp needs ${missing.join(", ")}.`);
+  }
+  const port = env.SMTP_PORT === undefined ? 587 : Number(env.SMTP_PORT);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("SMTP_PORT must be a whole number from 1 to 65535.");
+  const fromAddress = senderAddress(from);
+  if (!fromAddress) {
+    throw new Error("EMAIL_FROM must be one address, like Articles AI <notifications@dashboard.example.com> or notifications@dashboard.example.com.");
+  }
+  return { host, port, user, password, from, fromAddress };
+}
 
 export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
   const cleaned = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value === "" ? undefined : value]));
   if (cleaned.DB_MODE === "neon") {
     throw new Error("DB_MODE=neon is no longer supported: the dashboard keeps its data in the client's MySQL. Set DB_MODE=mysql and DATABASE_URL.");
+  }
+  if (cleaned.EMAIL_MODE === "resend") {
+    throw new Error(
+      "EMAIL_MODE=resend is no longer supported: the dashboard sends email through the client's own mail server. Set EMAIL_MODE=smtp and the SMTP_ settings.",
+    );
   }
   const env = ServicesSchema.parse(cleaned);
 
@@ -53,16 +91,12 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
     if (encryptionKey.length !== 32) throw new Error("WEBHOOK_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32).");
   }
 
-  if (env.EMAIL_MODE === "resend" && (!env.RESEND_API_KEY || !env.EMAIL_FROM)) {
-    throw new Error("EMAIL_MODE=resend needs RESEND_API_KEY and EMAIL_FROM.");
-  }
-
   return {
     dbMode: env.DB_MODE,
     databaseUrl: env.DATABASE_URL ?? null,
     encryptionKey,
     emailMode: env.EMAIL_MODE,
-    resend: env.EMAIL_MODE === "resend" && env.RESEND_API_KEY && env.EMAIL_FROM ? { apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM } : null,
+    smtp: env.EMAIL_MODE === "smtp" ? smtpSettings(env) : null,
     cronSecret: env.CRON_SECRET ?? null,
     notifyQuietMs: env.NOTIFY_QUIET_SECONDS * 1000,
   };

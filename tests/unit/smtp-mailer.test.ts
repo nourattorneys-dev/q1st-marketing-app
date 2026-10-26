@@ -1,7 +1,7 @@
 import { createServer, type AddressInfo, type Socket } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MailError } from "@/lib/notifications/mail-error";
-import { createSmtpMailer, smtpTransportOptions, type Email, type SmtpSettings } from "@/lib/notifications/mailer";
+import { createLogMailer, createSmtpMailer, mailerFor, smtpTransportOptions, type Email, type SmtpSettings } from "@/lib/notifications/mailer";
 import { FAKE_PASSWORD, FAKE_USER, startFakeSmtp, type FakeSmtp } from "./fake-smtp";
 
 const SENDER = "notifications@dashboard.example.com";
@@ -141,5 +141,14 @@ describe("the SMTP mailer (M5b)", () => {
       expect(tls(host, 587)).toEqual({ secure: false, requireTLS: false, ignoreTLS: true });
     }
     expect(smtpTransportOptions(settings(587))).toMatchObject({ connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 30_000 });
+  });
+
+  it("mailerFor sends through the mail server for EMAIL_MODE=smtp, and only keeps emails for log", async () => {
+    const before = plain.received.length;
+    await mailerFor({ emailMode: "smtp", smtp: settings(plain.port) }).send(email({ idempotencyKey: "via-mailerFor" }));
+    expect(plain.received).toHaveLength(before + 1);
+    await mailerFor({ emailMode: "log", smtp: null }).send(email({ idempotencyKey: "kept-in-outbox" }));
+    expect(createLogMailer().outbox().some((kept) => kept.idempotencyKey === "kept-in-outbox")).toBe(true);
+    expect(plain.received).toHaveLength(before + 1);
   });
 });

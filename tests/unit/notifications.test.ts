@@ -3,7 +3,7 @@ import { createMemoryStore } from "@/lib/db/memory-store";
 import type { AppStore, Audience, StoredNotification } from "@/lib/db/store";
 import { dueBatches } from "@/lib/notifications/batches";
 import { flushNotifications } from "@/lib/notifications/flush";
-import { createLogMailer, createResendMailer, type Email } from "@/lib/notifications/mailer";
+import { createLogMailer, type Email } from "@/lib/notifications/mailer";
 import { recipientsFor } from "@/lib/notifications/recipients";
 import { renderBatch } from "@/lib/notifications/render";
 import type { DirectoryUser } from "@/lib/users/types";
@@ -112,18 +112,6 @@ describe("the email (design §10: bilingual, one per batch)", () => {
 });
 
 describe("mailers", () => {
-  it("sends through Resend with the sender, both bodies and the idempotency key; a refusal throws", async () => {
-    const send = vi.fn(async () => ({ error: null as { message: string } | null }));
-    const mailer = createResendMailer({ apiKey: "re_x", from: "Articles AI <notifications@fakhernco.com>" }, { emails: { send } });
-    await mailer.send({ to: "a@example.com", subject: "S", html: "<p>h</p>", text: "t", idempotencyKey: "k1" });
-    expect(send).toHaveBeenCalledWith(
-      { from: "Articles AI <notifications@fakhernco.com>", to: "a@example.com", subject: "S", html: "<p>h</p>", text: "t" },
-      { idempotencyKey: "k1" },
-    );
-    send.mockResolvedValueOnce({ error: { message: "Domain not verified" } });
-    await expect(mailer.send({ to: "a@example.com", subject: "S", html: "h", text: "t", idempotencyKey: "k2" })).rejects.toThrow("Domain not verified");
-  });
-
   it("the log mailer keeps what it would have sent, once per idempotency key", async () => {
     const mailer = createLogMailer();
     const key = `log-${Date.now()}`;
