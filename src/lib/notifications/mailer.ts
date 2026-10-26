@@ -68,7 +68,10 @@ function kindOf(code: string, originalCode: string, command: string): MailErrorK
 function mailErrorFrom(error: unknown): MailError {
   const failure: Record<string, unknown> = typeof error === "object" && error !== null ? { ...error, message: (error as Error).message } : {};
   const text = (key: string) => (typeof failure[key] === "string" ? (failure[key] as string) : "");
-  const said = (text("response") || text("message")).split(/\r?\n/)[0].trim();
+  // A host with two addresses (localhost: ::1 and 127.0.0.1) that refuses on both fails as one AggregateError with
+  // an empty message; its reasons are the inner errors, which aren't copied above (final review).
+  const inner = error instanceof AggregateError ? error.errors.map((each) => (each instanceof Error ? each.message : "")).filter(Boolean).join("; ") : "";
+  const said = (text("response") || text("message") || inner).split(/\r?\n/)[0].trim();
   return new MailError(kindOf(text("code"), text("originalCode"), text("command")), said ? said.slice(0, 300) : null);
 }
 

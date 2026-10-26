@@ -7,6 +7,15 @@ import { FAKE_PASSWORD, FAKE_USER, startFakeSmtp, type FakeSmtp } from "./fake-s
 const SENDER = "notifications@dashboard.example.com";
 const SHORT = { connectMs: 500, greetingMs: 500, socketMs: 500 };
 
+/** A port nothing listens on: one that was free a moment ago. */
+async function closedPort(): Promise<number> {
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const { port } = probe.address() as AddressInfo;
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+  return port;
+}
+
 const settings = (port: number, changes: Partial<SmtpSettings> = {}): SmtpSettings => ({
   host: "localhost",
   port,
@@ -106,11 +115,14 @@ describe("the SMTP mailer (M5b)", () => {
   });
 
   it("a closed port gives connect at once, with the reason (Review Focus 4)", async () => {
-    const probe = createServer();
-    await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
-    const { port } = probe.address() as AddressInfo;
-    await new Promise<void>((resolve) => probe.close(() => resolve()));
-    const error = await failureOf(createSmtpMailer(settings(port, { host: "127.0.0.1" }), SHORT).send(email()));
+    const error = await failureOf(createSmtpMailer(settings(await closedPort(), { host: "127.0.0.1" }), SHORT).send(email()));
+    expect(error.kind).toBe("connect");
+    expect(error.reply).toMatch(/ECONNREFUSED/);
+  });
+
+  it("a closed port on localhost, which has two addresses, still gives the reason (final review: Review Focus 4 as on the server)", async () => {
+    // Node tries ::1 and 127.0.0.1; both refusing is one AggregateError whose own message is empty.
+    const error = await failureOf(createSmtpMailer(settings(await closedPort()), SHORT).send(email()));
     expect(error.kind).toBe("connect");
     expect(error.reply).toMatch(/ECONNREFUSED/);
   });
