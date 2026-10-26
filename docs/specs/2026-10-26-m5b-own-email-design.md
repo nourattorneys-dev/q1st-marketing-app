@@ -47,7 +47,7 @@ The dashboard's email lives only on the subdomain `dashboard.fakhernco.com`. Not
 - `EMAIL_MODE=smtp` needs:
   - `SMTP_HOST`
   - `SMTP_PORT` (default 587)
-  - `SMTP_USER` and `SMTP_PASSWORD`, kept as separate lines so a password with symbols needs no encoding
+  - `SMTP_USER` and `SMTP_PASSWORD`, kept as separate lines so a password with symbols needs no encoding. In the settings file the password goes in single quotes (`SMTP_PASSWORD='…'`): Node's settings reader treats an unquoted `#` as the start of a comment.
   - `EMAIL_FROM`, in the form `Articles AI <notifications@dashboard.fakhernco.com>` or a bare address
 - A missing value, a port outside 1–65535, or an `EMAIL_FROM` without exactly one address is refused with a clear message.
 - No message ever repeats `SMTP_PASSWORD`.
@@ -82,7 +82,7 @@ For Fakher & Co: `SMTP_HOST=localhost`, `SMTP_PORT=587`, `SMTP_USER=notification
     - `tls`
     - `refused` (sender or recipient refused)
     - `other`
-  - **`reply`** is the server's reply line when it sent one, for example `535 Incorrect authentication data`.
+  - **`reply`** is the server's reply line when it sent one, for example `535 Incorrect authentication data`. When the server sent none, it's the connection's own reason instead, for example `connect ECONNREFUSED 127.0.0.1:587`.
   
   Neither carries the password.
 - One connection per email, closed afterwards. The volume is a handful of emails per run.
@@ -94,7 +94,7 @@ For Fakher & Co: `SMTP_HOST=localhost`, `SMTP_PORT=587`, `SMTP_USER=notification
 Resend dropped a repeated idempotency key; an SMTP server doesn't. Two things keep each person to one email per item:
 - **As today:** each delivery is recorded right after its send succeeds. A retried batch sends each person only the items they haven't had.
 - **New: one notification run at a time.** `AppStore` gains `exclusive<T>(name, run): Promise<{ ran: true; value: T } | { ran: false }>`.
-  - **MySQL:** `GET_LOCK(<name>:<database>, 0)` on a dedicated pool connection, released afterwards, even after an error. The lock name includes the database, so two copies on one MySQL server don't block each other.
+  - **MySQL:** `GET_LOCK(<name>:<database>, 0)` on a dedicated pool connection, released afterwards, even after an error. The lock name includes the database, so two copies on one MySQL server don't block each other. MySQL caps lock names at 64 characters, so a database name too long for that is replaced by its hash.
   - **Memory store:** a flag inside the process.
   - **If another run holds the lock,** this run sends nothing and returns `{ skipped: true }`. The running one does the work.
   - `/api/cron/notifications` wraps the flush in `exclusive("articles_ai_flush", …)`.
@@ -170,7 +170,7 @@ A failed send is logged as `Notification email failed (<kind>): <reply>`, never 
   - maps each `kind` to its message
   - the log mode gives the "doesn't send emails yet" result
 - **e2e (test logins, `EMAIL_MODE=log`):**
-  - an Admin presses the button and the email appears in the dev outbox, addressed to them, with the success message
+  - an Admin presses the button and the email appears in the dev outbox, addressed to them, with the log mode's "Not sent" message (the success message is checked by the unit tests and by a local run against a fake mail server)
   - a Reviewer doesn't see the button
   - the Arabic page shows the Arabic messages
 
