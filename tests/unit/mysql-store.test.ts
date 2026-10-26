@@ -2,7 +2,7 @@ import type { RowDataPacket } from "mysql2/promise";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectMysql, type MysqlConnection } from "@/lib/db/mysql";
 import { createMysqlStore, MAX_EMAIL_LENGTH, MAX_KEY_LENGTH, queries } from "@/lib/db/mysql-store";
-import { adminQuery, freshTestDatabase, testDatabaseName } from "./mysql-test-db";
+import { adminQuery, freshTestDatabase, testDatabaseName, testDatabaseUrl } from "./mysql-test-db";
 
 const AT = new Date("2026-10-22T08:00:00.123Z");
 
@@ -100,5 +100,42 @@ describe("preparing the dashboard's tables after an interrupted first attempt", 
     } finally {
       await connection.close();
     }
+  });
+});
+
+describe("one notification run at a time across server processes (M5b)", () => {
+  const opened: MysqlConnection[] = [];
+  /** A store with its own pool, as another server process would have. */
+  const storeOn = (url: string) => {
+    const connection = connectMysql(url);
+    opened.push(connection);
+    return createMysqlStore(connection);
+  };
+
+  afterAll(async () => {
+    for (const connection of opened) await connection.close();
+  });
+
+  it("blocks a second copy on the same database, but not a copy on another database", async () => {
+    const first = storeOn(await freshTestDatabase("exclusive_a"));
+    const sameDatabase = storeOn(testDatabaseUrl("exclusive_a"));
+    const otherDatabase = storeOn(await freshTestDatabase("exclusive_b"));
+    const inside = await first.exclusive("articles_ai_flush", async () => ({
+      same: await sameDatabase.exclusive("articles_ai_flush", async () => "ran"),
+      other: await otherDatabase.exclusive("articles_ai_flush", async () => "ran"),
+    }));
+    expect(inside).toEqual({ ran: true, value: { same: { ran: false }, other: { ran: true, value: "ran" } } });
+    expect(await sameDatabase.exclusive("articles_ai_flush", async () => "after")).toEqual({ ran: true, value: "after" });
+  });
+
+  it("takes the lock on a database whose name is 64 characters long (Review Focus 3: MySQL caps lock names at 64)", async () => {
+    const name = "x".repeat(64 - testDatabaseName("").length);
+    expect(testDatabaseName(name)).toHaveLength(64);
+    const first = storeOn(await freshTestDatabase(name));
+    const second = storeOn(testDatabaseUrl(name));
+    expect(await first.exclusive("articles_ai_flush", () => second.exclusive("articles_ai_flush", async () => "ran"))).toEqual({
+      ran: true,
+      value: { ran: false },
+    });
   });
 });

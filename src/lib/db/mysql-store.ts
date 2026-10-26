@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import type { RowDataPacket } from "mysql2/promise";
 import { and, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import type { MysqlConnection, MysqlDb } from "./mysql";
 import * as schema from "./schema";
@@ -63,8 +65,17 @@ export const queries = {
       .onDuplicateKeyUpdate({ set: { emailOff: off, updatedAt: at } }),
 };
 
+// MySQL refuses a lock name over 64 characters (cPanel allows 64 for the database's name alone).
+const LOCK_NAME_MAX = 64;
+
+/** GET_LOCK names are shared by the whole MySQL server: the database's name in it keeps other copies' locks apart. */
+function lockName(name: string, database: string): string {
+  const full = `${name}:${database}`;
+  return full.length <= LOCK_NAME_MAX ? full : `${name}:${createHash("sha256").update(database).digest("hex")}`.slice(0, LOCK_NAME_MAX);
+}
+
 /** DB_MODE=mysql (spec M5a): the client's MySQL. Every call first makes sure the tables are prepared. */
-export function createMysqlStore(connection: Pick<MysqlConnection, "db" | "ready">): AppStore {
+export function createMysqlStore(connection: Pick<MysqlConnection, "db" | "ready" | "pool">): AppStore {
   const { db } = connection;
 
   return {
@@ -151,6 +162,24 @@ export function createMysqlStore(connection: Pick<MysqlConnection, "db" | "ready
       fits(userId, MAX_KEY_LENGTH, "The user id");
       await connection.ready();
       await queries.setEmailOff(db, userId, off, at);
+    },
+
+    async exclusive<T>(name: string, run: () => Promise<T>): Promise<{ ran: true; value: T } | { ran: false }> {
+      // Its own connection: a MySQL lock belongs to the connection that took it, and goes with it if the process dies.
+      const held = await connection.pool.getConnection();
+      try {
+        const [here] = await held.query<RowDataPacket[]>("SELECT DATABASE() AS name");
+        const lock = lockName(name, String(here[0]?.name ?? ""));
+        const [taken] = await held.query<RowDataPacket[]>("SELECT GET_LOCK(?, 0) AS got", [lock]);
+        if (taken[0]?.got !== 1) return { ran: false };
+        try {
+          return { ran: true, value: await run() };
+        } finally {
+          await held.query("SELECT RELEASE_LOCK(?)", [lock]);
+        }
+      } finally {
+        held.release();
+      }
     },
   };
 }

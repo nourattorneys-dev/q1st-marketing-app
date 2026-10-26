@@ -3,21 +3,23 @@ import type { AppStore } from "@/lib/db/store";
 import type { DirectoryUser } from "@/lib/users/types";
 import { dueBatches } from "./batches";
 import type { Mailer } from "./mailer";
+import { MailError } from "./mail-error";
 import { recipientsFor } from "./recipients";
 import { renderBatch } from "./render";
 
 /** Design §4: handled event ids (and sent notifications) are kept 30 days. */
 export const KEEP_DAYS = 30;
 
-/** A batch stops waiting for people its email can't reach after a day (Resend keeps idempotency keys for 24 hours). */
+/** A batch stops waiting for someone its email can't reach after a day, so one unreachable address can't hold it forever. */
 export const GIVE_UP_MS = 24 * 3_600_000;
 
 type FlushOptions = { store: AppStore; mailer: Mailer; users: () => Promise<DirectoryUser[]>; origin: string | null; now: Date; quietMs: number };
 
 /**
  * Sends what's due (design §10): one email per person per batch, holding only the items that person hasn't had yet, so
- * a retry (after a failed send, even with new items since) never emails anyone twice. The idempotency key is those items
- * and the address, hashed. A batch is marked sent once everyone has it, or after a day of failing for someone (logged).
+ * a retry (after a failed send, even with new items since) never emails anyone twice. The idempotency key (the email's
+ * Message-ID) is those items and the address, hashed. A batch is marked sent once everyone has it, or after a day of
+ * failing for someone (logged).
  */
 export async function flushNotifications({ store, mailer, users, origin, now, quietMs }: FlushOptions): Promise<{ batches: number; emails: number; failed: number }> {
   await store.forgetBefore(new Date(now.getTime() - KEEP_DAYS * 86_400_000));
@@ -39,7 +41,10 @@ export async function flushNotifications({ store, mailer, users, origin, now, qu
         const key = createHash("sha256").update(`${[...itemIds].sort().join(",")}|${recipient.email}`).digest("hex");
         try {
           await mailer.send({ ...renderBatch({ audience: batch.audience, items }, origin), to: recipient.email, idempotencyKey: key });
-        } catch {
+        } catch (error) {
+          // The kind and the server's reply only, never the email's content or the password (M5b).
+          const { kind, reply } = error instanceof MailError ? error : { kind: "other", reply: error instanceof Error ? error.message : null };
+          console.error(`Notification email failed (${kind}): ${reply ?? "no reply"}`);
           failed += 1;
           continue;
         }

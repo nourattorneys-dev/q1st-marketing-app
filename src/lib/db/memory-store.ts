@@ -17,6 +17,7 @@ export function createMemoryStore(): AppStore {
   const emailOff = new Set<string>();
   const deliveries = new Map<string, Map<string, Date>>();
   let webhook: WebhookConfig | null = null;
+  const running = new Set<string>();
 
   return {
     async hasEvent(id) {
@@ -94,6 +95,16 @@ export function createMemoryStore(): AppStore {
     async setEmailOff(userId, off) {
       if (off) emailOff.add(userId);
       else emailOff.delete(userId);
+    },
+
+    async exclusive<T>(name: string, run: () => Promise<T>): Promise<{ ran: true; value: T } | { ran: false }> {
+      if (running.has(name)) return { ran: false };
+      running.add(name);
+      try {
+        return { ran: true, value: await run() };
+      } finally {
+        running.delete(name);
+      }
     },
   };
 }

@@ -9,7 +9,7 @@ import { DirectoryError } from "@/lib/users/types";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-/** Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"; compared in constant time. No secret set: nobody gets in. */
+/** The cron job sends "Authorization: Bearer <CRON_SECRET>"; compared in constant time. No secret set: nobody gets in. */
 function authorized(header: string | null, secret: string | null): boolean {
   if (!secret || !header) return false;
   const expected = Buffer.from(`Bearer ${secret}`, "utf8");
@@ -17,7 +17,7 @@ function authorized(header: string | null, secret: string | null): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-/** GET /api/cron/notifications: every 15 minutes (vercel.json), sends the notification emails that are due (design §10). */
+/** GET /api/cron/notifications: every 15 minutes (the host's cron job, README), sends the notification emails that are due (design §10). */
 export async function GET(request: Request) {
   // Request time only: at build Next calls a GET to try to prerender it, and the settings must not be read then
   // (DB_MODE refuses the in-memory store in production; M5a).
@@ -29,15 +29,18 @@ export async function GET(request: Request) {
   const store = getStore();
   const config = await store.webhook();
   try {
-    const result = await flushNotifications({
-      store,
-      mailer: mailerFor(env),
-      users: async () => (await (await getDirectory()).list()).users,
-      origin: config ? new URL(config.url).origin : null,
-      now: new Date(),
-      quietMs: env.notifyQuietMs,
-    });
-    return Response.json({ ok: true, data: result }, { headers: NO_STORE });
+    // One run at a time (M5b): a mail server, unlike Resend, would deliver an email that two runs both sent.
+    const outcome = await store.exclusive("articles_ai_flush", () =>
+      flushNotifications({
+        store,
+        mailer: mailerFor(env),
+        users: async () => (await (await getDirectory()).list()).users,
+        origin: config ? new URL(config.url).origin : null,
+        now: new Date(),
+        quietMs: env.notifyQuietMs,
+      }),
+    );
+    return Response.json({ ok: true, data: outcome.ran ? outcome.value : { skipped: true } }, { headers: NO_STORE });
   } catch (error) {
     if (!(error instanceof DirectoryError)) throw error;
     return Response.json({ ok: false, error: { status: 503, code: error.code, message: error.message } }, { status: 503, headers: NO_STORE });

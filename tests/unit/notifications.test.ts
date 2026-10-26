@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { createMemoryStore } from "@/lib/db/memory-store";
 import type { AppStore, Audience, StoredNotification } from "@/lib/db/store";
 import { dueBatches } from "@/lib/notifications/batches";
 import { flushNotifications } from "@/lib/notifications/flush";
+import { MailError } from "@/lib/notifications/mail-error";
 import { createLogMailer, type Email } from "@/lib/notifications/mailer";
 import { recipientsFor } from "@/lib/notifications/recipients";
 import { renderBatch } from "@/lib/notifications/render";
@@ -123,6 +124,15 @@ describe("mailers", () => {
 });
 
 describe("flushNotifications", () => {
+  let logged: MockInstance<typeof console.error>;
+  beforeEach(() => {
+    // Failed sends are logged (M5b); this keeps the cases that fail on purpose quiet.
+    logged = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    logged.mockRestore();
+  });
+
   async function seeded(): Promise<AppStore> {
     const store = createMemoryStore();
     for (const [id, seconds] of [["e1", 0], ["e2", 1], ["e3", 2]] as const) {
@@ -216,5 +226,16 @@ describe("flushNotifications", () => {
     expect(attempts).toEqual([]);
     expect(await store.hasEvent("e_old")).toBe(false);
     expect(await store.hasEvent("e1")).toBe(true);
+  });
+
+  it("logs each failed send with its kind and the server's reply, never the email itself (M5b)", async () => {
+    const store = await seeded();
+    const refusing = {
+      async send() {
+        throw new MailError("login", "535 Incorrect authentication data");
+      },
+    };
+    expect(await flushNotifications(options(store, refusing, 200))).toEqual({ batches: 2, emails: 0, failed: 3 });
+    expect(logged.mock.calls).toEqual(Array.from({ length: 3 }, () => ["Notification email failed (login): 535 Incorrect authentication data"]));
   });
 });

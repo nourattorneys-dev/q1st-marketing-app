@@ -27,4 +27,9 @@ export interface AppStore {
   /** The people (by user id) who turned their notification emails off. */
   emailOffUsers(): Promise<Set<string>>;
   setEmailOff(userId: string, off: boolean, at: Date): Promise<void>;
+  /**
+   * Runs `run` only if no job with this name is running, in this process or in another one using the same database;
+   * otherwise answers { ran: false } at once, without waiting (M5b: one notification run at a time).
+   */
+  exclusive<T>(name: string, run: () => Promise<T>): Promise<{ ran: true; value: T } | { ran: false }>;
 }

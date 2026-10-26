@@ -94,4 +94,24 @@ describe.each([
     await store.forgetBefore(at(2));
     expect(await store.deliveries(["evt_1", "evt_2"])).toEqual(new Map([["evt_1", new Set(["b@example.com"])]]));
   });
+
+  it("runs one job of a kind at a time, and frees it when the job ends or throws (M5b: one notification run at a time)", async () => {
+    const store = await createStore();
+    let inner: unknown;
+    let other: unknown;
+    const outer = await store.exclusive("articles_ai_flush", async () => {
+      inner = await store.exclusive("articles_ai_flush", async () => "second");
+      other = await store.exclusive("another_job", async () => "other");
+      return "first";
+    });
+    expect(outer).toEqual({ ran: true, value: "first" });
+    expect(inner).toEqual({ ran: false });
+    expect(other).toEqual({ ran: true, value: "other" });
+    await expect(
+      store.exclusive("articles_ai_flush", async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(await store.exclusive("articles_ai_flush", async () => "again")).toEqual({ ran: true, value: "again" });
+  });
 });
