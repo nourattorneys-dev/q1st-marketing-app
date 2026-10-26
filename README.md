@@ -51,11 +51,21 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
    - Set `WEBHOOK_ENCRYPTION_KEY` to `openssl rand -base64 32`. Keep it: changing it means getting a new webhook secret.
    - **Backups:** the host's backups of the database. cPanel's account backups include MySQL databases.
    - **Tests:** `pnpm test` needs a local MySQL, set by `TEST_DATABASE_URL` (default `mysql://root@127.0.0.1:3306/articles_ai_test`; start it with `brew services start mysql@8.4`). Each test file uses its own `articles_ai_test_<name>` database.
-2. **Email:** in Resend, add the sending domain (for example `notifications.fakhernco.com`). Add the DNS records Resend lists (DKIM, and its SPF/MX for the sending subdomain) in **Cloudflare**; the Microsoft 365 mail setup is unaffected. Then set:
-   - `EMAIL_MODE=resend`
-   - `RESEND_API_KEY`
-   - `EMAIL_FROM` (for example `Articles AI <notifications@notifications.fakhernco.com>`)
-3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). `vercel.json` holds the same schedule for Vercel, which is no longer the hosting path.
+2. **Email:** the client's own mail server, over SMTP.
+   - **On a cPanel host:**
+     - cPanel → **Email Accounts**: create a mailbox on the dashboard's own subdomain (for Fakher & Co, `notifications@dashboard.fakhernco.com`).
+     - cPanel → **Email Deliverability** → that subdomain: add the suggested **SPF** and **DKIM** records where the domain's DNS lives (Cloudflare for Fakher & Co).
+     - Change nothing for the main domain: its email (Microsoft 365 for Fakher & Co) stays as it is.
+   - **Settings:**
+     - `EMAIL_MODE=smtp`
+     - `SMTP_HOST`: `localhost` on cPanel
+     - `SMTP_PORT`: default 587
+     - `SMTP_USER`: the mailbox's address
+     - `SMTP_PASSWORD`, in single quotes (`'…'`): in the settings file an unquoted `#` starts a comment
+     - `EMAIL_FROM`, for example `Articles AI <notifications@dashboard.fakhernco.com>`
+   - **TLS:** on the same machine (`localhost`) the connection doesn't use TLS, since it never leaves the server. Any other host must offer TLS with a valid certificate.
+   - **Check it:** an Admin presses **Send me a test email** on the Email notifications page.
+3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). One run sends at a time: a run that starts while another is sending answers `{ "skipped": true }`. `vercel.json` holds the same schedule for Vercel, which is no longer the hosting path.
 4. **Webhook:** after a release, open **Settings → Webhook** on the live address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted.
 
 ## Hosting on cPanel (dashboard.fakhernco.com)
@@ -71,7 +81,8 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
    - `AUTH_MODE=clerk`, with the Clerk keys
    - `TWO_FACTOR=off` on Clerk's free plan
    - `DB_MODE=mysql` with `DATABASE_URL`
-   - `WEBHOOK_ENCRYPTION_KEY`, `EMAIL_MODE` and `CRON_SECRET`
+   - `WEBHOOK_ENCRYPTION_KEY` and `CRON_SECRET`
+   - `EMAIL_MODE=smtp`, the `SMTP_` settings and `EMAIL_FROM` (see "Database, webhook and email")
 5. **SFTP:** an entry `fakher` in `~/.ssh/config` (host, port, user `fakhernco`, and a key authorized in cPanel → SSH Access).
 
 **Each release**
@@ -86,9 +97,11 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Preview before Clerk:** a settings file with `AUTH_MODE=mock` and `ALLOW_TEST_LOGINS=1` (kept locally as `.env.cpanel-preview`) builds a `<commit>-preview` release with test logins.
   - `scripts/cpanel-deploy.sh` always puts it behind `deploy/cpanel/htaccess-preview`: the browser asks for a password, kept as a bcrypt hash in `~/.htpasswds/dashboard.fakhernco.com/passwd`.
   - The Clerk build takes the password off again, but only once it is live.
-  - The preview stores the test users' data in the same MySQL database.
-- **Email schedule:** when `EMAIL_MODE=resend`, add a cPanel cron job every 15 minutes:
-  `curl -fsS -H "Authorization: Bearer <CRON_SECRET>" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null`.
+  - The preview keeps its data in memory (`DB_MODE=memory`), so it never touches the live database.
+- **Email schedule:** cPanel → **Cron Jobs**, every 15 minutes (`*/15 * * * *`). The command reads the secret from the settings file, so it's never typed into cPanel:
+
+      curl -fsS -H "Authorization: Bearer $(sed -n 's/^CRON_SECRET=//p' ~/dashboard-shared/settings.env)" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null
+
   `vercel.json`'s cron applies only on Vercel.
 
 ## Decisions in M1
@@ -264,3 +277,15 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Ids are capped at 191 characters and emails at 255.** A longer one is refused with an error rather than cut, since `INSERT IGNORE` would cut it silently. The engine's event names are `text`.
 - **Settings are read at request time only:** the cron route waits for a request (`await connection()`) before reading them, so the production build, which tries to prerender it, never does.
 - **The in-memory store is refused on production servers,** where it would lose its data on every restart. The exception is `ALLOW_TEST_LOGINS=1`, which the e2e suite sets.
+
+## Decisions in M5b (own email)
+
+- **The client's own mail server over SMTP instead of Resend,** so a copy depends on no outside email service. Any SMTP server works through five settings. On cPanel it's the server's own mail system, with a mailbox on the dashboard's subdomain.
+- **Only the dashboard's subdomain gets email settings.** The main domain's mail (Microsoft 365 for Fakher & Co) and its DNS records stay as they are.
+- **No TLS on the same machine, TLS required elsewhere.** cPanel's certificate doesn't name `localhost`, and a connection to `localhost` never leaves the server. Any other host must offer TLS with a valid certificate, or nothing is sent.
+- **One notification run at a time:**
+  - Resend dropped a repeated email by its idempotency key; a mail server delivers it. So the cron's flush takes the MySQL lock `articles_ai_flush:<database>`, and a run that finds it taken sends nothing.
+  - As before, each delivery is recorded right after it's sent.
+- **Failed sends are logged with their kind and the server's reply,** never with the email or the password: `Notification email failed (login): 535 …`. They're retried on the next run. A batch still stops waiting for someone after a day.
+- **The test email** goes only to the Admin who presses the button, at once, in the notification emails' format (English then Arabic).
+- **Headers:** each email's `Message-ID` comes from its idempotency key, and `Auto-Submitted: auto-generated` keeps out-of-office replies away.
