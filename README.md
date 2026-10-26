@@ -55,6 +55,8 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
    - **On a cPanel host:**
      - cPanel → **Email Accounts**: create a mailbox on the dashboard's own subdomain (for Fakher & Co, `notifications@dashboard.fakhernco.com`).
      - cPanel → **Email Deliverability** → that subdomain: add the suggested **SPF** and **DKIM** records where the domain's DNS lives (Cloudflare for Fakher & Co).
+       - The suggested values can also be read from the server's own DNS: `dig +short TXT default._domainkey.<subdomain> @<server IP>`. Paste the DKIM value as one line: a line break inside it breaks the record.
+       - **Then open Email Deliverability again.** cPanel signs emails with DKIM only once its own check has seen the record as valid, so until then emails go out unsigned (SPF still passes). Found at go-live on 2026-10-26.
      - Change nothing for the main domain: its email (Microsoft 365 for Fakher & Co) stays as it is.
    - **Settings:**
      - `EMAIL_MODE=smtp`
