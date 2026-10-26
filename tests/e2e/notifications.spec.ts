@@ -69,4 +69,34 @@ test("the Email notifications page in Arabic, for an Admin", async ({ page, cont
   await expect(page.getByRole("heading", { level: 1, name: "إشعارات البريد" })).toBeVisible();
   await expect(page.getByTestId("email-status")).toHaveText("الرسائل مفعّلة.");
   await expect(page.getByTestId("notifications-log-mode")).toBeVisible();
+  await expect(page.getByTestId("test-email-send")).toHaveText("أرسل لي رسالة تجريبية");
+  await page.getByTestId("test-email-send").click();
+  await expect(page.getByTestId("test-email-result")).toHaveText("لم تُرسل: لا يرسل هذا الخادم رسائل بريد بعد.");
+});
+
+test("an Admin sends themselves a test email; with EMAIL_MODE=log it's only kept (M5b)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_admin");
+  const before = await readOutbox(page);
+  await page.goto("/en/notifications");
+  await page.getByTestId("test-email-send").click();
+  const result = page.getByTestId("test-email-result");
+  await expect(result).toHaveAttribute("data-state", "log");
+  await expect(result).toHaveText("Not sent: this server doesn't send emails yet.");
+  await expect(page.getByTestId("test-email-send")).toHaveText("Send me a test email");
+
+  const sent = newEmails(before, await readOutbox(page));
+  expect(sent.map((email) => email.to)).toEqual(["admin@example.com"]);
+  expect(sent[0].subject).toBe("Articles AI test email · رسالة تجريبية من Articles AI");
+  expect(sent[0].text).toContain("This is a test from Articles AI. If you can read this, the dashboard's emails work.");
+  expect(sent[0].html).toContain('<div dir="rtl" lang="ar"');
+
+  await page.getByTestId("test-email-send").click(); // each press is a new email
+  await expect.poll(async () => newEmails(before, await readOutbox(page)).length).toBe(2);
+});
+
+test("a Reviewer has no test-email button (M5b)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_reviewer");
+  await page.goto("/en/notifications");
+  await expect(page.getByTestId("email-status")).toBeVisible();
+  await expect(page.getByTestId("test-email-send")).toHaveCount(0);
 });

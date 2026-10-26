@@ -781,7 +781,13 @@
     "quotaWarning": "{metric}: {used} of {limit} used this month",
     "quotaExceeded": "{metric}: the monthly limit of {limit} is reached",
     "scan": "{count, plural, one {Site scan finished: {n} finding} other {Site scan finished: {n} findings}}",
-    "footer": "You get these emails because you can sign in to Articles AI. You can turn them off on the Email notifications page."
+    "footer": "You get these emails because you can sign in to Articles AI. You can turn them off on the Email notifications page.",
+    "test": {
+      "subject": "Articles AI test email",
+      "heading": "Test email",
+      "body": "This is a test from Articles AI. If you can read this, the dashboard's emails work.",
+      "footer": "Sent because you pressed Send me a test email on the Email notifications page."
+    }
   },
   "Notifications": {
     "title": "Email notifications",
@@ -794,6 +800,19 @@
     "off": "Emails are off. You'll still see everything in the dashboard.",
     "turnOff": "Turn emails off",
     "turnOn": "Turn emails on",
-    "logMode": "This server doesn't send emails yet (EMAIL_MODE=log)."
+    "logMode": "This server doesn't send emails yet (EMAIL_MODE=log).",
+    "testEmail": {
+      "button": "Send me a test email",
+      "sending": "Sending…",
+      "sent": "Sent to {email}. It can take a minute to arrive. Check Junk too.",
+      "logMode": "Not sent: this server doesn't send emails yet.",
+      "failed": {
+        "login": "The mail server refused the login.",
+        "connect": "Couldn't reach the mail server.",
+        "tls": "The secure connection to the mail server failed.",
+        "refused": "The mail server refused the sender or the recipient.",
+        "other": "The email couldn't be sent."
+      }
+    }
   }
 }

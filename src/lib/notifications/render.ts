@@ -67,23 +67,18 @@ function linesFor(batch: Batch, locale: Locale): Line[] {
   return lines;
 }
 
-/** Design §10: one email per batch, English then Arabic (right to left), linking to both languages of the dashboard. */
-export function renderBatch(batch: Batch, origin: string | null): { subject: string; html: string; text: string } {
-  const parts = LOCALES.map((locale) => {
-    const t = translator(locale, "Email");
-    const href = (path: string) => (origin ? `${origin}/${locale}${path}` : null);
-    const lines = linesFor(batch, locale).map((line) => ({ text: line.text, href: href(line.path) }));
-    const count = batch.audience === "reviewers" ? batch.items.length : lines.length;
-    return {
-      locale,
-      subject: t(`subject.${batch.audience}`, { count, n: String(count) }),
-      heading: t(`heading.${batch.audience}`),
-      lines,
-      footer: t("footer"),
-      settings: href("/notifications"),
-    };
-  });
+/** One language's half of an email. */
+type Part = {
+  locale: Locale;
+  subject: string;
+  heading: string;
+  lines: { text: string; href: string | null }[];
+  footer: string;
+  settings: string | null;
+};
 
+/** Design §10: one email, English then Arabic (right to left), as HTML and as plain text. */
+function compose(parts: Part[]): { subject: string; html: string; text: string } {
   const link = (text: string, href: string | null, style = "") => (href ? `<a href="${escapeHtml(href)}"${style}>${escapeHtml(text)}</a>` : escapeHtml(text));
   const html = [
     '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937">',
@@ -104,4 +99,34 @@ export function renderBatch(batch: Batch, origin: string | null): { subject: str
     )
     .join("\n\n———\n\n");
   return { subject: parts.map((part) => part.subject).join(" · "), html, text };
+}
+
+/** Design §10: one email per batch, linking to both languages of the dashboard. */
+export function renderBatch(batch: Batch, origin: string | null): { subject: string; html: string; text: string } {
+  return compose(
+    LOCALES.map((locale) => {
+      const t = translator(locale, "Email");
+      const href = (path: string) => (origin ? `${origin}/${locale}${path}` : null);
+      const lines = linesFor(batch, locale).map((line) => ({ text: line.text, href: href(line.path) }));
+      const count = batch.audience === "reviewers" ? batch.items.length : lines.length;
+      return {
+        locale,
+        subject: t(`subject.${batch.audience}`, { count, n: String(count) }),
+        heading: t(`heading.${batch.audience}`),
+        lines,
+        footer: t("footer"),
+        settings: href("/notifications"),
+      };
+    }),
+  );
+}
+
+/** M5b: an Admin's test email, in the notification emails' format, so it shows how those arrive. */
+export function renderTestEmail(): { subject: string; html: string; text: string } {
+  return compose(
+    LOCALES.map((locale) => {
+      const t = translator(locale, "Email.test");
+      return { locale, subject: t("subject"), heading: t("heading"), lines: [{ text: t("body"), href: null }], footer: t("footer"), settings: null };
+    }),
+  );
 }
