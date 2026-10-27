@@ -108,7 +108,7 @@ Times are `datetime(3)`, in UTC.
 - **On success:**
   - A new session is created; it's never reused, so a planted cookie can't be fixed in place.
   - `last_sign_in_at` is set.
-  - The browser goes to `next`, if that is a path on this dashboard in the same language. Otherwise it goes to the dashboard's home page.
+  - The browser goes to the dashboard's home page. (Returning to the page that was asked for isn't built: server pages here can't see the address they were opened from without relying on Next.js internals.)
 - **A person with no role** signs in and lands on the No access page, as today.
 - **Log:** each sign-in is logged as `Signed in: <email> from <address>`. Each refusal is logged as `Sign-in refused (<wrong password|locked>): <email> from <address>`. Passwords and tokens are never logged. This replaces "Clerk logs sign-ins" (design §11).
 
@@ -134,8 +134,8 @@ Times are `datetime(3)`, in UTC.
 ### Invitations
 
 - **On the Users page**, an Admin invites an email with a role, as today. The rules stay: at most 254 characters, compared trimmed and lowercased, and refused when the person already has an account or a pending invitation.
-  - The dashboard saves the invitation (valid **7 days**) and emails a link: `<APP_URL>/<locale>/invitation?token=…`. `<locale>` is the Admin's page language.
-  - The email uses the notification format, English then Arabic.
+  - The dashboard saves the invitation (valid **7 days**) and emails a link: `<APP_URL>/<locale>/invitation?token=…`.
+  - The email uses the notification format, English then Arabic, and each half links to that language's page (`/en/…` and `/ar/…`), as the notification emails do.
 - **If sending fails** (`MailError`):
   - The invitation is deleted.
   - The Admin sees the same sentences as the test email ("The mail server refused the login." and the rest), with the server's reply.
@@ -217,7 +217,6 @@ No Clerk account is copied:
   - **The first Admin:** the invitation is sent once; it's re-sent only after expiry; there's none once an Admin exists; an existing account is promoted; two visitors at once send one email.
   - **Settings:** `clerk` refused naming `password`; `APP_URL` required and `https` (except localhost); `TWO_FACTOR=required` refused in password mode; `ADMIN_EMAIL` validated.
   - **`AccountStore` contract:** on both stores, with MySQL on the local test database.
-  - **The `next` redirect:** only paths on this dashboard are followed.
 - **e2e:**
   - **Server:** a second Playwright server runs the same build in password mode, on the local MySQL test database with `EMAIL_MODE=log`.
   - **The first Admin:** the setup email is read from the outbox.
