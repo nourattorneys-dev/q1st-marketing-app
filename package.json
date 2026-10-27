@@ -10,13 +10,12 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test",
+    "e2e": "playwright test && playwright test -c playwright.password.config.ts",
+    "e2e:password": "playwright test -c playwright.password.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@clerk/localizations": "4.24.0",
-    "@clerk/nextjs": "7.9.18",
     "@tiptap/extension-image": "3.32.0",
     "@tiptap/extension-subscript": "3.32.0",
     "@tiptap/extension-superscript": "3.32.0",

@@ -33,8 +33,17 @@
   },
   "SignIn": {
     "title": "Sign in",
-    "devNotice": "Local test logins. They only work in development and are refused on Vercel.",
-    "signInAs": "Sign in as {name}"
+    "devNotice": "Local test logins: they only work on a test server.",
+    "signInAs": "Sign in as {name}",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "signingIn": "Signing in…",
+    "errors": {
+      "wrong": "Email or password is incorrect.",
+      "locked": "Too many attempts. Try again in 15 minutes.",
+      "invalid": "Enter your email and password."
+    }
   },
   "NoAccess": {
     "title": "No access yet",

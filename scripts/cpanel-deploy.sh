@@ -24,7 +24,7 @@ fi
 SHA=${1:-$(ls -t dist/cpanel 2>/dev/null | head -1)}
 [ -n "$SHA" ] && [ -f "dist/cpanel/$SHA/app.cjs" ] || { echo "No build in dist/cpanel/${SHA:-…}: run scripts/cpanel-build.sh first." >&2; exit 1; }
 case "$(cat "dist/cpanel/$SHA/AUTH_MODE" 2>/dev/null)" in
-  clerk) HTACCESS=deploy/cpanel/htaccess ;;
+  password) HTACCESS=deploy/cpanel/htaccess ;;
   mock) HTACCESS=deploy/cpanel/htaccess-preview ;;
   *) echo "dist/cpanel/$SHA has no AUTH_MODE: rebuild it with scripts/cpanel-build.sh." >&2; exit 1 ;;
 esac
@@ -46,7 +46,7 @@ date -u +%FT%TZ > "$RESTART"
     echo "put $SETTINGS_FILE dashboard-shared/settings.env"
     echo "chmod 600 dashboard-shared/settings.env"
   fi
-  # The password goes up before a preview is live, and comes off only once a Clerk build is.
+  # The password goes up before a preview is live, and comes off only once a password-mode build is.
   [ "$HTACCESS" = deploy/cpanel/htaccess-preview ] && echo "put $HTACCESS dashboard.fakhernco.com/.htaccess"
   echo "-rm dashboard-app"
   echo "ln -s /home/fakhernco/dashboard-releases/$SHA dashboard-app"

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { connection } from "next/server";
-import { getStore } from "@/lib/db";
-import { flushNotifications } from "@/lib/notifications/flush";
+import { getAccountStore, getStore } from "@/lib/db";
+import { flushNotifications, KEEP_DAYS } from "@/lib/notifications/flush";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { servicesEnv } from "@/lib/services-env";
 import { getDirectory } from "@/lib/users/directory";
@@ -30,16 +30,24 @@ export async function GET(request: Request) {
   const config = await store.webhook();
   try {
     // One run at a time (M5b): a mail server, unlike Resend, would deliver an email that two runs both sent.
-    const outcome = await store.exclusive("articles_ai_flush", () =>
-      flushNotifications({
+    const outcome = await store.exclusive("articles_ai_flush", async () => {
+      const result = await flushNotifications({
         store,
         mailer: mailerFor(env),
         users: async () => (await (await getDirectory()).list()).users,
         origin: config ? new URL(config.url).origin : null,
         now: new Date(),
         quietMs: env.notifyQuietMs,
-      }),
-    );
+      });
+      // Spec M5c: the same run tidies the sign-in tables. Expired invitations stay listed (as Expired) for 30 days.
+      const now = new Date();
+      await getAccountStore().forgetExpired({
+        now,
+        invitationsBefore: new Date(now.getTime() - KEEP_DAYS * 86_400_000),
+        limitsBefore: new Date(now.getTime() - 86_400_000),
+      });
+      return result;
+    });
     return Response.json({ ok: true, data: outcome.ran ? outcome.value : { skipped: true } }, { headers: NO_STORE });
   } catch (error) {
     if (!(error instanceof DirectoryError)) throw error;

@@ -9,7 +9,7 @@ describe("twoFactorStatus", () => {
     expect(twoFactorStatus("required", { role: "reviewer", twoFactor: true })).toBe("on");
   });
 
-  it("says nothing when the dashboard runs without two-factor login (TWO_FACTOR=off, Clerk's free plan)", () => {
+  it("says nothing when the dashboard runs without two-factor login (TWO_FACTOR=off, password sign-in until M5d)", () => {
     expect(twoFactorStatus("off", { role: "admin", twoFactor: false })).toBeNull();
     expect(twoFactorStatus("off", { role: "reviewer", twoFactor: false })).toBeNull();
     expect(twoFactorStatus("off", { role: "admin", twoFactor: true })).toBeNull();

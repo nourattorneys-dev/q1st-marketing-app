@@ -10,13 +10,13 @@ import { getDirectory } from "@/lib/users/directory";
 import { canChangeAccess } from "@/lib/users/rules";
 import { tryDirectory, type DirectoryInvite, type DirectoryUser } from "@/lib/users/types";
 
-// Ids go into Clerk API paths: letters, digits, "_" and "-" only.
+// Ids go into database lookups: letters, digits, "_" and "-" only, like the ids the dashboard makes.
 const DirectoryId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const RoleChoice = z.enum(ROLES);
 const SELF = { ok: false as const, error: { status: 403, code: "self", message: "You can't change your own access." } };
 
-// The idempotency key from useEngineAction is checked but not sent: Clerk takes none, and each change here is safe to
-// repeat (a second invitation to the same email is refused as a duplicate; setting the same role twice changes nothing).
+// The idempotency key from useEngineAction is checked but not used: each change here is safe to repeat (a second
+// invitation to the same email is refused as a duplicate; setting the same role twice changes nothing).
 
 /** Design §5: the Admin invites someone by email with a role; the role reaches their account when they sign up. */
 export async function inviteUserAction(input: { locale: string; email: string; role: Role; idempotencyKey: string }): Promise<ActionResult<DirectoryInvite>> {

@@ -13,7 +13,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { getSession, getTwoFactorPolicy, requirePermission, requireSession } from "@/lib/auth/session";
+import { getRole, getSession, getTwoFactorPolicy, requirePermission, requireSession } from "@/lib/auth/session";
+import { endSession, startSession } from "@/lib/accounts/sign-in";
+import { newId } from "@/lib/accounts/tokens";
+import { getAccountStore } from "@/lib/db";
 import { enableMockTwoFactor } from "@/lib/auth/mock-actions";
 
 describe("session guards (test logins)", () => {
@@ -91,10 +94,48 @@ describe("session guards (test logins)", () => {
     cookieJar.delete("mock_scenario");
     await expect(getTwoFactorPolicy()).resolves.toBe("required");
   });
+});
 
-  it("ignores the twofactor_off scenario with real sign-in", async () => {
-    vi.stubEnv("AUTH_MODE", "clerk");
+describe("password sessions (AUTH_MODE=password, spec M5c)", () => {
+  beforeEach(() => {
+    cookieJar.clear();
+    vi.stubEnv("AUTH_MODE", "password");
+    vi.stubEnv("APP_URL", "http://localhost:3000");
+    vi.stubEnv("DB_MODE", "memory");
+    vi.stubEnv("ENGINE_MODE", "mock");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  async function signedIn(role: "admin" | "reviewer" | null): Promise<string> {
+    const store = getAccountStore();
+    const id = newId("usr");
+    const now = new Date();
+    await store.createAccount({ id, email: `${id}@example.com`.toLowerCase(), name: "Omar", role, passwordHash: "scrypt$x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+    cookieJar.set("session", (await startSession(store, id, now)).token);
+    return id;
+  }
+
+  it("reads the person from the session cookie, with the role from their account on each request (Review Focus 1)", async () => {
+    const id = await signedIn("reviewer");
+    await expect(requireSession("en")).resolves.toMatchObject({ userId: id, role: "reviewer", twoFactor: false });
+    await getAccountStore().setRole(id, null);
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access");
+    await expect(getRole()).resolves.toBeNull();
+  });
+
+  it("treats a missing, unknown or ended session as signed out", async () => {
+    await expect(requireSession("ar")).rejects.toThrow("REDIRECT:/ar/sign-in");
+    cookieJar.set("session", "not-a-token");
+    await expect(getSession()).resolves.toBeNull();
+    await signedIn("admin");
+    await endSession(getAccountStore(), cookieJar.get("session") ?? "");
+    await expect(getSession()).resolves.toBeNull();
+  });
+
+  it("never asks for two-factor login, whatever the test-login scenario cookie says", async () => {
+    await signedIn("admin");
     cookieJar.set("mock_scenario", "twofactor_off");
-    await expect(getTwoFactorPolicy()).resolves.toBe("required");
+    await expect(getTwoFactorPolicy()).resolves.toBe("off");
+    await expect(requireSession("en")).resolves.toMatchObject({ role: "admin" });
   });
 });

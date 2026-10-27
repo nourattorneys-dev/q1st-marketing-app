@@ -1,6 +1,6 @@
 import type { Session } from "./types";
 
-/** TWO_FACTOR: "required" (design §5: the Admin must, Reviewers are reminded) or "off" (Clerk's free plan has no two-factor login). */
+/** TWO_FACTOR: "required" (design §5: the Admin must, Reviewers are reminded) or "off" (always, with AUTH_MODE=password, until M5d). */
 export type TwoFactorPolicy = "required" | "off";
 export type TwoFactorStatus = "on" | "required" | "recommended";
 

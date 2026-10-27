@@ -8,8 +8,6 @@ import type { AppLocale } from "@/i18n/locales";
 import { enableMockTwoFactor } from "@/lib/auth/mock-actions";
 import { getSession, getTwoFactorPolicy } from "@/lib/auth/session";
 import { twoFactorStatus } from "@/lib/auth/two-factor";
-import { serverEnv } from "@/lib/env";
-import { ClerkSecurity } from "./clerk-security";
 
 /**
  * Design §5, §11: two-factor login is required for the Admin (this is the only page they reach until it's on) and
@@ -21,7 +19,6 @@ export async function SecurityView({ locale }: { locale: AppLocale }) {
   if (!session.role) redirect(`/${locale}/no-access`);
   const t = await getTranslations("Security");
   const status = twoFactorStatus(await getTwoFactorPolicy(), session);
-  const clerk = serverEnv().authMode === "clerk";
 
   return (
     <Card className="w-full max-w-3xl">
@@ -34,8 +31,7 @@ export async function SecurityView({ locale }: { locale: AppLocale }) {
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {clerk && <ClerkSecurity />}
-        {!clerk && (status === "required" || status === "recommended") && (
+        {(status === "required" || status === "recommended") && (
           <form action={enableMockTwoFactor} className="flex flex-col gap-2">
             <input type="hidden" name="locale" value={locale} />
             <p className="text-sm text-muted-foreground">{t("testNotice")}</p>
@@ -47,10 +43,9 @@ export async function SecurityView({ locale }: { locale: AppLocale }) {
           </form>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          {/* With Clerk the page can't tell when the Admin has just turned it on; the dashboard checks again. */}
-          {(status !== "required" || clerk) && (
+          {status !== "required" && (
             <Link href="/" data-testid="security-continue" className="text-sm font-medium text-primary underline">
-              {status === "required" ? t("continueOnceOn") : t("continue")}
+              {t("continue")}
             </Link>
           )}
           <SignOutControl locale={locale} />

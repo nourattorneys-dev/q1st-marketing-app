@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryAccountStore } from "@/lib/accounts/memory-store";
+import type { AccountStore } from "@/lib/accounts/store";
 import { createMemoryStore } from "@/lib/db/memory-store";
 import type { AppStore } from "@/lib/db/store";
 import { createLogMailer } from "@/lib/notifications/mailer";
@@ -6,8 +8,9 @@ import type { Mailer } from "@/lib/notifications/mailer";
 import { DirectoryError } from "@/lib/users/types";
 
 let store: AppStore;
+let accounts: AccountStore;
 const directory = { list: vi.fn() };
-vi.mock("@/lib/db", () => ({ getStore: () => store }));
+vi.mock("@/lib/db", () => ({ getStore: () => store, getAccountStore: () => accounts }));
 // The route waits for a request (connection()) so the build never runs it; here every call is a request.
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("@/lib/users/directory", () => ({ getDirectory: async () => directory }));
@@ -35,6 +38,7 @@ beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "cron-secret");
   vi.stubEnv("NOTIFY_QUIET_SECONDS", "0");
   store = createMemoryStore();
+  accounts = createMemoryAccountStore();
   directory.list.mockReset();
   directory.list.mockResolvedValue({ users: [REVIEWER], invites: [] });
 });
@@ -91,5 +95,14 @@ describe("GET /api/cron/notifications (Vercel Cron)", () => {
     await queueDraft("evt_cron_retry");
     expect((await call("Bearer cron-secret")).status).toBe(503);
     expect(await (await call("Bearer cron-secret")).json()).toEqual({ ok: true, data: { batches: 1, emails: 1, failed: 0 } });
+  });
+
+  it("also forgets old sign-in records: invitations that expired over 30 days ago go (spec M5c)", async () => {
+    const longAgo = new Date(Date.now() - 31 * 86_400_000);
+    const inv = (id: string, expiresAt: Date) => ({ id, email: `${id}@example.com`, role: "reviewer" as const, tokenHash: id.padEnd(64, "a"), invitedBy: null, createdAt: longAgo, expiresAt });
+    await accounts.addInvitation(inv("inv_old", longAgo));
+    await accounts.addInvitation(inv("inv_new", new Date(Date.now() + 86_400_000)));
+    await call("Bearer cron-secret");
+    expect((await accounts.invitations()).map((invitation) => invitation.id)).toEqual(["inv_new"]);
   });
 });

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Newsreader, Noto_Naskh_Arabic } from "next/font/google";
@@ -7,8 +6,6 @@ import { notFound } from "next/navigation";
 import { DirectionProvider } from "@/components/ui/direction";
 import { directionOf } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
-import { clerkLocalizationFor } from "@/lib/auth/clerk-localization";
-import { serverEnv } from "@/lib/env";
 import "../globals.css";
 
 const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-sans", display: "swap" });
@@ -48,13 +45,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh antialiased">
-        {serverEnv().authMode === "clerk" ? (
-          <ClerkProvider localization={clerkLocalizationFor(locale)} signInUrl={`/${locale}/sign-in`} afterSignOutUrl={`/${locale}/sign-in`}>
-            {content}
-          </ClerkProvider>
-        ) : (
-          content
-        )}
+        {content}
       </body>
     </html>
   );
