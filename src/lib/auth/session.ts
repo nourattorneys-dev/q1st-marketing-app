@@ -16,8 +16,10 @@ import type { AuthedSession, Session } from "./types";
 
 /** Reads the signed-in person once per request (React cache), so a page's many guards make one lookup. Call only under <Suspense>. */
 export const getSession = cache(async (): Promise<Session | null> => {
-  const env = serverEnv();
+  // The request first: while Next builds a page, cookies() stops it before the settings are read, so a build never
+  // needs them (settings are read at request time only, M5a).
   const jar = await cookies();
+  const env = serverEnv();
   if (env.authMode === "mock") {
     // The cookie names a fixed test user; their current role and two-factor status come from the test directory,
     // so a change on /users takes effect on the person's next request.
