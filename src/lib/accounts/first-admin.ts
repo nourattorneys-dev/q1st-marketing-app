@@ -35,6 +35,12 @@ export async function ensureFirstAdmin(deps: {
 
   const outcome = await deps.exclusive("articles_ai_first_admin", async (): Promise<FirstAdmin> => {
     if (await store.hasAdmin()) return { state: "ready" };
+    // A corrected ADMIN_EMAIL: an invitation sent to an earlier address must not make someone else the Admin.
+    for (const earlier of await store.invitations()) {
+      if (earlier.role !== "admin" || earlier.invitedBy !== null || earlier.email === adminEmail) continue;
+      await store.deleteInvitation(earlier.id);
+      console.info(`First Admin: withdrew the invitation to ${earlier.email} (ADMIN_EMAIL changed)`);
+    }
     const existing = await store.accountByEmail(adminEmail);
     if (existing) {
       await store.setRole(existing.id, "admin");

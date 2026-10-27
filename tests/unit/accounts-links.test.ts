@@ -198,6 +198,16 @@ describe("forgot password", () => {
     expect((await signIn(store, { email: "sara@example.com", password: PASSWORD, address: null, now: at(13) })).ok).toBe(false);
     expect((await signIn(store, { email: "sara@example.com", password: "a brand new password", address: null, now: at(14) })).ok).toBe(true);
   });
+
+  it("a completed reset lifts the sign-in lock on that email (final review)", async () => {
+    for (let i = 0; i < 5; i += 1) await signIn(store, { email: "sara@example.com", password: "wrong password!", address: null, now });
+    expect(await signIn(store, { email: "sara@example.com", password: PASSWORD, address: null, now })).toEqual({ ok: false, reason: "locked" });
+    await requestReset(deps(), { email: "sara@example.com", now });
+    await settle();
+    const token = tokenIn(sent.at(-1), "reset-password");
+    expect((await completeReset(store, { token, password: "a brand new password", now })).ok).toBe(true);
+    expect((await signIn(store, { email: "sara@example.com", password: "a brand new password", address: null, now })).ok).toBe(true);
+  });
 });
 
 describe("the first Admin", () => {
@@ -253,5 +263,13 @@ describe("the first Admin", () => {
 
   it("hides most of the address on the sign-in page", () => {
     expect(maskEmail("owner@example.com")).toBe("o•••@example.com");
+  });
+
+  it("a corrected ADMIN_EMAIL retires the invitation sent to the earlier address (final review)", async () => {
+    await ensure("typo@example.com");
+    const typoToken = tokenIn(sent[0], "invitation");
+    await ensure("owner@example.com");
+    expect(sent.map((email) => email.to)).toEqual(["typo@example.com", "owner@example.com"]);
+    expect((await lookUpInvitation(store, typoToken, now)).state).toBe("invalid");
   });
 });

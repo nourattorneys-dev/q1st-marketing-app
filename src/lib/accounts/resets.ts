@@ -61,6 +61,8 @@ export async function completeReset(
   await store.setPassword(account.id, await hashPassword(input.password), input.now);
   await store.deleteResetsOf(account.id);
   await store.deleteSessionsOf(account.id);
+  // The link proved the email is theirs: the sign-in lock on it ends with the old password.
+  await store.clearHits(`email:${account.email}`);
   await store.recordSignIn(account.id, input.now);
   console.info(`Password reset: ${account.email}`);
   return { ok: true, account: { ...account, lastSignInAt: input.now }, ...(await startSession(store, account.id, input.now)) };

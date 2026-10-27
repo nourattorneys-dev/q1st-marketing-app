@@ -20,6 +20,8 @@ setting() { sed -n "s/^$1=//p" "$SETTINGS" | tail -1; }
 AUTH=$(setting AUTH_MODE)
 case "$AUTH" in
   password)
+    # Test logins would show reset and invitation links on a page anyone can open.
+    [ "$(setting ALLOW_TEST_LOGINS)" != "1" ] || { echo "Remove ALLOW_TEST_LOGINS=1 from $SETTINGS: it's for previews (AUTH_MODE=mock) only." >&2; exit 1; }
     SUFFIX=""
     ;;
   mock)

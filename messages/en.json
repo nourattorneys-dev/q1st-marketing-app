@@ -857,6 +857,7 @@
     "email": "Don't use your email as your password.",
     "mismatch": "The two passwords don't match.",
     "current": "Your current password is incorrect.",
+    "locked": "Too many attempts. Try again in 15 minutes.",
     "name": "Enter your name."
   },
   "Invitation": {

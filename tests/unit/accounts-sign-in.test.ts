@@ -78,6 +78,17 @@ describe("signing in (spec M5c)", () => {
     await attempt("x@example.com\nSigned in: sara@example.com", "wrong password!", 1);
     expect(warn).toHaveBeenLastCalledWith("Sign-in refused (wrong password): x@example.com?signed in: sara@example.com from 203.0.113.5");
   });
+
+  it("parallel attempts can't get past the email limit: at most 5 password checks, even with the right one last (final review)", async () => {
+    const results = await Promise.all(Array.from({ length: 20 }, (_, i) => attempt("sara@example.com", i === 19 ? PASSWORD : "wrong password!", 1)));
+    expect(results.filter((result) => !result.ok && result.reason === "wrong").length).toBeLessThanOrEqual(5);
+    expect(results.at(-1)).toEqual({ ok: false, reason: "locked" });
+  });
+
+  it("parallel attempts from one address can't get past its limit either", async () => {
+    const results = await Promise.all(Array.from({ length: 40 }, (_, i) => attempt(`guess${i}@example.com`, "wrong password!", 1)));
+    expect(results.filter((result) => !result.ok && result.reason === "wrong")).toHaveLength(30);
+  });
 });
 
 describe("sessions", () => {
@@ -103,5 +114,13 @@ describe("changing a password", () => {
     expect((await attempt("sara@example.com", PASSWORD, 7)).ok).toBe(false);
     expect((await attempt("sara@example.com", "a brand new password", 8)).ok).toBe(true);
     expect(await store.account("usr_sara")).toMatchObject({ passwordChangedAt: at(5) });
+  });
+
+  it("counts wrong current passwords like sign-in attempts: after 5, even the right one is refused for a while (final review)", async () => {
+    const here = await startSession(store, "usr_sara", at(0));
+    const change = (current: string, minute: number) => changePassword(store, { account: sara, current, next: "a brand new password", keepToken: here.token, now: at(minute) });
+    for (let i = 0; i < 5; i += 1) expect(await change("wrong password!", 1)).toEqual({ ok: false, problem: "current" });
+    expect(await change(PASSWORD, 2)).toEqual({ ok: false, problem: "locked" });
+    expect(await change(PASSWORD, 16)).toEqual({ ok: true });
   });
 });

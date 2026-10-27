@@ -85,7 +85,7 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 
 **One-time setup**
 
-1. cPanel → **Domains**: create `dashboard.fakhernco.com` with the document root `/home/fakhernco/dashboard.fakhernco.com`. Upload `deploy/cpanel/htaccess` as that folder's `.htaccess`: it points Passenger at `~/dashboard-app` and Node 22. Nothing else in the web root belongs to the app.
+1. cPanel → **Domains**: create `dashboard.fakhernco.com` with the document root `/home/fakhernco/dashboard.fakhernco.com`. Upload `deploy/cpanel/htaccess` as that folder's `.htaccess`: it points Passenger at `~/dashboard-app` and Node 22, and redirects plain HTTP to HTTPS (except AutoSSL's `/.well-known/` checks). Each deploy uploads it again. Nothing else in the web root belongs to the app.
 2. **Cloudflare DNS:** add an `A` record `dashboard` pointing to the server's IP (the one fakhernco.com uses), set to **DNS only**. cPanel's AutoSSL then issues the certificate; cPanel → SSL/TLS Status → **Run AutoSSL** hurries it.
 3. **MySQL:** cPanel → **MySQL Databases**: create a database (for example `fakhernco_dashboard`; cPanel adds the account prefix) and a user, and give the user **All Privileges** on it, since the app creates its own tables. Then `DATABASE_URL=mysql://<user>:<password>@localhost:3306/<database>`.
 4. **`.env.cpanel`** in the repo root (never committed). Start from `.env.example` and set:

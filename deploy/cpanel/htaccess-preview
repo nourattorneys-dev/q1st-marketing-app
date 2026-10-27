@@ -7,6 +7,14 @@ PassengerAppType node
 PassengerStartupFile app.cjs
 PassengerAppEnv production
 
+# Always HTTPS (the sign-in form posts passwords): plain HTTP gets a permanent redirect, except AutoSSL's checks.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
 # Preview with test logins (README, "Hosting on cPanel"): the browser asks for this password before anything else.
 # scripts/cpanel-deploy.sh puts this file up for AUTH_MODE=mock builds only. AutoSSL's checks stay open.
 AuthType Basic

@@ -11,7 +11,7 @@ import { requireSession } from "@/lib/auth/session";
 import { getAccountStore } from "@/lib/db";
 import { passwordEnv } from "@/lib/env";
 
-export type ChangeState = { changed: true } | { problem: "current" | "mismatch" | PasswordProblem } | null;
+export type ChangeState = { changed: true } | { problem: "current" | "locked" | "mismatch" | PasswordProblem } | null;
 
 /** Spec M5c, the Account page: the current password, then the new one twice. This session stays; every other one ends. */
 export async function changePasswordAction(_previous: ChangeState, form: FormData): Promise<ChangeState> {
