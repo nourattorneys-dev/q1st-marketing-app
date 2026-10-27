@@ -1,4 +1,5 @@
-import { boolean, datetime, int, json, mysqlTable, primaryKey, text, varchar } from "drizzle-orm/mysql-core";
+import { boolean, char, datetime, index, int, json, mysqlTable, primaryKey, text, varchar } from "drizzle-orm/mysql-core";
+import type { Role } from "@/lib/auth/roles";
 import type { Audience } from "./store";
 
 // Design §4: the dashboard's only database, the client's MySQL (M5a). Articles, keywords, photos and schedules stay in
@@ -49,4 +50,61 @@ export const notificationPrefs = mysqlTable("notification_prefs", {
   userId: key("user_id").primaryKey(),
   emailOff: boolean("email_off").notNull(),
   updatedAt: at("updated_at").notNull(),
+});
+
+// M5c: the dashboard's own sign-in. Emails are stored trimmed and lowercased (at most 254 characters, as everywhere);
+// tokens only as their sha256 (64 hex characters), so a copy of the database holds no working link or session.
+
+/** Someone who can sign in. role null = No access (the account stays). */
+export const users = mysqlTable("users", {
+  id: key("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique("users_email"),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: varchar("role", { length: 16 }).$type<Role>(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  createdAt: at("created_at").notNull(),
+  passwordChangedAt: at("password_changed_at").notNull(),
+  lastSignInAt: at("last_sign_in_at"),
+});
+
+/** A signed-in browser: the session cookie's hash (30 days). */
+export const sessions = mysqlTable(
+  "sessions",
+  {
+    tokenHash: char("token_hash", { length: 64 }).primaryKey(),
+    userId: key("user_id").notNull(),
+    createdAt: at("created_at").notNull(),
+    expiresAt: at("expires_at").notNull(),
+  },
+  (table) => [index("sessions_user_id").on(table.userId)],
+);
+
+/** At most one pending invitation per email (7 days); deleted when accepted or revoked. */
+export const invitations = mysqlTable("invitations", {
+  id: key("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique("invitations_email"),
+  role: varchar("role", { length: 16 }).$type<Role>().notNull(),
+  tokenHash: char("token_hash", { length: 64 }).notNull().unique("invitations_token_hash"),
+  invitedBy: key("invited_by"),
+  createdAt: at("created_at").notNull(),
+  expiresAt: at("expires_at").notNull(),
+});
+
+/** A "Forgot password" link (1 hour); all of someone's are deleted when one is used. */
+export const passwordResets = mysqlTable(
+  "password_resets",
+  {
+    tokenHash: char("token_hash", { length: 64 }).primaryKey(),
+    userId: key("user_id").notNull(),
+    createdAt: at("created_at").notNull(),
+    expiresAt: at("expires_at").notNull(),
+  },
+  (table) => [index("password_resets_user_id").on(table.userId)],
+);
+
+/** Guessing limits: `email:<address>`, `ip:<address>`, `reset:<address>`, `setup:<address>`, each a count in a window. */
+export const signInLimits = mysqlTable("sign_in_limits", {
+  key: varchar("key", { length: 300 }).primaryKey(),
+  count: int("count").notNull(),
+  windowStart: at("window_start").notNull(),
 });

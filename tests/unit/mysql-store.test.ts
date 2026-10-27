@@ -47,7 +47,7 @@ describe("the MySQL store on a real database", () => {
     const [tables] = await connection.pool.query<RowDataPacket[]>(
       "SELECT table_name AS name, table_collation AS collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> '__drizzle_migrations' ORDER BY table_name",
     );
-    expect(tables.map((table) => table.name)).toEqual(["notification_deliveries", "notification_prefs", "notifications", "webhook_config", "webhook_events"]);
+    expect(tables.map((table) => table.name)).toEqual(["invitations", "notification_deliveries", "notification_prefs", "notifications", "password_resets", "sessions", "sign_in_limits", "users", "webhook_config", "webhook_events"]);
     expect(new Set(tables.map((table) => table.collation))).toEqual(new Set(["utf8mb4_0900_ai_ci"]));
   });
 
@@ -94,9 +94,9 @@ describe("preparing the dashboard's tables after an interrupted first attempt", 
       const [tables] = await connection.pool.query<RowDataPacket[]>(
         "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> '__drizzle_migrations'",
       );
-      expect(Number(tables[0]?.n)).toBe(5);
+      expect(Number(tables[0]?.n)).toBe(10);
       const [applied] = await connection.pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM __drizzle_migrations");
-      expect(Number(applied[0]?.n)).toBe(1);
+      expect(Number(applied[0]?.n)).toBe(2);
     } finally {
       await connection.close();
     }

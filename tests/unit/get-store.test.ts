@@ -15,4 +15,12 @@ describe("getStore (DB_MODE=mysql)", () => {
     const second = (await import("@/lib/db")).getStore();
     expect(second).toBe(first);
   });
+
+  it("gives the account store the same MySQL pool, once per process (spec M5c)", async () => {
+    vi.stubEnv("DB_MODE", "mysql");
+    vi.stubEnv("DATABASE_URL", "mysql://nobody@127.0.0.1:1/never");
+    const first = (await import("@/lib/db")).getAccountStore();
+    vi.resetModules();
+    expect((await import("@/lib/db")).getAccountStore()).toBe(first);
+  });
 });
