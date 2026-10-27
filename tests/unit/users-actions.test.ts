@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DirectoryError } from "@/lib/users/types";
 
-const directory = { list: vi.fn(), invite: vi.fn(), revokeInvite: vi.fn(), setRole: vi.fn() };
+const directory = { list: vi.fn(), invite: vi.fn(), resendInvite: vi.fn(), revokeInvite: vi.fn(), setRole: vi.fn() };
 const refresh = vi.fn();
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh }));
@@ -9,13 +9,14 @@ const requirePermission = vi.fn(async () => ({ userId: "user_admin", email: "adm
 vi.mock("@/lib/auth/session", () => ({ requirePermission }));
 vi.mock("@/lib/users/directory", () => ({ getDirectory: async () => directory }));
 
-const { inviteUserAction, revokeInviteAction, setUserRoleAction } = await import("@/app/[locale]/(app)/users/actions");
+const { inviteUserAction, resendInviteAction, revokeInviteAction, setUserRoleAction } = await import("@/app/[locale]/(app)/users/actions");
 
 const key = "key-12345678";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  directory.invite.mockResolvedValue({ id: "inv_1", email: "new@example.com", role: "reviewer", createdAt: "2026-10-21T08:00:00.000Z" });
+  directory.invite.mockResolvedValue({ id: "inv_1", email: "new@example.com", role: "reviewer", createdAt: "2026-10-21T08:00:00.000Z", expiresAt: "2026-10-28T08:00:00.000Z" });
+  directory.resendInvite.mockResolvedValue({ id: "inv_1", email: "new@example.com", role: "reviewer", createdAt: "2026-10-27T08:00:00.000Z", expiresAt: "2026-11-03T08:00:00.000Z" });
   directory.revokeInvite.mockResolvedValue({ revoked: true });
   directory.setRole.mockResolvedValue({ id: "user_2", name: "Omar", email: "omar@example.com", role: null, twoFactor: false, lastSignInAt: null });
 });
@@ -24,8 +25,10 @@ describe("users actions are for admins (design §5: users.manage)", () => {
   it("checks users.manage before every change, and refreshes the page after a success", async () => {
     await inviteUserAction({ locale: "en", email: "new@example.com", role: "reviewer", idempotencyKey: key });
     await revokeInviteAction({ locale: "en", inviteId: "inv_1", idempotencyKey: key });
+    await resendInviteAction({ locale: "en", inviteId: "inv_1", idempotencyKey: key });
     await setUserRoleAction({ locale: "ar", userId: "user_2", role: null, idempotencyKey: key });
     expect(requirePermission.mock.calls).toEqual([
+      ["en", "users.manage"],
       ["en", "users.manage"],
       ["en", "users.manage"],
       ["ar", "users.manage"],
@@ -33,7 +36,7 @@ describe("users actions are for admins (design §5: users.manage)", () => {
     expect(directory.invite).toHaveBeenCalledWith("new@example.com", "reviewer", "user_admin");
     expect(directory.revokeInvite).toHaveBeenCalledWith("inv_1");
     expect(directory.setRole).toHaveBeenCalledWith("user_2", null);
-    expect(refresh).toHaveBeenCalledTimes(3);
+    expect(refresh).toHaveBeenCalledTimes(4);
   });
 
   it("refuses an Admin's change to their own access, without asking the directory (Review Focus 1)", async () => {
@@ -79,5 +82,29 @@ describe("users actions are for admins (design §5: users.manage)", () => {
       error: { status: 503, code: "unavailable" },
     });
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("resends an invitation for Admins only, refreshing the page (spec M5c)", async () => {
+    expect(await resendInviteAction({ locale: "en", inviteId: "inv_1", idempotencyKey: key })).toMatchObject({ ok: true, data: { id: "inv_1", notSent: false } });
+    expect(requirePermission).toHaveBeenCalledWith("en", "users.manage");
+    expect(directory.resendInvite).toHaveBeenCalledWith("inv_1");
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(await resendInviteAction({ locale: "en", inviteId: "../x", idempotencyKey: key })).toMatchObject({ ok: false, error: { code: "invalid_input" } });
+  });
+
+  it("marks an invitation not sent in password mode while EMAIL_MODE=log", async () => {
+    vi.stubEnv("AUTH_MODE", "password");
+    vi.stubEnv("APP_URL", "http://localhost:3000");
+    vi.stubEnv("EMAIL_MODE", "log");
+    expect(await inviteUserAction({ locale: "en", email: "new@example.com", role: "reviewer", idempotencyKey: key })).toMatchObject({ ok: true, data: { notSent: true } });
+    vi.unstubAllEnvs();
+  });
+
+  it("passes a mail failure through with its kind and the server's reply", async () => {
+    directory.invite.mockRejectedValue(new DirectoryError("mail_failed", "The email couldn't be sent (login).", undefined, { kind: "login", reply: "535 x" }));
+    expect(await inviteUserAction({ locale: "en", email: "new@example.com", role: "reviewer", idempotencyKey: key })).toEqual({
+      ok: false,
+      error: { status: 502, code: "mail_failed", message: "The email couldn't be sent (login).", details: { kind: "login", reply: "535 x" } },
+    });
   });
 });

@@ -26,6 +26,8 @@ export async function UsersView({ locale }: { locale: AppLocale }) {
   const engine = await getEngine();
   const site = await tryEngine(() => engine.siteTimezone());
   const timeZone = site.ok ? site.data.timezone : "UTC";
+  // When an invitation counts as expired (spec M5c): this request's moment, read once.
+  const now = new Date();
 
   return (
     <UsersBoard
@@ -46,6 +48,8 @@ export async function UsersView({ locale }: { locale: AppLocale }) {
         email: invite.email,
         role: invite.role,
         sentOn: formatDate(invite.createdAt, { timeZone, locale }),
+        expiresOn: invite.expiresAt ? formatDate(invite.expiresAt, { timeZone, locale }) : null,
+        expired: invite.expiresAt !== null && new Date(invite.expiresAt).getTime() <= now.getTime(),
       }))}
     />
   );

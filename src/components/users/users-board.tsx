@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { inviteUserAction, revokeInviteAction, setUserRoleAction } from "@/app/[locale]/(app)/users/actions";
+import { inviteUserAction, resendInviteAction, revokeInviteAction, setUserRoleAction } from "@/app/[locale]/(app)/users/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +11,13 @@ import { Label } from "@/components/ui/label";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import { isRole, ROLES, type Role } from "@/lib/auth/roles";
 import type { EngineFailure } from "@/lib/engine/result";
+import { MAIL_ERROR_KINDS } from "@/lib/notifications/mail-error";
 
 const SELECT = "h-9 rounded-md border border-input bg-card px-3 text-sm disabled:opacity-50";
 const NONE = "none";
 
 export type UserRow = { id: string; name: string; email: string; role: Role | null; twoFactor: boolean; lastSignIn: string | null };
-export type InviteRow = { id: string; email: string; role: Role | null; sentOn: string };
+export type InviteRow = { id: string; email: string; role: Role | null; sentOn: string; expiresOn: string | null; expired: boolean };
 
 /** `showTwoFactor`: false with TWO_FACTOR=off, which drops the two-factor column. */
 type Props = { locale: string; selfId: string; testLogins: boolean; showTwoFactor: boolean; users: UserRow[]; invites: InviteRow[] };
@@ -73,7 +74,16 @@ export function UsersBoard({ locale, selfId, testLogins, showTwoFactor, users, i
 
 function useFailureText() {
   const t = useTranslations("Users.errors");
-  return (error: EngineFailure) => (t.has(error.code) ? t(error.code) : error.message);
+  const tMail = useTranslations("Notifications.testEmail");
+  return (error: EngineFailure) => {
+    // Spec M5c: an invitation the mail server refused says why, in the test email's words, with the server's reply.
+    if (error.code === "mail_failed") {
+      const kind = MAIL_ERROR_KINDS.find((each) => each === error.details?.kind) ?? "other";
+      const reply = typeof error.details?.reply === "string" && error.details.reply ? ` (${error.details.reply})` : "";
+      return `${tMail(`failed.${kind}`)}${reply}`;
+    }
+    return t.has(error.code) ? t(error.code) : error.message;
+  };
 }
 
 type RowProps = { locale: string; user: UserRow; showTwoFactor: boolean; self: boolean; changed: boolean; onStart: () => void; onDone: () => void };
@@ -167,16 +177,16 @@ function InviteForm({ locale }: { locale: string }) {
   const invite = useEngineAction(inviteUserAction);
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("reviewer");
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ email: string; notSent: boolean } | null>(null);
   const [error, setError] = useState<EngineFailure | null>(null);
   const fieldError = error?.fields?.email ? t("errors.invalidEmail") : null;
 
   async function submit() {
     setError(null);
-    setSentTo(null);
+    setSent(null);
     const result = await invite.run({ locale, email, role: inviteRole });
     if (result.ok) {
-      setSentTo(result.data.email);
+      setSent({ email: result.data.email, notSent: result.data.notSent });
       setEmail("");
     } else {
       setError(result.error);
@@ -244,11 +254,16 @@ function InviteForm({ locale }: { locale: string }) {
             {failureText(error)}
           </p>
         )}
-        {sentTo && (
-          <p role="status" data-testid="invite-sent" className="text-sm text-ok-fg">
-            {t("invite.sent", { email: sentTo })}
-          </p>
-        )}
+        {sent &&
+          (sent.notSent ? (
+            <p role="status" data-testid="invite-not-sent" className="text-sm text-muted-foreground">
+              {t("invite.notSent")}
+            </p>
+          ) : (
+            <p role="status" data-testid="invite-sent" className="text-sm text-ok-fg">
+              {t("invite.sent", { email: sent.email })}
+            </p>
+          ))}
       </CardContent>
     </Card>
   );
@@ -258,12 +273,24 @@ function PendingInvites({ locale, invites }: { locale: string; invites: InviteRo
   const t = useTranslations("Users");
   const failureText = useFailureText();
   const revoke = useEngineAction(revokeInviteAction);
+  const resend = useEngineAction(resendInviteAction);
   const [error, setError] = useState<EngineFailure | null>(null);
+  const [resent, setResent] = useState<{ email: string; notSent: boolean } | null>(null);
+  const busy = revoke.pending || resend.pending;
 
   async function revokeOne(inviteId: string) {
     setError(null);
+    setResent(null);
     const result = await revoke.run({ locale, inviteId });
     if (!result.ok) setError(result.error);
+  }
+
+  async function resendOne(inviteId: string) {
+    setError(null);
+    setResent(null);
+    const result = await resend.run({ locale, inviteId });
+    if (result.ok) setResent({ email: result.data.email, notSent: result.data.notSent });
+    else setError(result.error);
   }
 
   return (
@@ -282,13 +309,45 @@ function PendingInvites({ locale, invites }: { locale: string; invites: InviteRo
               <li key={invite.id} data-testid={`pending-invite-${invite.id}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>
                   <bdi>{invite.email}</bdi> · {t(`roles.${invite.role ?? NONE}`)} · {t("invites.sentOn", { date: invite.sentOn })}
+                  {(invite.expired || invite.expiresOn) && (
+                    <>
+                      {" · "}
+                      <span data-testid={`pending-expiry-${invite.id}`} data-expired={String(invite.expired)} className={invite.expired ? "text-bad-fg" : undefined}>
+                        {invite.expired ? t("invites.expired") : t("invites.expires", { date: invite.expiresOn ?? "" })}
+                      </span>
+                    </>
+                  )}
                 </span>
-                <Button size="sm" variant="outline" data-testid={`pending-revoke-${invite.id}`} aria-label={t("revokeFor", { email: invite.email })} disabled={revoke.pending} onClick={() => void revokeOne(invite.id)}>
-                  {t("invites.revoke")}
-                </Button>
+                <span className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid={`pending-resend-${invite.id}`}
+                    aria-label={t("resendFor", { email: invite.email })}
+                    disabled={busy}
+                    onClick={() => void resendOne(invite.id)}
+                  >
+                    {t("invites.resend")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-testid={`pending-revoke-${invite.id}`}
+                    aria-label={t("revokeFor", { email: invite.email })}
+                    disabled={busy}
+                    onClick={() => void revokeOne(invite.id)}
+                  >
+                    {t("invites.revoke")}
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
+        )}
+        {resent && (
+          <p role="status" data-testid="invites-resent" data-not-sent={String(resent.notSent)} className="text-sm text-ok-fg">
+            {resent.notSent ? t("invites.resentNotSent") : t("invites.resent", { email: resent.email })}
+          </p>
         )}
         {error && (
           <p role="alert" data-testid="invites-error" className="text-sm text-bad-fg">

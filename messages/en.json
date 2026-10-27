@@ -745,17 +745,23 @@
     "changed": "Access updated.",
     "invite": {
       "title": "Invite someone",
-      "hint": "They get an email from the sign-in service with a link to create their account, with this role.",
+      "hint": "They get an email with a link to choose a password and sign in, with this role. The link works for 7 days.",
       "email": "Email",
       "role": "Role",
       "submit": "Send invitation",
-      "sent": "Invitation sent to {email}."
+      "sent": "Invitation sent to {email}.",
+      "notSent": "Invitation saved, but not sent: this server doesn't send emails yet."
     },
     "invites": {
       "title": "Pending invitations",
       "empty": "No pending invitations.",
       "sentOn": "Sent {date}",
-      "revoke": "Revoke"
+      "revoke": "Revoke",
+      "expires": "Expires {date}",
+      "expired": "Expired",
+      "resend": "Resend",
+      "resent": "New link sent to {email}.",
+      "resentNotSent": "New link saved, but not sent: this server doesn't send emails yet."
     },
     "errors": {
       "invalidEmail": "Enter an email address.",
@@ -769,7 +775,8 @@
     },
     "accessFor": "Access for {name}",
     "applyFor": "Apply for {name}",
-    "revokeFor": "Revoke the invitation to {email}"
+    "revokeFor": "Revoke the invitation to {email}",
+    "resendFor": "Resend the invitation to {email}"
   },
   "Security": {
     "title": "Two-factor login",

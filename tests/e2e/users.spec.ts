@@ -129,3 +129,16 @@ test("each person's controls are labelled with their name, so a screen reader ca
   await expect(page.getByRole("combobox", { name: "Access for Reviewer (test)" })).toHaveValue("reviewer");
   await expect(page.getByRole("button", { name: "Apply for Reviewer (test)" })).toHaveCount(1);
 });
+
+test("a pending invitation shows when it expires, and Resend gives it a new link (spec M5c)", async ({ page, context }) => {
+  await signInWithCookie(context, "dev_admin");
+  await page.goto("/en/users");
+  await page.getByTestId("invite-email").fill("resend.me@example.com");
+  await page.getByTestId("invite-submit").click();
+  await expect(page.getByTestId("invite-sent")).toBeVisible();
+  const row = page.locator('[data-testid^="pending-invite-"]', { hasText: "resend.me@example.com" });
+  await expect(row.locator('[data-testid^="pending-expiry-"]')).toHaveAttribute("data-expired", "false");
+  await expect(row.locator('[data-testid^="pending-expiry-"]')).toContainText("Expires");
+  await row.locator('[data-testid^="pending-resend-"]').click();
+  await expect(page.getByTestId("invites-resent")).toHaveText("New link sent to resend.me@example.com.");
+});
