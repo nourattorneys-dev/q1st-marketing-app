@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import { sessionCookieName } from "@/lib/accounts/cookie";
 import { sessionAccount } from "@/lib/accounts/sign-in";
@@ -32,6 +33,8 @@ export const getSession = cache(async (): Promise<Session | null> => {
   // /users takes effect on the next request.
   const token = env.appUrl ? jar.get(sessionCookieName(env.appUrl))?.value : undefined;
   if (!token) return null;
+  // The expiry is checked against the clock, which a build or a prefetch render must not read (Cache Components).
+  await connection();
   const account = await sessionAccount(getAccountStore(), token, new Date());
   return account ? { userId: account.id, email: account.email, name: account.name, role: account.role, twoFactor: false } : null;
 });

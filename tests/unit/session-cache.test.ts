@@ -18,6 +18,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "session" && state.cookie ? { name, value: state.cookie } : undefined) }),
 }));
+// getSession waits for the request (connection()) before reading the clock; here every call is a request.
+vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => {
     throw new Error(`REDIRECT:${path}`);
