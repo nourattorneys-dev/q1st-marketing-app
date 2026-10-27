@@ -8,6 +8,7 @@ type State = { users: Map<string, DirectoryUser>; invites: Map<string, Directory
 
 const REGISTRY = Symbol.for("articles-ai.mock-directories");
 const SIGNED_IN_BEFORE = "2026-10-21T05:00:00.000Z";
+const INVITE_DAYS_MS = 7 * 86_400_000;
 
 /** One test directory per mock_store namespace (e2e tests use a fresh one each), seeded with the test users. */
 function stateFor(namespace?: string): State {
@@ -54,8 +55,23 @@ export function createMockDirectory(namespace?: string): UserDirectory & {
       if (alreadyKnown(tidy, [...state.users.values()], [...state.invites.values()])) {
         throw new DirectoryError("conflict", "This person already has an account or an invitation.");
       }
-      const invite: DirectoryInvite = { id: `inv_${++state.sequence}`, email: tidy, role, createdAt: new Date().toISOString() };
+      const createdAt = new Date();
+      const invite: DirectoryInvite = {
+        id: `inv_${++state.sequence}`,
+        email: tidy,
+        role,
+        createdAt: createdAt.toISOString(),
+        expiresAt: new Date(createdAt.getTime() + INVITE_DAYS_MS).toISOString(),
+      };
       state.invites.set(invite.id, invite);
+      return structuredClone(invite);
+    },
+
+    async resendInvite(id: string) {
+      const invite = state.invites.get(id);
+      if (!invite) throw new DirectoryError("not_found", "This invitation no longer exists.");
+      const createdAt = new Date();
+      Object.assign(invite, { createdAt: createdAt.toISOString(), expiresAt: new Date(createdAt.getTime() + INVITE_DAYS_MS).toISOString() });
       return structuredClone(invite);
     },
 

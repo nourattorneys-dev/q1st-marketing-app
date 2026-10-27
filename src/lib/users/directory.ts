@@ -25,5 +25,5 @@ function unreachableDirectory(): UserDirectory {
   const fail = async (): Promise<never> => {
     throw new DirectoryError("unavailable", "The sign-in service can't be reached right now. Try again shortly.");
   };
-  return { list: fail, invite: fail, revokeInvite: fail, setRole: fail };
+  return { list: fail, invite: fail, resendInvite: fail, revokeInvite: fail, setRole: fail };
 }

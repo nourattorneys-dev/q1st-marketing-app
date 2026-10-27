@@ -30,7 +30,7 @@ describe("users actions are for admins (design §5: users.manage)", () => {
       ["en", "users.manage"],
       ["ar", "users.manage"],
     ]);
-    expect(directory.invite).toHaveBeenCalledWith("new@example.com", "reviewer");
+    expect(directory.invite).toHaveBeenCalledWith("new@example.com", "reviewer", "user_admin");
     expect(directory.revokeInvite).toHaveBeenCalledWith("inv_1");
     expect(directory.setRole).toHaveBeenCalledWith("user_2", null);
     expect(refresh).toHaveBeenCalledTimes(3);

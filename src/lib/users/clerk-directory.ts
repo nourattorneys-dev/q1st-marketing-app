@@ -34,7 +34,7 @@ function toUser(user: ClerkUserRecord): DirectoryUser {
 }
 
 function toInvite(invitation: ClerkInvitationRecord): DirectoryInvite {
-  return { id: invitation.id, email: invitation.emailAddress, role: roleOf(invitation.publicMetadata), createdAt: new Date(invitation.createdAt).toISOString() };
+  return { id: invitation.id, email: invitation.emailAddress, role: roleOf(invitation.publicMetadata), createdAt: new Date(invitation.createdAt).toISOString(), expiresAt: null };
 }
 
 /** Clerk's API errors carry `status` and `errors[].code` (ClerkAPIResponseError); a thrown TypeError means no answer. */
@@ -81,6 +81,10 @@ export function createClerkDirectory(client: ClerkDirectoryClient): UserDirector
       const { users, invites } = await list();
       if (alreadyKnown(tidy, users, invites)) throw new DirectoryError("conflict", "This person already has an account or an invitation.");
       return guarded(async () => toInvite(await client.invitations.createInvitation({ emailAddress: tidy, publicMetadata: { role }, notify: true })));
+    },
+
+    async resendInvite() {
+      throw new DirectoryError("refused", "Resend isn't available with Clerk.");
     },
 
     async revokeInvite(id: string) {

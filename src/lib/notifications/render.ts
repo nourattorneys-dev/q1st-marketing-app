@@ -1,6 +1,7 @@
 import { createTranslator, type AbstractIntlMessages } from "next-intl";
 import ar from "../../../messages/ar.json";
 import en from "../../../messages/en.json";
+import type { Role } from "@/lib/auth/roles";
 import { settingsPageFor } from "@/lib/dashboard/connections";
 import { formatNumber } from "@/lib/format/number";
 import type { Batch } from "./batches";
@@ -127,6 +128,22 @@ export function renderTestEmail(): { subject: string; html: string; text: string
     LOCALES.map((locale) => {
       const t = translator(locale, "Email.test");
       return { locale, subject: t("subject"), heading: t("heading"), lines: [{ text: t("body"), href: null }], footer: t("footer"), settings: null };
+    }),
+  );
+}
+
+/**
+ * M5c: an invitation or a password-reset email, in the notification format. Each language's half links to that
+ * language's page; the links come from APP_URL only, never from a request.
+ */
+export function renderAccountEmail(kind: "invitation" | "reset", input: { appUrl: string; token: string; role?: Role }): { subject: string; html: string; text: string } {
+  const path = kind === "invitation" ? "invitation" : "reset-password";
+  return compose(
+    LOCALES.map((locale) => {
+      const t = translator(locale, `Email.${kind}`);
+      const role = input.role ? translator(locale, "Shell.role")(input.role) : "";
+      const href = `${input.appUrl}/${locale}/${path}?token=${encodeURIComponent(input.token)}`;
+      return { locale, subject: t("subject"), heading: t("heading", { role }), lines: [{ text: t("link"), href }], footer: t("footer"), settings: null };
     }),
   );
 }

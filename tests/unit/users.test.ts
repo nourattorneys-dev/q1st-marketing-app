@@ -37,11 +37,12 @@ describe("the test directory (AUTH_MODE=mock)", () => {
 
   it("invites an email once, ignoring case and spaces; refuses an existing account or a non-email; revokes (Review Focus 3)", async () => {
     const directory = fresh();
-    const invite = await directory.invite(" New.Reviewer@example.com ", "reviewer");
+    const invite = await directory.invite(" New.Reviewer@example.com ", "reviewer", null);
     expect(invite).toMatchObject({ email: "new.reviewer@example.com", role: "reviewer" });
-    await expect(directory.invite("NEW.reviewer@example.com", "admin")).rejects.toMatchObject({ code: "conflict" });
-    await expect(directory.invite("Reviewer@Example.com", "admin")).rejects.toMatchObject({ code: "conflict" });
-    await expect(directory.invite("not-an-email", "reviewer")).rejects.toMatchObject({ code: "invalid_input", fields: { email: expect.any(String) } });
+    expect(new Date(invite.expiresAt ?? 0).getTime() - new Date(invite.createdAt).getTime()).toBe(7 * 86_400_000);
+    await expect(directory.invite("NEW.reviewer@example.com", "admin", null)).rejects.toMatchObject({ code: "conflict" });
+    await expect(directory.invite("Reviewer@Example.com", "admin", null)).rejects.toMatchObject({ code: "conflict" });
+    await expect(directory.invite("not-an-email", "reviewer", null)).rejects.toMatchObject({ code: "invalid_input", fields: { email: expect.any(String) } });
     expect(await directory.revokeInvite(invite.id)).toEqual({ revoked: true });
     expect((await directory.list()).invites).toEqual([]);
     await expect(directory.revokeInvite(invite.id)).rejects.toMatchObject({ code: "not_found" });
@@ -69,6 +70,15 @@ describe("the test directory (AUTH_MODE=mock)", () => {
     directory.enableTwoFactor("dev_admin_no2fa");
     expect(directory.sessionOf("dev_admin_no2fa")).toMatchObject({ role: "admin", twoFactor: true });
     expect(directory.sessionOf("someone")).toBeNull();
+  });
+
+  it("resends a test invitation with a new 7-day expiry, and knows a missing one", async () => {
+    const directory = fresh();
+    const invite = await directory.invite("new@example.com", "reviewer", null);
+    const renewed = await directory.resendInvite(invite.id);
+    expect(renewed).toMatchObject({ id: invite.id, email: "new@example.com" });
+    expect(new Date(renewed.expiresAt ?? 0).getTime() - new Date(renewed.createdAt).getTime()).toBe(7 * 86_400_000);
+    await expect(directory.resendInvite("inv_missing")).rejects.toMatchObject({ code: "not_found" });
   });
 });
 
@@ -125,7 +135,7 @@ describe("the Clerk directory (AUTH_MODE=clerk), over a fake Clerk client", () =
         { id: "user_1", name: "Sara Ali", email: "sara@example.com", role: "admin", twoFactor: true, lastSignInAt: "2026-10-21T05:00:00.000Z" },
         { id: "user_2", name: "omar@example.com", email: "omar@example.com", role: null, twoFactor: false, lastSignInAt: null },
       ],
-      invites: [{ id: "inv_1", email: "new@example.com", role: "reviewer", createdAt: "2026-10-20T08:00:00.000Z" }],
+      invites: [{ id: "inv_1", email: "new@example.com", role: "reviewer", createdAt: "2026-10-20T08:00:00.000Z", expiresAt: null }],
     });
     expect(calls).toContainEqual(["getUserList", { limit: 100, orderBy: "-created_at" }]);
     expect(calls).toContainEqual(["getInvitationList", { status: "pending", limit: 100 }]);
@@ -134,11 +144,12 @@ describe("the Clerk directory (AUTH_MODE=clerk), over a fake Clerk client", () =
   it("invites with the role in public metadata and Clerk's email; sets and removes a role; revokes", async () => {
     const { client, calls } = fakeClerk();
     const directory = createClerkDirectory(client);
-    expect(await directory.invite(" Brand.New@example.com", "reviewer")).toEqual({
+    expect(await directory.invite(" Brand.New@example.com", "reviewer", null)).toEqual({
       id: "inv_2",
       email: "brand.new@example.com",
       role: "reviewer",
       createdAt: "2026-10-21T08:00:00.000Z",
+      expiresAt: null,
     });
     await directory.setRole("user_2", "reviewer");
     await directory.setRole("user_2", null);
@@ -153,8 +164,8 @@ describe("the Clerk directory (AUTH_MODE=clerk), over a fake Clerk client", () =
 
   it("refuses an email that already has an account or an invitation before asking Clerk (Review Focus 3)", async () => {
     const { client, calls } = fakeClerk();
-    await expect(createClerkDirectory(client).invite("SARA@example.com", "admin")).rejects.toMatchObject({ code: "conflict" });
-    await expect(createClerkDirectory(client).invite("New@Example.com", "admin")).rejects.toMatchObject({ code: "conflict" });
+    await expect(createClerkDirectory(client).invite("SARA@example.com", "admin", null)).rejects.toMatchObject({ code: "conflict" });
+    await expect(createClerkDirectory(client).invite("New@Example.com", "admin", null)).rejects.toMatchObject({ code: "conflict" });
     expect(calls.some(([name]) => name === "createInvitation")).toBe(false);
   });
 
@@ -163,7 +174,7 @@ describe("the Clerk directory (AUTH_MODE=clerk), over a fake Clerk client", () =
     client.invitations.createInvitation = async () => {
       throw Object.assign(new Error("duplicate"), { status: 422, errors: [{ code: "duplicate_record" }] });
     };
-    await expect(createClerkDirectory(client).invite("x@example.com", "reviewer")).rejects.toMatchObject({ code: "conflict" });
+    await expect(createClerkDirectory(client).invite("x@example.com", "reviewer", null)).rejects.toMatchObject({ code: "conflict" });
     client.invitations.revokeInvitation = async () => {
       throw Object.assign(new Error("gone"), { status: 404, errors: [{ code: "resource_not_found" }] });
     };
@@ -201,6 +212,11 @@ describe("tryDirectory", () => {
         throw new DirectoryError("conflict", "Already there.");
       }),
     ).toEqual({ ok: false, error: { status: 409, code: "conflict", message: "Already there." } });
+    expect(
+      await tryDirectory(async () => {
+        throw new DirectoryError("mail_failed", "The email couldn't be sent (login).", undefined, { kind: "login", reply: "535 x" });
+      }),
+    ).toEqual({ ok: false, error: { status: 502, code: "mail_failed", message: "The email couldn't be sent (login).", details: { kind: "login", reply: "535 x" } } });
     await expect(
       tryDirectory(async () => {
         throw new Error("bug");

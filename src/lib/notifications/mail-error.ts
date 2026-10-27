@@ -17,3 +17,9 @@ export class MailError extends Error {
     this.reply = reply;
   }
 }
+
+/** What a log line says about any failed send: a MailError's kind and reply, or "other" and the error's message. */
+export function describeMailFailure(error: unknown): { kind: MailErrorKind; reply: string } {
+  if (error instanceof MailError) return { kind: error.kind, reply: error.reply ?? "no reply" };
+  return { kind: "other", reply: error instanceof Error ? error.message : "no reply" };
+}

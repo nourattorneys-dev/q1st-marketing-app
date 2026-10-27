@@ -23,8 +23,8 @@ export async function inviteUserAction(input: { locale: string; email: string; r
   const parsed = z.object({ locale: Locale, email: z.string().max(320), role: RoleChoice, idempotencyKey: IdempotencyKey }).safeParse(input);
   if (!parsed.success) return INVALID;
   const { locale, email, role } = parsed.data;
-  await requirePermission(locale, "users.manage");
-  const result = await tryDirectory(async () => (await getDirectory()).invite(email, role));
+  const session = await requirePermission(locale, "users.manage");
+  const result = await tryDirectory(async () => (await getDirectory()).invite(email, role, session.userId));
   if (result.ok) refresh();
   return result;
 }
