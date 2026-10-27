@@ -8,7 +8,7 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
     cp .env.example .env.local
     pnpm dev            # http://localhost:3000 → /en
 
-- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused on Vercel, and refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it).
+- `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it). The real sign-in is `AUTH_MODE=password` (see "Sign-in").
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
 - Mock scenario `signin_down` (the same `mock_scenario` cookie): the sign-in service can't be reached. The Users page shows a notice; the engine stays normal.
 - `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; a server keeps its data in MySQL (see "Database, webhook and email").
@@ -18,6 +18,8 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 
     pnpm lint && pnpm typecheck && pnpm test && pnpm e2e && ALLOW_TEST_LOGINS=1 pnpm build
 
+`pnpm test` and `pnpm e2e` need the local MySQL (`brew services start mysql@8.4`). `pnpm e2e` runs two suites: test logins, then password mode on the database `articles_ai_test_e2e_password` (`pnpm e2e:password` alone, after `ALLOW_TEST_LOGINS=1 pnpm build`).
+
 ## Docs
 
 - Design: `docs/specs/2026-10-21-marketing-dashboard-design.md`
@@ -26,22 +28,29 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 - From Quantum1st: their original spec (`docs/quantum1st/Marketing Portal Build Spec v1.0 (from Quantum1st).html`), and our draft reply proposing v1.1 (`docs/quantum1st/message-to-quantum1st.md`, not sent yet)
 - Design reference: `docs/design-reference/` (the portal prototype the look is based on; style only, its names are placeholders)
 
-## Real sign-in (Clerk)
+## Sign-in
 
-One Clerk application per website copy (design §5).
+The dashboard signs people in itself (M5c). Accounts, sessions, invitations and password resets live in its own database, and the links go out through its own email (see "Database, webhook and email").
 
-1. Create an application at https://dashboard.clerk.com and enable **Microsoft** and **Email code** sign-in.
-2. **Restrictions → Sign-up mode: Restricted.** Only people the Admin invites from `/users` can create an account.
-   - Also turn off **Allow users to delete their accounts**. Otherwise Clerk's account page on `/security` offers "Delete account", and the only Admin could delete themselves, which "nobody changes their own access" is meant to prevent.
-   - Invitation emails link to Clerk's hosted sign-up page (the Account Portal), because the portal has no sign-up page of its own. Keep the Account Portal on, and point its after-sign-up and after-sign-in redirects (**Paths**) at the dashboard's URL.
-3. **Multi-factor:** turn on **Authenticator application** and **Backup codes**. The portal sends an Admin without two-factor login to `/security` (Clerk's account page) until it's on.
-   - Clerk's free plan has no two-factor login. On it, set `TWO_FACTOR=off`: nothing asks for two-factor login, and Users has no two-factor column. Switch back to the default (`required`) after moving to Clerk Pro.
-4. **Sessions → Customize session token:** `{ "metadata": "{{user.public_metadata}}" }`. `/api/jobs` then reads the role from the token instead of asking Clerk on every poll. Without it the portal still works, with one Clerk call per poll.
-5. Put the keys in `.env.local` (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and set `AUTH_MODE=clerk`.
-6. Rebuild (`pnpm build`). `AUTH_MODE` is read at build time.
-7. Create the first Admin in the Clerk Dashboard, because sign-up is restricted and nobody can sign up on their own: Users → **Create user** (or **Invite**). Then open the user → Metadata → **Public** → `{ "role": "admin" }`. From then on the Admin invites people and sets roles on `/users`. Anyone without a role sees "No access yet".
-
-Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed even locally. Use `AUTH_MODE=mock` until then. Clerk mode is unit-tested against a fake client only: check these steps end to end with real keys before go-live (`docs/plans/2026-10-22-m4b-followups.md`).
+- **Settings:**
+  - `AUTH_MODE=password`
+  - `APP_URL`: the dashboard's address, https, from which every emailed link is built
+  - `ADMIN_EMAIL`
+  - `TWO_FACTOR` stays off until two-factor login arrives (M5d).
+- **The first Admin:**
+  - While the dashboard has no Admin, opening its sign-in page emails `ADMIN_EMAIL` an invitation. It's sent once, and again only after that link expires (7 days).
+  - Following it creates the Admin account.
+  - If that address already has an account, the account becomes the Admin.
+- **Everyone else:**
+  - The Admin invites them on `/users`, with a role.
+  - The emailed link (English and Arabic) works once, for 7 days. **Resend** makes a new one.
+  - With `EMAIL_MODE=log` the invitation is kept but not sent, and the page says so.
+- **Passwords:**
+  - At least 10 characters, stored only as scrypt hashes.
+  - "Forgot password?" emails a 1-hour link.
+  - The Account page (`/security`) changes the password and signs the person out everywhere else.
+- **Guessing:** 5 wrong passwords for an email, or 30 from one internet address, within 15 minutes lock them for 15 minutes. The address is the last `X-Forwarded-For` entry, which Passenger adds on the cPanel host. Keep the subdomain "DNS only" in Cloudflare, or every visitor would share Cloudflare's addresses.
+- **Log:** every sign-in and refusal is in `app.log` (`Signed in: …`, `Sign-in refused (…): …`), with the email and address, never the password.
 
 ## Database, webhook and email
 
@@ -67,7 +76,7 @@ Clerk's keyless mode didn't activate in testing (2026-10-21), so keys are needed
      - `EMAIL_FROM`, for example `Articles AI <notifications@dashboard.fakhernco.com>`
    - **TLS:** on the same machine (`localhost`) the connection doesn't use TLS, since it never leaves the server. Any other host must offer TLS with a valid certificate.
    - **Check it:** an Admin presses **Send me a test email** on the Email notifications page.
-3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). One run sends at a time: a run that starts while another is sending answers `{ "skipped": true }`. `vercel.json` holds the same schedule for Vercel, which is no longer the hosting path.
+3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). One run sends at a time: a run that starts while another is sending answers `{ "skipped": true }`.
 4. **Webhook:** after a release, open **Settings → Webhook** on the live address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted.
 
 ## Hosting on cPanel (dashboard.fakhernco.com)
@@ -80,8 +89,7 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 2. **Cloudflare DNS:** add an `A` record `dashboard` pointing to the server's IP (the one fakhernco.com uses), set to **DNS only**. cPanel's AutoSSL then issues the certificate; cPanel → SSL/TLS Status → **Run AutoSSL** hurries it.
 3. **MySQL:** cPanel → **MySQL Databases**: create a database (for example `fakhernco_dashboard`; cPanel adds the account prefix) and a user, and give the user **All Privileges** on it, since the app creates its own tables. Then `DATABASE_URL=mysql://<user>:<password>@localhost:3306/<database>`.
 4. **`.env.cpanel`** in the repo root (never committed). Start from `.env.example` and set:
-   - `AUTH_MODE=clerk`, with the Clerk keys
-   - `TWO_FACTOR=off` on Clerk's free plan
+   - `AUTH_MODE=password`, `APP_URL=https://dashboard.fakhernco.com` and `ADMIN_EMAIL` (the first Admin's address)
    - `DB_MODE=mysql` with `DATABASE_URL`
    - `WEBHOOK_ENCRYPTION_KEY` and `CRON_SECRET`
    - `EMAIL_MODE=smtp`, the `SMTP_` settings and `EMAIL_FROM` (see "Database, webhook and email")
@@ -96,15 +104,14 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Uploads take about 9 minutes,** because SFTP sends the roughly 2,000 files one at a time. The site keeps serving the previous release until the switch.
 - **Going back:** `scripts/cpanel-deploy.sh <older commit>`. Older releases stay in `~/dashboard-releases`; delete old ones with File Manager.
 - **Log:** `~/dashboard-shared/app.log` (download it over SFTP). Settings live in `~/dashboard-shared/settings.env`, readable only by the account.
-- **Preview before Clerk:** a settings file with `AUTH_MODE=mock` and `ALLOW_TEST_LOGINS=1` (kept locally as `.env.cpanel-preview`) builds a `<commit>-preview` release with test logins.
+- **Preview with test logins:** a settings file with `AUTH_MODE=mock` and `ALLOW_TEST_LOGINS=1` (kept locally as `.env.cpanel-preview`) builds a `<commit>-preview` release with test logins.
   - `scripts/cpanel-deploy.sh` always puts it behind `deploy/cpanel/htaccess-preview`: the browser asks for a password, kept as a bcrypt hash in `~/.htpasswds/dashboard.fakhernco.com/passwd`.
-  - The Clerk build takes the password off again, but only once it is live.
+  - A password-mode build takes the browser password off again, but only once it is live.
   - The preview keeps its data in memory (`DB_MODE=memory`), so it never touches the live database.
 - **Email schedule:** cPanel → **Cron Jobs**, every 15 minutes (`*/15 * * * *`). The command reads the secret from the settings file, so it's never typed into cPanel:
 
       curl -fsS -H "Authorization: Bearer $(sed -n 's/^CRON_SECRET=//p' ~/dashboard-shared/settings.env)" https://dashboard.fakhernco.com/api/cron/notifications > /dev/null
 
-  `vercel.json`'s cron applies only on Vercel.
 
 ## Decisions in M1
 
@@ -291,3 +298,19 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
 - **Failed sends are logged with their kind and the server's reply,** never with the email or the password: `Notification email failed (login): 535 …`. They're retried on the next run. A batch still stops waiting for someone after a day.
 - **The test email** goes only to the Admin who presses the button, at once, in the notification emails' format (English then Arabic).
 - **Headers:** each email's `Message-ID` comes from its idempotency key, and `Auto-Submitted: auto-generated` keeps out-of-office replies away.
+
+## Decisions in M5c (own sign-in)
+
+- **Our own accounts instead of Clerk** (and the Microsoft sign-in that came through it), so a copy needs no sign-in service. Accounts, sessions, invitations, resets and guessing limits are five tables in the dashboard's MySQL.
+- **Email and password:**
+  - Passwords are scrypt hashes from Node's own crypto: no package, and nothing native for the cPanel host.
+  - Links and session cookies are random 256-bit tokens, and the database keeps only their sha256.
+- **Sessions in the database, for 30 days,** in a `__Host-session` cookie:
+  - The role is read on every request, so "No access" takes effect on the next page.
+  - A password change or reset ends the other sessions.
+- **The same answer for a wrong password and an unknown email,** and for "Forgot password" whether or not the account exists. Its email goes out after the answer.
+- **Links come from `APP_URL` only,** never from the request, so a forged Host header can't redirect a reset email.
+- **The first Admin comes from `ADMIN_EMAIL`,** because the cPanel host has no shell to create one.
+- **After signing in, the home page,** not the page first asked for: server pages here can't see their own address without Next.js internals.
+- **Two-factor login comes next (M5d):** an authenticator app and backup codes, required for Admins.
+- **Two e2e suites:** test logins (port 3100), and password mode on the local MySQL (port 3101), from one build. The sign-in mode is read at request time only.
