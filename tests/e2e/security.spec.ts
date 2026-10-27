@@ -41,7 +41,7 @@ test("a reviewer without two-factor login is only reminded (design §5)", async 
 test("someone with two-factor login on sees Security in the menu", async ({ page, context }) => {
   await signInWithCookie(context, "dev_admin");
   await page.goto("/en");
-  await expect(page.getByTestId("user-security")).toHaveText("Security");
+  await expect(page.getByTestId("user-security")).toHaveText("Account");
   await page.goto("/en/security");
   await expect(page.getByTestId("security-status")).toHaveText("Two-factor login is on.");
   await expect(page.getByTestId("security-enable")).toHaveCount(0);
@@ -53,7 +53,7 @@ test("with two-factor login switched off (TWO_FACTOR=off), nothing asks for it",
   await page.goto("/en/users");
   await expect(page.getByTestId("user-dev_admin_no2fa")).toBeVisible();
   await expect(page).toHaveURL(/\/en\/users$/);
-  await expect(page.getByTestId("user-security")).toHaveText("Security");
+  await expect(page.getByTestId("user-security")).toHaveText("Account");
   await expect(page.getByRole("columnheader", { name: "Two-factor login" })).toHaveCount(0);
   await expect(page.getByTestId("user-twofactor-dev_admin_no2fa")).toHaveCount(0);
 

@@ -26,7 +26,7 @@
     "themeDark": "Dark mode",
     "themeLight": "Light mode",
     "loading": "Loading…",
-    "security": "Security",
+    "security": "Account",
     "turnOnTwoFactor": "Turn on two-factor login",
     "notifications": "Email notifications",
     "close": "Close"
@@ -43,6 +43,12 @@
       "wrong": "Email or password is incorrect.",
       "locked": "Too many attempts. Try again in 15 minutes.",
       "invalid": "Enter your email and password."
+    },
+    "forgot": "Forgot password?",
+    "firstAdmin": {
+      "invited": "This dashboard has no Admin yet. An invitation was emailed to {email}.",
+      "unset": "This dashboard has no Admin yet. Set ADMIN_EMAIL in the server's settings to create the first Admin.",
+      "failed": "This dashboard has no Admin yet, and the setup email couldn't be sent. See the server log."
     }
   },
   "NoAccess": {
@@ -835,5 +841,58 @@
         "other": "The email couldn't be sent."
       }
     }
+  },
+  "Password": {
+    "hint": "At least 10 characters.",
+    "confirm": "Repeat the password",
+    "short": "Use at least 10 characters.",
+    "long": "Use at most 200 characters.",
+    "email": "Don't use your email as your password.",
+    "mismatch": "The two passwords don't match.",
+    "current": "Your current password is incorrect.",
+    "name": "Enter your name."
+  },
+  "Invitation": {
+    "title": "Create your account",
+    "intro": "You're invited to Articles AI as {role}. Choose your name and a password.",
+    "email": "Email",
+    "name": "Your name",
+    "password": "Password",
+    "submit": "Create account",
+    "working": "Creating…",
+    "invalid": "This invitation link isn't valid.",
+    "expired": "This invitation has expired. Ask your Admin for a new one.",
+    "taken": "This email already has an account. Sign in instead.",
+    "goToSignIn": "Go to sign-in"
+  },
+  "ForgotPassword": {
+    "title": "Forgot your password?",
+    "intro": "Enter your email. If it has an account, we'll send a link to choose a new password.",
+    "email": "Email",
+    "submit": "Send the link",
+    "sending": "Sending…",
+    "sent": "If this email has an account, we've sent a link to reset its password.",
+    "empty": "Enter your email.",
+    "back": "Back to sign-in"
+  },
+  "ResetPassword": {
+    "title": "Choose a new password",
+    "password": "New password",
+    "submit": "Save and sign in",
+    "saving": "Saving…",
+    "invalid": "This link isn't valid any more. Ask for a new one.",
+    "askAgain": "Ask for a new link"
+  },
+  "Account": {
+    "title": "Account",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "change": "Change password",
+    "current": "Current password",
+    "password": "New password",
+    "submit": "Change password",
+    "saving": "Saving…",
+    "changed": "Your password is changed. You've been signed out on your other devices."
   }
 }
