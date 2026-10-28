@@ -58,8 +58,9 @@ async function main() {
   await call("savePublishing", () => api.savePublishing({ ...pub, autoPublish: false }, ctx()));
   const seo = (await api.seoSettings()) as any;
   await call("saveSeo", () => api.saveSeo({ ...seo, tone: "clear, expert", audience: "UAE business owners" }, ctx()));
-  const kw = (await call("addKeywords", () => api.addKeywords(["uae labour law contract test"], "en", ctx()))) as any;
-  const kwIds = (Array.isArray(kw) ? kw : kw?.items ?? []).map((k: any) => k.id);
+  const phrase = `uae labour law contract test ${Date.now()}`;          // new each run: a duplicate is (rightly) not added again
+  const kw = (await call("addKeywords", () => api.addKeywords([phrase], "en", ctx()))) as any;
+  const kwIds = (Array.isArray(kw) ? kw : []).map((k: any) => k.id);
   await call("bulkKeywords approve", () => api.bulkKeywords("approve", kwIds, ctx()));
   const d = (await call("createDrafts (blog, en)", () => api.createDrafts({ topic: "Probation periods under UAE labour law", kind: "blog", platform: "website", language: "en" }, ctx()))) as any;
   const jobId = d?.jobId; const pid = d?.postIds?.[0];
