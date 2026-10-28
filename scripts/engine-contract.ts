@@ -16,6 +16,11 @@ async function call(name: string, run: () => Promise<unknown>, expectError?: str
     const v = await run();
     results[name] = v;
     if (expectError) { fail++; console.log(`FAIL  ${name}: expected error ${expectError}, got success`); return v; }
+    const skipped = (v as any)?.skipped;                              // list items the dashboard could not read are dropped, not thrown
+    if (Array.isArray(skipped) ? skipped.length : Number(skipped) > 0) {
+      fail++; console.log(`FAIL  ${name}: ${Array.isArray(skipped) ? skipped.length : skipped} item(s) in an unexpected format were skipped\n        ${JSON.stringify(skipped).slice(0, 800)}`);
+      return v;
+    }
     pass++; console.log(`PASS  ${name}`);
     return v;
   } catch (e: any) {
