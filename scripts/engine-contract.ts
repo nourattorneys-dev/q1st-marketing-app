@@ -76,6 +76,12 @@ async function main() {
   }
   await call("job", () => api.job(jobId));
   await call("post", () => api.post(pid));
+  const photos = (await api.searchPhotos("office meeting", 1)) as any[];
+  if (photos?.[0]) {
+    await call("pickPhoto", () => api.pickPhoto(pid, photos[0].pexelsId, "A meeting", ctx()));
+    await call("removePhoto", () => api.removePhoto(pid, ctx()));
+    await call("pickPhoto again", () => api.pickPhoto(pid, photos[0].pexelsId, undefined, ctx()));
+  }
   await call("lockPost", () => api.lockPost(pid, ctx()));
   const p0 = (await api.post(pid)) as any;
   await call("savePost", () => api.savePost(pid, { version: p0.version, title: p0.title + " (edited)" } as any, ctx()));
