@@ -5,6 +5,7 @@ import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
 import { serverEnv } from "@/lib/env";
 import { formatDate, formatDateTime } from "@/lib/format/datetime";
+import { getCurrentSite } from "@/lib/tenancy";
 import { getDirectory } from "@/lib/users/directory";
 import { tryDirectory } from "@/lib/users/types";
 import { UsersBoard } from "./users-board";
@@ -22,6 +23,7 @@ export async function UsersView({ locale }: { locale: AppLocale }) {
     );
   }
 
+  const current = await getCurrentSite();
   // Times in the site's timezone, as everywhere else (M1); UTC when the engine can't say.
   const engine = await getEngine();
   const site = await tryEngine(() => engine.siteTimezone());
@@ -35,12 +37,14 @@ export async function UsersView({ locale }: { locale: AppLocale }) {
       selfId={session.userId}
       testLogins={serverEnv().authMode === "mock"}
       showTwoFactor={(await getTwoFactorPolicy()) !== "off"}
+      sites={current?.sites ?? []}
       users={listed.data.users.map((user) => ({
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
         twoFactor: user.twoFactor,
+        siteIds: user.siteIds,
         lastSignIn: user.lastSignInAt ? formatDateTime(user.lastSignInAt, { timeZone, locale }) : null,
       }))}
       invites={listed.data.invites.map((invite) => ({

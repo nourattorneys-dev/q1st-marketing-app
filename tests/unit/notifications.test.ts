@@ -17,7 +17,7 @@ const item = (eventId: string, kind: string, audience: Audience, data: Record<st
   data,
   createdAt: at(seconds),
 });
-const user = (id: string, role: DirectoryUser["role"], email: string): DirectoryUser => ({ id, name: id, email, role, twoFactor: false, lastSignInAt: null });
+const user = (id: string, role: DirectoryUser["role"], email: string): DirectoryUser => ({ id, name: id, email, role, twoFactor: false, siteIds: null, lastSignInAt: null });
 const USERS = [
   user("a1", "admin", "Admin@Example.com"),
   user("a2", "admin", "admin2@example.com"),
@@ -134,7 +134,7 @@ describe("flushNotifications", () => {
   });
 
   async function seeded(): Promise<AppStore> {
-    const store = createMemoryStore();
+    const store = createMemoryStore("site_a");
     for (const [id, seconds] of [["e1", 0], ["e2", 1], ["e3", 2]] as const) {
       await store.recordEvent({ id, event: "post.drafted", receivedAt: at(seconds) }, item(id, "drafted", "reviewers", { postId: id }, seconds));
     }

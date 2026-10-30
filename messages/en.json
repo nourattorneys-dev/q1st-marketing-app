@@ -29,7 +29,11 @@
     "security": "Account",
     "turnOnTwoFactor": "Turn on two-factor login",
     "notifications": "Email notifications",
-    "close": "Close"
+    "close": "Close",
+    "site": {
+      "label": "Website",
+      "failed": "That website couldn't be opened."
+    }
   },
   "SignIn": {
     "title": "Sign in",
@@ -776,7 +780,12 @@
     "accessFor": "Access for {name}",
     "applyFor": "Apply for {name}",
     "revokeFor": "Revoke the invitation to {email}",
-    "resendFor": "Resend the invitation to {email}"
+    "resendFor": "Resend the invitation to {email}",
+    "sites": {
+      "legend": "Websites this person can open",
+      "save": "Save websites",
+      "none": "Choose at least one website."
+    }
   },
   "Security": {
     "title": "Two-factor login",

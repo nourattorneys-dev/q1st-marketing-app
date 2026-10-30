@@ -10,9 +10,9 @@ describe("getStore (DB_MODE=postgres)", () => {
     // The server build loads the store module once for route handlers and once for pages; resetModules does the same here.
     vi.stubEnv("DB_MODE", "postgres");
     vi.stubEnv("DATABASE_URL", "postgres://nobody@127.0.0.1:1/never");
-    const first = (await import("@/lib/db")).getStore();
+    const first = (await import("@/lib/db")).getStore("site_a");
     vi.resetModules();
-    const second = (await import("@/lib/db")).getStore();
+    const second = (await import("@/lib/db")).getStore("site_a");
     expect(second).toBe(first);
   });
 

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { hashToken, newToken } from "../../src/lib/accounts/tokens";
 import { newEmails, readOutbox } from "../e2e/helpers";
 import { OWNER_EMAIL } from "./constants";
-import { linkIn, PASSWORD, resetAccounts, seedAccount, signInWithPassword, withAccounts } from "./helpers";
+import { e2eClientId, linkIn, PASSWORD, resetAccounts, seedAccount, signInWithPassword, withAccounts } from "./helpers";
 
 test.beforeEach(async () => {
   await resetAccounts();
@@ -63,9 +63,10 @@ test("an expired invitation says so; the form checks the two passwords match; Ar
   const expiredToken = newToken();
   const liveToken = newToken();
   const past = new Date(Date.now() - 60_000);
+  const clientId = await e2eClientId();
   await withAccounts(async (store) => {
-    await store.addInvitation({ id: "inv_e2e_expired", email: "late@example.com", role: "reviewer", tokenHash: hashToken(expiredToken), invitedBy: null, createdAt: past, expiresAt: past });
-    await store.addInvitation({ id: "inv_e2e_live", email: "live@example.com", role: "reviewer", tokenHash: hashToken(liveToken), invitedBy: null, createdAt: new Date(), expiresAt: new Date(Date.now() + 86_400_000) });
+    await store.addInvitation({ id: "inv_e2e_expired", email: "late@example.com", role: "reviewer", clientId, siteIds: null, tokenHash: hashToken(expiredToken), invitedBy: null, createdAt: past, expiresAt: past });
+    await store.addInvitation({ id: "inv_e2e_live", email: "live@example.com", role: "reviewer", clientId, siteIds: null, tokenHash: hashToken(liveToken), invitedBy: null, createdAt: new Date(), expiresAt: new Date(Date.now() + 86_400_000) });
   });
   await page.goto(`/en/invitation?token=${expiredToken}`);
   await expect(page.getByTestId("invitation-problem")).toHaveText("This invitation has expired. Ask your Admin for a new one.");

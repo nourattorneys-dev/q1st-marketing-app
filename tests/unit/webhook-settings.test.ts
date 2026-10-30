@@ -15,6 +15,7 @@ const requirePermission = vi.fn(async () => ({ userId: "dev_admin", email: "admi
 vi.mock("@/lib/auth/session", () => ({ requirePermission }));
 vi.mock("@/lib/engine", () => ({ getEngine: async () => engine }));
 vi.mock("@/lib/db", () => ({ getStore: () => store }));
+vi.mock("@/lib/tenancy", () => ({ getCurrentSite: async () => ({ client: { id: "cli_test", name: "Test" }, site: { id: "site_fakher", name: "Fakher" }, sites: [] }) }));
 
 const { setUpWebhookAction } = await import("@/app/[locale]/(app)/settings/webhook/actions");
 const key = "key-12345678";
@@ -24,7 +25,7 @@ beforeEach(() => {
   vi.stubEnv("DB_MODE", "memory");
   vi.stubEnv("VERCEL", "");
   vi.stubEnv("WEBHOOK_ENCRYPTION_KEY", KEY.toString("base64"));
-  store = createMemoryStore();
+  store = createMemoryStore("site_fakher");
   engine.saveWebhook.mockResolvedValue({ url: HOOK, events: ["post.drafted"], secret: "whsec_new" });
 });
 afterEach(() => vi.unstubAllEnvs());

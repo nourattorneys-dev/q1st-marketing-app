@@ -1,5 +1,5 @@
 import type { Role } from "@/lib/auth/roles";
-import { MOCK_USERS } from "@/lib/auth/mock-session";
+import { MOCK_CLIENT_ID, MOCK_USERS } from "@/lib/auth/mock-session";
 import type { Session } from "@/lib/auth/types";
 import { alreadyKnown, validInviteEmail } from "./rules";
 import { DirectoryError, type DirectoryInvite, type DirectoryUser, type UserDirectory } from "./types";
@@ -27,6 +27,7 @@ function stateFor(namespace?: string): State {
             email: user.email,
             role: user.role,
             twoFactor: user.twoFactor,
+            siteIds: null,
             lastSignInAt: user.role ? SIGNED_IN_BEFORE : null,
           },
         ]),
@@ -60,6 +61,7 @@ export function createMockDirectory(namespace?: string): UserDirectory & {
         id: `inv_${++state.sequence}`,
         email: tidy,
         role,
+        siteIds: null,
         createdAt: createdAt.toISOString(),
         expiresAt: new Date(createdAt.getTime() + INVITE_DAYS_MS).toISOString(),
       };
@@ -87,10 +89,17 @@ export function createMockDirectory(namespace?: string): UserDirectory & {
       return structuredClone(user);
     },
 
+    /** Test logins have one site, so there is nothing to limit. */
+    async setSites(userId: string) {
+      const user = state.users.get(userId);
+      if (!user) throw new DirectoryError("not_found", "This person no longer exists.");
+      return structuredClone(user);
+    },
+
     /** The session a test login gets: the directory's current role and two-factor status. */
     sessionOf(userId: string): Session | null {
       const user = state.users.get(userId);
-      return user ? { userId: user.id, email: user.email, name: user.name, role: user.role, twoFactor: user.twoFactor } : null;
+      return user ? { userId: user.id, clientId: MOCK_CLIENT_ID, email: user.email, name: user.name, role: user.role, twoFactor: user.twoFactor } : null;
     },
 
     /** Stands in for setting up an authenticator app (test logins only). */

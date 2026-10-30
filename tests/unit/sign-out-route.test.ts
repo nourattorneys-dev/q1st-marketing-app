@@ -43,7 +43,7 @@ describe("password sign-out (spec M5c)", () => {
   async function sessionToken(): Promise<string> {
     const store = getAccountStore();
     const now = new Date();
-    await store.createAccount({ id: "usr_out", email: "out@example.com", name: "Out", role: "reviewer", passwordHash: "x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+    await store.createAccount({ id: "usr_out", email: "out@example.com", name: "Out", role: "reviewer", clientId: "cli_test", passwordHash: "x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
     return (await startSession(store, "usr_out", now)).token;
   }
 

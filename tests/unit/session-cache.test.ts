@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
 }));
 const accounts = createMemoryAccountStore();
 const lookup = vi.spyOn(accounts, "sessionAccount");
-vi.mock("@/lib/db", () => ({ getAccountStore: () => accounts }));
+vi.mock("@/lib/db", () => ({ getAccountStore: () => accounts, getStore: vi.fn(), getExclusive: vi.fn() }));
 
 const { getRole, getSession, requirePermission, requireSession } = await import("@/lib/auth/session");
 
@@ -43,7 +43,9 @@ beforeEach(() => {
 describe("password sessions are read once per request (spec M5c)", () => {
   it("every guard on a page, and a job poll's role, share one session lookup", async () => {
     const now = new Date();
-    await accounts.createAccount({ id: "usr_admin", email: "admin@example.com", name: "Admin", role: "admin", passwordHash: "x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+    await accounts.createClient({ id: "cli_test", name: "Test", createdAt: now });
+    await accounts.createSite({ id: "site_test", clientId: "cli_test", name: "Test site", keyCipher: "v1:x", createdAt: now });
+    await accounts.createAccount({ id: "usr_admin", email: "admin@example.com", name: "Admin", role: "admin", clientId: "cli_test", passwordHash: "x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
     state.cookie = (await startSession(accounts, "usr_admin", now)).token;
     await requireSession("en");
     await requirePermission("en", "settings.manage");

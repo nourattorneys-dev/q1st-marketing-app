@@ -2,17 +2,29 @@ import type { ActionResult } from "@/lib/actions/result";
 import type { Role } from "@/lib/auth/roles";
 
 /** Someone who can sign in (design §5): the role lives with their sign-in account; null means no access. */
-export type DirectoryUser = { id: string; name: string; email: string; role: Role | null; twoFactor: boolean; lastSignInAt: string | null };
-export type DirectoryInvite = { id: string; email: string; role: Role | null; createdAt: string; expiresAt: string | null };
+/** `siteIds` (P1b): the sites a Reviewer may open; null = every site of the client (Admins always). */
+export type DirectoryUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role | null;
+  twoFactor: boolean;
+  siteIds: string[] | null;
+  lastSignInAt: string | null;
+};
+export type DirectoryInvite = { id: string; email: string; role: Role | null; siteIds: string[] | null; createdAt: string; expiresAt: string | null };
 
 export interface UserDirectory {
   list(): Promise<{ users: DirectoryUser[]; invites: DirectoryInvite[] }>;
   /** `invitedBy`: the Admin's user id (spec M5c), kept with the invitation. */
-  invite(email: string, role: Role, invitedBy: string | null): Promise<DirectoryInvite>;
+  /** `siteIds` (P1b): the sites a Reviewer will open; null or omitted = every site. */
+  invite(email: string, role: Role, invitedBy: string | null, siteIds?: string[] | null): Promise<DirectoryInvite>;
   /** A new link and a new 7-day expiry (spec M5c). */
   resendInvite(id: string): Promise<DirectoryInvite>;
   revokeInvite(id: string): Promise<{ revoked: true }>;
   setRole(userId: string, role: Role | null): Promise<DirectoryUser>;
+  /** P1b: the sites a Reviewer may open; null = every site. */
+  setSites(userId: string, siteIds: string[] | null): Promise<DirectoryUser>;
 }
 
 export type DirectoryErrorCode = "invalid_input" | "conflict" | "not_found" | "refused" | "unavailable" | "mail_failed";

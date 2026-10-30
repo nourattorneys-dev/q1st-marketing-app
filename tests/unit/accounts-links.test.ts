@@ -17,6 +17,7 @@ const PASSWORD = "correct horse battery";
 const DAY = 86_400_000;
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 27, 8, minute));
 let passwordHash: string;
+const CLIENT = "cli_test";
 let store: AccountStore;
 let sent: Email[];
 let failure: Error | null;
@@ -27,10 +28,10 @@ const mailer: Mailer = {
     sent.push(email);
   },
 };
-const directory = () => createAccountsDirectory({ store, mailer, appUrl: APP_URL, now: () => now });
+const directory = () => createAccountsDirectory({ store, mailer, appUrl: APP_URL, clientId: CLIENT, sites: [{ id: "site_a", name: "A" }], now: () => now });
 /** The token in an email's link to `path`, English half. */
 const tokenIn = (email: Email | undefined, path: string) => new RegExp(`${APP_URL}/en/${path}\\?token=([A-Za-z0-9_-]+)`).exec(email?.text ?? "")?.[1] ?? "";
-const sara = (): Account => ({ id: "usr_sara", email: "sara@example.com", name: "Sara", role: "admin", passwordHash, createdAt: at(0), passwordChangedAt: at(0), lastSignInAt: at(1) });
+const sara = (): Account => ({ id: "usr_sara", email: "sara@example.com", name: "Sara", role: "admin", clientId: "cli_test", passwordHash, createdAt: at(0), passwordChangedAt: at(0), lastSignInAt: at(1) });
 
 beforeAll(async () => {
   passwordHash = await hashPassword(PASSWORD);
@@ -105,7 +106,7 @@ describe("invitations on the Users page (spec M5c)", () => {
     expect(await directory().setRole("usr_sara", "reviewer")).toMatchObject({ id: "usr_sara", role: "reviewer", twoFactor: false });
     await expect(directory().setRole("usr_missing", null)).rejects.toMatchObject({ code: "not_found" });
     expect((await directory().list()).users).toEqual([
-      { id: "usr_sara", name: "Sara", email: "sara@example.com", role: "reviewer", twoFactor: false, lastSignInAt: at(1).toISOString() },
+      { id: "usr_sara", name: "Sara", email: "sara@example.com", role: "reviewer", twoFactor: false, siteIds: null, lastSignInAt: at(1).toISOString() },
     ]);
   });
 });
@@ -144,7 +145,7 @@ describe("accepting an invitation", () => {
     const token = await invited();
     await store.createAccount({ ...sara(), id: "usr_other", email: "new@example.com", role: "reviewer" });
     expect(await acceptInvitation(store, { token, name: "Omar", password: PASSWORD, now: at(11) })).toEqual({ ok: false, problem: "taken" });
-    expect((await store.accounts()).filter((account) => account.email === "new@example.com")).toHaveLength(1);
+    expect((await store.accounts(CLIENT)).filter((account) => account.email === "new@example.com")).toHaveLength(1);
   });
 });
 
@@ -211,9 +212,9 @@ describe("forgot password", () => {
 });
 
 describe("the first Admin", () => {
-  const appStore = createMemoryStore();
+  const appStore = createMemoryStore("site_a");
   const ensure = (adminEmail: string | null = "owner@example.com") =>
-    ensureFirstAdmin({ store, exclusive: appStore.exclusive, mailer, appUrl: APP_URL, adminEmail, now });
+    ensureFirstAdmin({ store, clientId: CLIENT, exclusive: appStore.exclusive, mailer, appUrl: APP_URL, adminEmail, now });
 
   beforeEach(async () => {
     await store.setRole("usr_sara", "reviewer");
@@ -250,10 +251,10 @@ describe("the first Admin", () => {
         return mailer.send(email);
       },
     };
-    const attempt = () => ensureFirstAdmin({ store, exclusive: appStore.exclusive, mailer: counting, appUrl: APP_URL, adminEmail: "owner@example.com", now });
+    const attempt = () => ensureFirstAdmin({ store, clientId: CLIENT, exclusive: appStore.exclusive, mailer: counting, appUrl: APP_URL, adminEmail: "owner@example.com", now });
     for (let i = 0; i < 4; i += 1) expect(await attempt()).toEqual({ state: "failed" });
     expect(attempts).toBe(3);
-    expect(await store.invitations()).toEqual([]);
+    expect(await store.invitations(CLIENT)).toEqual([]);
   });
 
   it("two visitors at once send one email", async () => {

@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/result";
 import { change, IdempotencyKey, INVALID, Locale } from "@/lib/actions/server";
 import { getStore } from "@/lib/db";
+import { getCurrentSite } from "@/lib/tenancy";
 import { EngineError } from "@/lib/engine/errors";
 import { servicesEnv } from "@/lib/services-env";
 import { originOf } from "@/lib/settings/addresses";
@@ -32,7 +33,9 @@ export async function setUpWebhookAction(input: { locale: string; idempotencyKey
       const url = hookUrlFor(origin);
       const saved = await engine.saveWebhook({ url, events: WEBHOOK_EVENTS, rotateSecret: true }, ctx);
       if (!saved.secret) throw new EngineError({ status: 200, code: "invalid_response", message: "The engine didn't return a webhook secret." });
-      await getStore().saveWebhook({ url, secretCipher: encryptSecret(saved.secret, key), updatedAt: new Date() });
+      const current = await getCurrentSite();
+      if (!current) throw new EngineError({ status: 404, code: "not_found", message: "No website is set up for this account yet." });
+      await getStore(current.site.id).saveWebhook({ url, secretCipher: encryptSecret(saved.secret, key), updatedAt: new Date() });
       return { connected: true as const };
     },
     "settings.manage",

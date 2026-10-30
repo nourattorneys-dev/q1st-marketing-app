@@ -1,9 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { connection } from "next/server";
-import { getAccountStore, getStore } from "@/lib/db";
+import { getAccountStore, getExclusive, getStore } from "@/lib/db";
 import { flushNotifications, KEEP_DAYS } from "@/lib/notifications/flush";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { servicesEnv } from "@/lib/services-env";
+import { allSiteIds, siteAudience } from "@/lib/tenancy";
 import { getDirectory } from "@/lib/users/directory";
 import { DirectoryError } from "@/lib/users/types";
 
@@ -26,19 +27,26 @@ export async function GET(request: Request) {
   if (!authorized(request.headers.get("Authorization"), env.cronSecret)) {
     return Response.json({ ok: false, error: { status: 401, code: "unauthorized", message: "Missing or wrong CRON_SECRET." } }, { status: 401, headers: NO_STORE });
   }
-  const store = getStore();
-  const config = await store.webhook();
   try {
     // One run at a time (M5b): a mail server, unlike Resend, would deliver an email that two runs both sent.
-    const outcome = await store.exclusive("articles_ai_flush", async () => {
-      const result = await flushNotifications({
-        store,
-        mailer: mailerFor(env),
-        users: async () => (await (await getDirectory()).list()).users,
-        origin: config ? new URL(config.url).origin : null,
-        now: new Date(),
-        quietMs: env.notifyQuietMs,
-      });
+    const outcome = await getExclusive()("articles_ai_flush", async () => {
+      // P1b: every site in turn; each site's emails go to the people who may open it.
+      const result = { batches: 0, emails: 0, failed: 0 };
+      for (const siteId of await allSiteIds()) {
+        const store = getStore(siteId);
+        const config = await store.webhook();
+        const sent = await flushNotifications({
+          store,
+          mailer: mailerFor(env),
+          users: () => siteAudience(siteId, async () => (await (await getDirectory()).list()).users),
+          origin: config ? new URL(config.url).origin : null,
+          now: new Date(),
+          quietMs: env.notifyQuietMs,
+        });
+        result.batches += sent.batches;
+        result.emails += sent.emails;
+        result.failed += sent.failed;
+      }
       // Spec M5c: the same run tidies the sign-in tables. Expired invitations stay listed (as Expired) for 30 days.
       const now = new Date();
       await getAccountStore().forgetExpired({

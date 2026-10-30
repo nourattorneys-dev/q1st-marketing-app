@@ -1,10 +1,10 @@
-import { and, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { lockKey, type PostgresConnection, type PostgresDb } from "./postgres";
 import * as schema from "./schema";
 import type { AppStore, StoredNotification, WebhookConfig } from "./store";
 
-const WEBHOOK_ROW = 1;
-const { webhookEvents, webhookConfig, notifications, notificationDeliveries, notificationPrefs } = schema;
+const LEGACY_WEBHOOK_ROW = 1;
+const { webhookEvents, webhookConfig, webhookConfigs, notifications, notificationDeliveries, notificationPrefs } = schema;
 
 /** Key columns are varchar(191) and emails varchar(255): a longer value is refused here, with a plain message. */
 export const MAX_KEY_LENGTH = 191;
@@ -20,20 +20,23 @@ type Runner = Pick<PostgresDb, "select" | "insert" | "update" | "delete">;
 /** The queries, kept apart from running them so tests can read the SQL they make. */
 export const queries = {
   hasEvent: (db: Runner, id: string) => db.select({ id: webhookEvents.id }).from(webhookEvents).where(eq(webhookEvents.id, id)).limit(1),
-  insertNotification: (db: Runner, item: StoredNotification) =>
+  insertNotification: (db: Runner, siteId: string, item: StoredNotification) =>
     db
       .insert(notifications)
-      .values({ eventId: item.eventId, kind: item.kind, audience: item.audience, data: item.data, createdAt: item.createdAt })
+      .values({ eventId: item.eventId, siteId, kind: item.kind, audience: item.audience, data: item.data, createdAt: item.createdAt })
       .onConflictDoNothing(),
-  insertEvent: (db: Runner, event: { id: string; event: string; receivedAt: Date }) => db.insert(webhookEvents).values(event).onConflictDoNothing(),
-  lastEventAt: (db: Runner) => db.select({ at: webhookEvents.receivedAt }).from(webhookEvents).orderBy(desc(webhookEvents.receivedAt)).limit(1),
-  webhook: (db: Runner) => db.select().from(webhookConfig).where(eq(webhookConfig.id, WEBHOOK_ROW)).limit(1),
-  saveWebhook: (db: Runner, config: WebhookConfig) =>
+  insertEvent: (db: Runner, siteId: string, event: { id: string; event: string; receivedAt: Date }) =>
+    db.insert(webhookEvents).values({ ...event, siteId }).onConflictDoNothing(),
+  lastEventAt: (db: Runner, siteId: string) =>
+    db.select({ at: webhookEvents.receivedAt }).from(webhookEvents).where(eq(webhookEvents.siteId, siteId)).orderBy(desc(webhookEvents.receivedAt)).limit(1),
+  webhook: (db: Runner, siteId: string) => db.select().from(webhookConfigs).where(eq(webhookConfigs.siteId, siteId)).limit(1),
+  saveWebhook: (db: Runner, siteId: string, config: WebhookConfig) =>
     db
-      .insert(webhookConfig)
-      .values({ id: WEBHOOK_ROW, ...config })
-      .onConflictDoUpdate({ target: webhookConfig.id, set: { url: config.url, secretCipher: config.secretCipher, updatedAt: config.updatedAt } }),
-  pending: (db: Runner) => db.select().from(notifications).where(isNull(notifications.sentAt)).orderBy(notifications.createdAt),
+      .insert(webhookConfigs)
+      .values({ siteId, ...config })
+      .onConflictDoUpdate({ target: webhookConfigs.siteId, set: { url: config.url, secretCipher: config.secretCipher, updatedAt: config.updatedAt } }),
+  pending: (db: Runner, siteId: string) =>
+    db.select().from(notifications).where(and(eq(notifications.siteId, siteId), isNull(notifications.sentAt))).orderBy(notifications.createdAt),
   markSent: (db: Runner, eventIds: string[], recipients: string[], at: Date) =>
     db
       .update(notifications)
@@ -60,11 +63,27 @@ export const queries = {
       .onConflictDoUpdate({ target: notificationPrefs.userId, set: { emailOff: off, updatedAt: at } }),
 };
 
-/** DB_MODE=postgres: the dashboard's own Postgres. Every call first makes sure the tables are prepared. */
-export function createPostgresStore(connection: Pick<PostgresConnection, "db" | "ready" | "pool">): AppStore {
+/** DB_MODE=postgres: one site's records in the dashboard's own Postgres. Every call first makes sure the tables are prepared. */
+export function createPostgresStore(connection: Pick<PostgresConnection, "db" | "ready" | "pool">, siteId: string): AppStore {
   const { db } = connection;
 
   return {
+    siteId,
+
+    async adoptUnassigned() {
+      await connection.ready();
+      await db.transaction(async (tx) => {
+        const [legacy] = await tx.select().from(webhookConfig).where(eq(webhookConfig.id, LEGACY_WEBHOOK_ROW)).limit(1);
+        if (legacy) {
+          const { url, secretCipher, updatedAt } = legacy;
+          await tx.insert(webhookConfigs).values({ siteId, url, secretCipher, updatedAt }).onConflictDoNothing();
+          await tx.delete(webhookConfig).where(eq(webhookConfig.id, LEGACY_WEBHOOK_ROW));
+        }
+        await tx.update(webhookEvents).set({ siteId }).where(isNull(webhookEvents.siteId));
+        await tx.update(notifications).set({ siteId }).where(sql`${notifications.siteId} IS NULL`);
+      });
+    },
+
     async hasEvent(id) {
       await connection.ready();
       return (await queries.hasEvent(db, id)).length > 0;
@@ -76,30 +95,30 @@ export function createPostgresStore(connection: Pick<PostgresConnection, "db" | 
       await connection.ready();
       // One transaction: the notification and the event id land together or not at all.
       await db.transaction(async (tx) => {
-        if (notification) await queries.insertNotification(tx, notification);
-        await queries.insertEvent(tx, event);
+        if (notification) await queries.insertNotification(tx, siteId, notification);
+        await queries.insertEvent(tx, siteId, event);
       });
     },
 
     async lastEventAt() {
       await connection.ready();
-      return (await queries.lastEventAt(db))[0]?.at ?? null;
+      return (await queries.lastEventAt(db, siteId))[0]?.at ?? null;
     },
 
     async webhook() {
       await connection.ready();
-      const row = (await queries.webhook(db))[0];
+      const row = (await queries.webhook(db, siteId))[0];
       return row ? { url: row.url, secretCipher: row.secretCipher, updatedAt: row.updatedAt } : null;
     },
 
     async saveWebhook(config) {
       await connection.ready();
-      await queries.saveWebhook(db, config);
+      await queries.saveWebhook(db, siteId, config);
     },
 
     async pendingNotifications() {
       await connection.ready();
-      return (await queries.pending(db)).map((row) => ({
+      return (await queries.pending(db, siteId)).map((row) => ({
         eventId: row.eventId,
         kind: row.kind,
         audience: row.audience,

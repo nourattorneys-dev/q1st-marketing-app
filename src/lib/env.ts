@@ -78,10 +78,11 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
 
   const auth = { authMode: env.AUTH_MODE, twoFactor, appUrl, adminEmail, testServer };
   if (env.ENGINE_MODE === "live") {
-    if (!env.ENGINE_BASE_URL || !env.ENGINE_API_KEY) {
-      throw new Error("ENGINE_MODE=live needs ENGINE_BASE_URL and ENGINE_API_KEY.");
+    // P1b: each site's engine key is kept (encrypted) with the site; ENGINE_API_KEY only makes the first client.
+    if (!env.ENGINE_BASE_URL) {
+      throw new Error("ENGINE_MODE=live needs ENGINE_BASE_URL.");
     }
-    return { engineMode: "live", engineBaseUrl: env.ENGINE_BASE_URL, engineApiKey: env.ENGINE_API_KEY, ...auth };
+    return { engineMode: "live", engineBaseUrl: env.ENGINE_BASE_URL, engineApiKey: env.ENGINE_API_KEY ?? "", ...auth };
   }
   return { engineMode: "mock", engineBaseUrl: MOCK_ENGINE_BASE_URL, engineApiKey: env.ENGINE_API_KEY ?? MOCK_ENGINE_DEFAULT_KEY, ...auth };
 }

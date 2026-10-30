@@ -1,4 +1,4 @@
-import type { Account, AccountStore, Invitation, PasswordReset, SessionRecord } from "./store";
+import type { Account, AccountStore, Client, Invitation, PasswordReset, SessionRecord, Site } from "./store";
 
 const copy = <T>(value: T): T => structuredClone(value);
 const oldestFirst = (a: { createdAt: Date; id: string }, b: { createdAt: Date; id: string }) =>
@@ -11,6 +11,10 @@ export function createMemoryAccountStore(): AccountStore {
   const invitations = new Map<string, Invitation>();
   const resets = new Map<string, PasswordReset>();
   const limits = new Map<string, { count: number; windowStart: Date }>();
+  const sessionSites = new Map<string, string>();
+  const userSites = new Map<string, string[]>();
+  const clients = new Map<string, Client>();
+  const sites = new Map<string, Site>();
   const byEmail = (email: string) => [...accounts.values()].find((account) => account.email === email);
   const live = (key: string, now: Date, windowMs: number) => {
     const entry = limits.get(key);
@@ -26,11 +30,11 @@ export function createMemoryAccountStore(): AccountStore {
       const found = byEmail(email);
       return found ? copy(found) : null;
     },
-    async accounts() {
-      return [...accounts.values()].sort(oldestFirst).map(copy);
+    async accounts(clientId) {
+      return [...accounts.values()].filter((account) => account.clientId === clientId).sort(oldestFirst).map(copy);
     },
-    async hasAdmin() {
-      return [...accounts.values()].some((account) => account.role === "admin");
+    async hasAdmin(clientId) {
+      return [...accounts.values()].some((account) => account.clientId === clientId && account.role === "admin");
     },
     async createAccount(account) {
       if (byEmail(account.email)) return false;
@@ -63,13 +67,25 @@ export function createMemoryAccountStore(): AccountStore {
     },
     async deleteSession(tokenHash) {
       sessions.delete(tokenHash);
+      sessionSites.delete(tokenHash);
+    },
+    async sessionSite(tokenHash) {
+      return sessions.has(tokenHash) ? (sessionSites.get(tokenHash) ?? null) : null;
+    },
+    async setSessionSite(tokenHash, siteId) {
+      if (sessions.has(tokenHash)) sessionSites.set(tokenHash, siteId);
     },
     async deleteSessionsOf(userId, except) {
-      for (const [hash, session] of sessions) if (session.userId === userId && hash !== except) sessions.delete(hash);
+      for (const [hash, session] of sessions) {
+        if (session.userId === userId && hash !== except) {
+          sessions.delete(hash);
+          sessionSites.delete(hash);
+        }
+      }
     },
 
-    async invitations() {
-      return [...invitations.values()].sort(oldestFirst).map(copy);
+    async invitations(clientId) {
+      return [...invitations.values()].filter((invitation) => invitation.clientId === clientId).sort(oldestFirst).map(copy);
     },
     async invitation(id) {
       const found = invitations.get(id);
@@ -98,10 +114,44 @@ export function createMemoryAccountStore(): AccountStore {
       return invitations.delete(id);
     },
     async acceptInvitation(id, account) {
-      if (!invitations.has(id) || byEmail(account.email)) return false;
+      const invitation = invitations.get(id);
+      if (!invitation || byEmail(account.email)) return false;
       invitations.delete(id);
       accounts.set(account.id, copy(account));
+      if (invitation.siteIds) userSites.set(account.id, [...invitation.siteIds]);
       return true;
+    },
+
+    async userSites(userId) {
+      return [...(userSites.get(userId) ?? [])].sort();
+    },
+    async setUserSites(userId, siteIds) {
+      if (siteIds.length === 0) userSites.delete(userId);
+      else userSites.set(userId, [...new Set(siteIds)]);
+    },
+    async clients() {
+      return [...clients.values()].sort(oldestFirst).map(copy);
+    },
+    async client(id) {
+      const found = clients.get(id);
+      return found ? copy(found) : null;
+    },
+    async createClient(client) {
+      clients.set(client.id, copy(client));
+    },
+    async sites(clientId) {
+      return [...sites.values()].filter((site) => clientId === undefined || site.clientId === clientId).sort(oldestFirst).map(copy);
+    },
+    async site(id) {
+      const found = sites.get(id);
+      return found ? copy(found) : null;
+    },
+    async createSite(site) {
+      sites.set(site.id, copy(site));
+    },
+    async adoptUnassigned(clientId) {
+      for (const account of accounts.values()) account.clientId ??= clientId;
+      for (const invitation of invitations.values()) invitation.clientId ??= clientId;
     },
 
     async createReset(reset) {
@@ -132,7 +182,12 @@ export function createMemoryAccountStore(): AccountStore {
     },
 
     async forgetExpired({ now, invitationsBefore, limitsBefore }) {
-      for (const [hash, session] of sessions) if (session.expiresAt.getTime() <= now.getTime()) sessions.delete(hash);
+      for (const [hash, session] of sessions) {
+        if (session.expiresAt.getTime() <= now.getTime()) {
+          sessions.delete(hash);
+          sessionSites.delete(hash);
+        }
+      }
       for (const [hash, reset] of resets) if (reset.expiresAt.getTime() <= now.getTime()) resets.delete(hash);
       for (const [id, invitation] of invitations) if (invitation.expiresAt.getTime() <= invitationsBefore.getTime()) invitations.delete(id);
       for (const [key, entry] of limits) if (entry.windowStart.getTime() <= limitsBefore.getTime()) limits.delete(key);

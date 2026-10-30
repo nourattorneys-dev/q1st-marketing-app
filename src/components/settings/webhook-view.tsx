@@ -3,6 +3,7 @@ import { EngineNotice } from "@/components/dashboard/engine-notice";
 import type { AppLocale } from "@/i18n/locales";
 import { requirePermission } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
+import { getCurrentSite } from "@/lib/tenancy";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
 import { formatDateTime } from "@/lib/format/datetime";
@@ -19,7 +20,9 @@ export async function WebhookView({ locale }: { locale: AppLocale }) {
   const [registered, site] = await Promise.all([tryEngine(() => engine.webhookSettings()), tryEngine(() => engine.siteTimezone())]);
   if (!registered.ok) return <EngineNotice error={registered.error} />;
 
-  const store = getStore();
+  const current = await getCurrentSite();
+  if (!current) return null;
+  const store = getStore(current.site.id);
   const [config, lastEventAt] = await Promise.all([store.webhook(), store.lastEventAt()]);
   const key = secretKeyFor(servicesEnv());
   const storedUrl = config && key && decryptSecret(config.secretCipher, key) ? config.url : null;

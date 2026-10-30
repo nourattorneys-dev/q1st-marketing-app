@@ -106,7 +106,7 @@ export const SiteSchema = z.object({
 export type Site = z.infer<typeof SiteSchema>;
 export const SitesSchema = z.array(SiteSchema);
 /** GET /sites read only for the site id, so a drift elsewhere in Site can't break every site-scoped call. */
-export const SiteRefsSchema = z.array(z.object({ id: z.string() }));
+export const SiteRefsSchema = z.array(z.object({ id: z.string(), name: z.string().optional() }));
 
 // ── Plan & Quota (spec §4) ───────────────────────────────────────────────────
 export const QuotaSchema = z.object({

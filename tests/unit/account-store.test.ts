@@ -7,11 +7,13 @@ import { freshTestDatabase } from "./postgres-test-db";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 27, 8, minute, 0, 123));
 let sequence = 0;
+const CLIENT = "cli_test";
 const account = (email: string, changes: Partial<Account> = {}): Account => ({
   id: `usr_test${++sequence}`,
   email,
   name: "Sara Ali",
   role: "reviewer",
+  clientId: CLIENT,
   passwordHash: "scrypt$15$8$1$salt$hash",
   createdAt: at(sequence),
   passwordChangedAt: at(sequence),
@@ -22,6 +24,8 @@ const invitation = (email: string, changes: Partial<Invitation> = {}): Invitatio
   id: `inv_test${++sequence}`,
   email,
   role: "reviewer",
+  clientId: CLIENT,
+  siteIds: null,
   tokenHash: `${sequence}`.padStart(64, "a"),
   invitedBy: null,
   createdAt: at(sequence),
@@ -60,15 +64,15 @@ describe.each([
     expect(await store.account(sara.id)).toEqual(sara);
     expect(await store.accountByEmail("sara@example.com")).toEqual(sara);
     expect(await store.accountByEmail("nobody@example.com")).toBeNull();
-    expect((await store.accounts()).map((a) => a.email)).toEqual(["omar@example.com", "sara@example.com"]);
-    expect(await store.hasAdmin()).toBe(true);
+    expect((await store.accounts(CLIENT)).map((a) => a.email)).toEqual(["omar@example.com", "sara@example.com"]);
+    expect(await store.hasAdmin(CLIENT)).toBe(true);
   });
 
   it("changes a role, a password and the last sign-in", async () => {
     const store = await createStore();
     const omar = account("omar@example.com");
     await store.createAccount(omar);
-    expect(await store.hasAdmin()).toBe(false);
+    expect(await store.hasAdmin(CLIENT)).toBe(false);
     expect(await store.setRole(omar.id, "admin")).toMatchObject({ id: omar.id, role: "admin" });
     expect(await store.setRole("usr_missing", "admin")).toBeNull();
     await store.setPassword(omar.id, "scrypt$15$8$1$new$hash", at(30));
@@ -106,7 +110,7 @@ describe.each([
     expect(await store.invitationByToken(first.tokenHash)).toBeNull();
     expect(await store.invitationByToken("f".repeat(64))).toEqual({ ...first, ...renewal });
     expect(await store.renewInvitation("inv_missing", renewal)).toBe(false);
-    expect((await store.invitations()).map((i) => i.id)).toEqual([first.id]);
+    expect((await store.invitations(CLIENT)).map((i) => i.id)).toEqual([first.id]);
     expect(await store.deleteInvitation(first.id)).toBe(true);
     expect(await store.deleteInvitation(first.id)).toBe(false);
   });
@@ -126,7 +130,7 @@ describe.each([
     await store.createAccount(account("taken@example.com"));
     expect(await store.acceptInvitation(second.id, account("taken@example.com"))).toBe(false);
     expect(await store.invitation(second.id)).toEqual(second);
-    expect((await store.accounts()).filter((a) => a.email === "taken@example.com")).toHaveLength(1);
+    expect((await store.accounts(CLIENT)).filter((a) => a.email === "taken@example.com")).toHaveLength(1);
   });
 
   it("keeps password resets by token and deletes all of someone's", async () => {
@@ -169,7 +173,7 @@ describe.each([
     expect(await store.sessionAccount("1".repeat(64), at(5))).toBeNull();
     expect(await store.sessionAccount("2".repeat(64), at(20))).toEqual(omar);
     expect(await store.resetByToken("3".repeat(64))).toBeNull();
-    expect((await store.invitations()).map((i) => i.email)).toEqual(["recent@example.com"]);
+    expect((await store.invitations(CLIENT)).map((i) => i.email)).toEqual(["recent@example.com"]);
     expect(await store.hits("ip:203.0.113.5", at(0), 3_600_000)).toBe(0);
     expect(await store.hits("ip:198.51.100.1", at(25), 60_000)).toBe(1);
   });

@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/result";
 import { IdempotencyKey, INVALID, Locale } from "@/lib/actions/server";
 import { requirePermission, requireSession } from "@/lib/auth/session";
-import { getStore } from "@/lib/db";
+import { getAppStore } from "@/lib/db";
 import { MailError } from "@/lib/notifications/mail-error";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { renderTestEmail } from "@/lib/notifications/render";
@@ -21,7 +21,7 @@ export async function setEmailNotificationsAction(input: { locale: string; enabl
   if (!parsed.success) return INVALID;
   const { locale, enabled } = parsed.data;
   const session = await requireSession(locale);
-  await getStore().setEmailOff(session.userId, !enabled, new Date());
+  await getAppStore().setEmailOff(session.userId, !enabled, new Date());
   refresh();
   return { ok: true, data: { enabled } };
 }

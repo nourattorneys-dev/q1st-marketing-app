@@ -7,14 +7,50 @@ import type { Audience } from "./store";
 const at = (name: string) => timestamp(name, { mode: "date", precision: 3, withTimezone: true });
 const key = (name: string) => varchar(name, { length: 191 });
 
-/** Webhook deliveries already handled, by X-Event-Id (kept 30 days). */
+// P1b: one app, many clients. A client has sites; each site has its own engine key (encrypted) and webhook.
+
+/** One client company. */
+export const clients = pgTable("clients", {
+  id: key("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  createdAt: at("created_at").notNull(),
+});
+
+/** One website of a client: the engine's site id, and that site's engine key, encrypted (never stored plain). */
+export const sites = pgTable(
+  "sites",
+  {
+    id: key("id").primaryKey(),
+    clientId: key("client_id").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    keyCipher: text("key_cipher").notNull(),
+    createdAt: at("created_at").notNull(),
+  },
+  (table) => [index("sites_client_id").on(table.clientId)],
+);
+
+/** The sites a person may open, when not every site of their client (no rows = every site). Admins open every site. */
+export const userSites = pgTable("user_sites", { userId: key("user_id").notNull(), siteId: key("site_id").notNull() }, (table) => [
+  primaryKey({ columns: [table.userId, table.siteId] }),
+]);
+
+/** Webhook deliveries already handled, by X-Event-Id (kept 30 days), with the site they came for. */
 export const webhookEvents = pgTable("webhook_events", {
   id: key("id").primaryKey(),
+  siteId: key("site_id"),
   event: text("event").notNull(),
   receivedAt: at("received_at").notNull(),
 });
 
-/** The one webhook registration (row id 1): our address and the signing secret, encrypted. */
+/** Each site's webhook registration: our address and the signing secret, encrypted. */
+export const webhookConfigs = pgTable("webhook_configs", {
+  siteId: key("site_id").primaryKey(),
+  url: text("url").notNull(),
+  secretCipher: text("secret_cipher").notNull(),
+  updatedAt: at("updated_at").notNull(),
+});
+
+/** Before P1b: the one webhook registration (row id 1). Moved to webhook_configs for the first site, then emptied. */
 export const webhookConfig = pgTable("webhook_config", {
   id: integer("id").primaryKey(),
   url: text("url").notNull(),
@@ -25,6 +61,7 @@ export const webhookConfig = pgTable("webhook_config", {
 /** The notification log: one row per delivery that emails someone; sent_at stays null until it goes out. */
 export const notifications = pgTable("notifications", {
   eventId: key("event_id").primaryKey(),
+  siteId: key("site_id"),
   kind: varchar("kind", { length: 64 }).notNull(),
   audience: varchar("audience", { length: 64 }).$type<Audience>().notNull(),
   data: jsonb("data").$type<Record<string, unknown>>().notNull(),
@@ -58,6 +95,7 @@ export const notificationPrefs = pgTable("notification_prefs", {
 /** Someone who can sign in. role null = No access (the account stays). */
 export const users = pgTable("users", {
   id: key("id").primaryKey(),
+  clientId: key("client_id"),
   email: varchar("email", { length: 255 }).notNull().unique("users_email"),
   name: varchar("name", { length: 200 }).notNull(),
   role: varchar("role", { length: 16 }).$type<Role>(),
@@ -73,6 +111,7 @@ export const sessions = pgTable(
   {
     tokenHash: char("token_hash", { length: 64 }).primaryKey(),
     userId: key("user_id").notNull(),
+    siteId: key("site_id"),
     createdAt: at("created_at").notNull(),
     expiresAt: at("expires_at").notNull(),
   },
@@ -82,6 +121,9 @@ export const sessions = pgTable(
 /** At most one pending invitation per email (7 days); deleted when accepted or revoked. */
 export const invitations = pgTable("invitations", {
   id: key("id").primaryKey(),
+  clientId: key("client_id"),
+  /** The sites a Reviewer may open; null = every site of the client. */
+  siteIds: jsonb("site_ids").$type<string[]>(),
   email: varchar("email", { length: 255 }).notNull().unique("invitations_email"),
   role: varchar("role", { length: 16 }).$type<Role>().notNull(),
   tokenHash: char("token_hash", { length: 64 }).notNull().unique("invitations_token_hash"),

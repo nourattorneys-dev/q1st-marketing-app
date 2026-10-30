@@ -7,10 +7,11 @@ import { createLogMailer } from "@/lib/notifications/mailer";
 import type { Mailer } from "@/lib/notifications/mailer";
 import { DirectoryError } from "@/lib/users/types";
 
+const CLIENT = "cli_test";
 let store: AppStore;
 let accounts: AccountStore;
 const directory = { list: vi.fn() };
-vi.mock("@/lib/db", () => ({ getStore: () => store, getAccountStore: () => accounts }));
+vi.mock("@/lib/db", () => ({ getStore: () => store, getAccountStore: () => accounts, getExclusive: () => store.exclusive }));
 // The route waits for a request (connection()) so the build never runs it; here every call is a request.
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("@/lib/users/directory", () => ({ getDirectory: async () => directory }));
@@ -24,7 +25,7 @@ vi.mock("@/lib/notifications/mailer", async (importOriginal) => {
 const { GET } = await import("@/app/api/cron/notifications/route");
 const call = (authorization?: string) =>
   GET(new Request("http://localhost/api/cron/notifications", { headers: authorization ? { Authorization: authorization } : {} }));
-const REVIEWER = { id: "r1", name: "R", email: "reviewer@example.com", role: "reviewer", twoFactor: false, lastSignInAt: null };
+const REVIEWER = { id: "r1", name: "R", email: "reviewer@example.com", role: "reviewer", twoFactor: false, siteIds: null, lastSignInAt: null };
 
 async function queueDraft(id: string) {
   await store.recordEvent({ id, event: "post.drafted", receivedAt: new Date() }, { eventId: id, kind: "drafted", audience: "reviewers", data: { postId: "p_1" }, createdAt: new Date() });
@@ -37,7 +38,7 @@ beforeEach(() => {
   vi.stubEnv("EMAIL_MODE", "log");
   vi.stubEnv("CRON_SECRET", "cron-secret");
   vi.stubEnv("NOTIFY_QUIET_SECONDS", "0");
-  store = createMemoryStore();
+  store = createMemoryStore("site_fakher");
   accounts = createMemoryAccountStore();
   directory.list.mockReset();
   directory.list.mockResolvedValue({ users: [REVIEWER], invites: [] });
@@ -99,10 +100,10 @@ describe("GET /api/cron/notifications (Vercel Cron)", () => {
 
   it("also forgets old sign-in records: invitations that expired over 30 days ago go (spec M5c)", async () => {
     const longAgo = new Date(Date.now() - 31 * 86_400_000);
-    const inv = (id: string, expiresAt: Date) => ({ id, email: `${id}@example.com`, role: "reviewer" as const, tokenHash: id.padEnd(64, "a"), invitedBy: null, createdAt: longAgo, expiresAt });
+    const inv = (id: string, expiresAt: Date) => ({ id, email: `${id}@example.com`, role: "reviewer" as const, clientId: "cli_test", siteIds: null, tokenHash: id.padEnd(64, "a"), invitedBy: null, createdAt: longAgo, expiresAt });
     await accounts.addInvitation(inv("inv_old", longAgo));
     await accounts.addInvitation(inv("inv_new", new Date(Date.now() + 86_400_000)));
     await call("Bearer cron-secret");
-    expect((await accounts.invitations()).map((invitation) => invitation.id)).toEqual(["inv_new"]);
+    expect((await accounts.invitations(CLIENT)).map((invitation) => invitation.id)).toEqual(["inv_new"]);
   });
 });

@@ -5,6 +5,7 @@ import type { Account, AccountStore } from "../../src/lib/accounts/store";
 import { newId } from "../../src/lib/accounts/tokens";
 import type { Role } from "../../src/lib/auth/roles";
 import { connectPostgres } from "../../src/lib/db/postgres";
+import { MOCK_SITE_ID } from "../../src/lib/engine/mock/fixtures";
 import { testDatabaseUrl } from "../unit/postgres-test-db";
 import { E2E_PASSWORD_DB } from "./constants";
 
@@ -31,13 +32,30 @@ export async function resetAccounts(): Promise<void> {
   }
 }
 
+/**
+ * The client the server works for (P1b): the one it made from the settings file, or, before its first page, one made
+ * here the same way (the mock engine's site), which the server then finds.
+ */
+export async function e2eClientId(): Promise<string> {
+  return withAccounts(async (store) => {
+    const existing = (await store.clients())[0];
+    if (existing) return existing.id;
+    const at = new Date();
+    await store.createClient({ id: "cli_e2e", name: "Fakher & Co", createdAt: at });
+    await store.createSite({ id: MOCK_SITE_ID, clientId: "cli_e2e", name: "Fakher & Co", keyCipher: "v1:unused-in-mock-engine-mode", createdAt: at });
+    return "cli_e2e";
+  });
+}
+
 export async function seedAccount(input: { email: string; role: Role | null; name?: string; password?: string }): Promise<Account> {
   const now = new Date();
+  const CLIENT_ID = await e2eClientId();
   const account: Account = {
     id: newId("usr"),
     email: input.email,
     name: input.name ?? input.email,
     role: input.role,
+    clientId: CLIENT_ID,
     passwordHash: await hashPassword(input.password ?? PASSWORD),
     createdAt: now,
     passwordChangedAt: now,

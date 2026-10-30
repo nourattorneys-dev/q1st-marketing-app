@@ -7,14 +7,14 @@ const refresh = vi.fn();
 vi.mock("next/cache", () => ({ refresh }));
 const requireSession = vi.fn(async () => ({ userId: "dev_reviewer", email: "reviewer@example.com", name: "R", role: "reviewer", twoFactor: false }));
 vi.mock("@/lib/auth/session", () => ({ requireSession }));
-vi.mock("@/lib/db", () => ({ getStore: () => store }));
+vi.mock("@/lib/db", () => ({ getAppStore: () => store }));
 
 const { setEmailNotificationsAction } = await import("@/app/[locale]/(app)/notifications/actions");
 const key = "key-12345678";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  store = createMemoryStore();
+  store = createMemoryStore("_app");
 });
 
 describe("each person's email setting (design §4 preferences)", () => {

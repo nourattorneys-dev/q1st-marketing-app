@@ -1,6 +1,20 @@
 import type { AppStore, StoredNotification, WebhookConfig } from "./store";
 
-type Logged = StoredNotification & { sentAt: Date | null; recipients: string[] | null };
+type Logged = StoredNotification & { siteId: string; sentAt: Date | null; recipients: string[] | null };
+
+/** Everything the in-memory store keeps, for every site of this process. */
+export type MemoryState = {
+  events: Map<string, { siteId: string; event: string; receivedAt: Date }>;
+  notifications: Map<string, Logged>;
+  emailOff: Set<string>;
+  deliveries: Map<string, Map<string, Date>>;
+  webhooks: Map<string, WebhookConfig>;
+  running: Set<string>;
+};
+
+export function createMemoryState(): MemoryState {
+  return { events: new Map(), notifications: new Map(), emailOff: new Set(), deliveries: new Map(), webhooks: new Map(), running: new Set() };
+}
 
 const copyOf = (item: StoredNotification): StoredNotification => ({
   eventId: item.eventId,
@@ -10,44 +24,44 @@ const copyOf = (item: StoredNotification): StoredNotification => ({
   createdAt: new Date(item.createdAt),
 });
 
-/** DB_MODE=memory: the store in this server process's memory (local development and the e2e suite; refused in production). */
-export function createMemoryStore(): AppStore {
-  const events = new Map<string, { event: string; receivedAt: Date }>();
-  const notifications = new Map<string, Logged>();
-  const emailOff = new Set<string>();
-  const deliveries = new Map<string, Map<string, Date>>();
-  let webhook: WebhookConfig | null = null;
-  const running = new Set<string>();
+/** DB_MODE=memory: one site's view of this server process's memory (local development and the e2e suite; refused in production). */
+export function createMemoryStore(siteId: string, state: MemoryState = createMemoryState()): AppStore {
+  const { events, notifications, emailOff, deliveries, webhooks, running } = state;
 
   return {
+    siteId,
+
+    async adoptUnassigned() {},
+
     async hasEvent(id) {
       return events.has(id);
     },
 
     async recordEvent(event, notification) {
       if (notification && !notifications.has(notification.eventId)) {
-        notifications.set(notification.eventId, { ...copyOf(notification), sentAt: null, recipients: null });
+        notifications.set(notification.eventId, { ...copyOf(notification), siteId, sentAt: null, recipients: null });
       }
-      if (!events.has(event.id)) events.set(event.id, { event: event.event, receivedAt: new Date(event.receivedAt) });
+      if (!events.has(event.id)) events.set(event.id, { siteId, event: event.event, receivedAt: new Date(event.receivedAt) });
     },
 
     async lastEventAt() {
       let last: Date | null = null;
-      for (const { receivedAt } of events.values()) if (!last || receivedAt > last) last = receivedAt;
+      for (const event of events.values()) if (event.siteId === siteId && (!last || event.receivedAt > last)) last = event.receivedAt;
       return last ? new Date(last) : null;
     },
 
     async webhook() {
-      return webhook && { ...webhook, updatedAt: new Date(webhook.updatedAt) };
+      const webhook = webhooks.get(siteId);
+      return webhook ? { ...webhook, updatedAt: new Date(webhook.updatedAt) } : null;
     },
 
     async saveWebhook(config) {
-      webhook = { ...config, updatedAt: new Date(config.updatedAt) };
+      webhooks.set(siteId, { ...config, updatedAt: new Date(config.updatedAt) });
     },
 
     async pendingNotifications() {
       return [...notifications.values()]
-        .filter((item) => item.sentAt === null)
+        .filter((item) => item.siteId === siteId && item.sentAt === null)
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         .map(copyOf);
     },

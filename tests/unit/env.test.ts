@@ -63,7 +63,7 @@ describe("parseServerEnv", () => {
   });
 
   it("requires a base URL and key for the live engine, and passes a provided key to the mock engine", () => {
-    expect(() => parseServerEnv({ ENGINE_MODE: "live" })).toThrow(/ENGINE_BASE_URL and ENGINE_API_KEY/);
+    expect(() => parseServerEnv({ ENGINE_MODE: "live" })).toThrow(/ENGINE_MODE=live needs ENGINE_BASE_URL\./);
     expect(parseServerEnv({ ENGINE_MODE: "live", ENGINE_BASE_URL: "https://api.example.com/api/v1", ENGINE_API_KEY: "k" })).toMatchObject({
       engineMode: "live",
       engineBaseUrl: "https://api.example.com/api/v1",

@@ -10,14 +10,14 @@ describe("the Postgres store's SQL (DB_MODE=postgres)", () => {
   const { db } = connectPostgres("postgres://nobody@127.0.0.1:1/never");
 
   it("keeps the first copy of a repeated event, notification or delivery (a retried webhook adds nothing)", () => {
-    const notification = queries.insertNotification(db, { eventId: "evt_1", kind: "drafted", audience: "reviewers", data: {}, createdAt: AT });
+    const notification = queries.insertNotification(db, "site_a", { eventId: "evt_1", kind: "drafted", audience: "reviewers", data: {}, createdAt: AT });
     expect(notification.toSQL().sql).toMatch(/on conflict do nothing$/);
-    expect(queries.insertEvent(db, { id: "evt_1", event: "post.drafted", receivedAt: AT }).toSQL().sql).toMatch(/on conflict do nothing$/);
+    expect(queries.insertEvent(db, "site_a", { id: "evt_1", event: "post.drafted", receivedAt: AT }).toSQL().sql).toMatch(/on conflict do nothing$/);
     expect(queries.recordDelivery(db, ["evt_1"], "a@example.com", AT).toSQL().sql).toMatch(/on conflict do nothing$/);
   });
 
   it("replaces the webhook row and a person's choice in place", () => {
-    expect(queries.saveWebhook(db, { url: "https://p.example/api/hooks/marketing", secretCipher: "v1:x", updatedAt: AT }).toSQL().sql).toMatch(/on conflict \("id"\) do update/);
+    expect(queries.saveWebhook(db, "site_a", { url: "https://p.example/api/hooks/marketing", secretCipher: "v1:x", updatedAt: AT }).toSQL().sql).toMatch(/on conflict \("site_id"\) do update/);
     expect(queries.setEmailOff(db, "user_1", true, AT).toSQL().sql).toMatch(/on conflict \("user_id"\) do update/);
   });
 
@@ -44,11 +44,11 @@ describe("the Postgres store on a real database", () => {
     const { rows } = await connection.pool.query<{ n: string }>(
       "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = 'public'",
     );
-    expect(Number(rows[0]?.n)).toBe(10);
+    expect(Number(rows[0]?.n)).toBe(14);
   });
 
   it("returns Arabic text and emoji unchanged, and times as the same instant", async () => {
-    const store = createPostgresStore(connection);
+    const store = createPostgresStore(connection, "site_a");
     const notification = { eventId: "evt_ar", kind: "drafted", audience: "reviewers" as const, data: { title: "كيف تختار مستشارًا قانونيًا 👋" }, createdAt: AT };
     await store.recordEvent({ id: "evt_ar", event: "post.drafted", receivedAt: AT }, notification);
     expect((await store.pendingNotifications()).find((item) => item.eventId === "evt_ar")).toEqual(notification);
@@ -58,7 +58,7 @@ describe("the Postgres store on a real database", () => {
   });
 
   it("refuses an id longer than its column with a plain message", async () => {
-    const store = createPostgresStore(connection);
+    const store = createPostgresStore(connection, "site_a");
     const long = "e".repeat(MAX_KEY_LENGTH + 1);
     await expect(store.recordEvent({ id: long, event: "post.drafted", receivedAt: AT }, null)).rejects.toThrow(`longer than ${MAX_KEY_LENGTH} characters`);
     expect(await store.hasEvent(long.slice(0, MAX_KEY_LENGTH))).toBe(false);
@@ -66,7 +66,7 @@ describe("the Postgres store on a real database", () => {
   });
 
   it("keeps an email of 254 characters, the longest valid, and refuses a longer one", async () => {
-    const store = createPostgresStore(connection);
+    const store = createPostgresStore(connection, "site_a");
     const longest = `${"a".repeat(64)}@${"b".repeat(185)}.com`;
     expect(longest).toHaveLength(254);
     await store.recordDelivery(["evt_mail"], longest, AT);
@@ -83,7 +83,7 @@ describe("one notification run at a time across server processes (M5b)", () => {
   const storeOn = (url: string) => {
     const connection = connectPostgres(url);
     opened.push(connection);
-    return createPostgresStore(connection);
+    return createPostgresStore(connection, "site_a");
   };
 
   afterAll(async () => {

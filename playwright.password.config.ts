@@ -27,6 +27,8 @@ export default defineConfig({
       ADMIN_EMAIL: OWNER_EMAIL,
       TWO_FACTOR: "off",
       DB_MODE: "postgres",
+      // P1b: each site's engine key is kept encrypted with this key (a fixed test value).
+      APP_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64"),
       DATABASE_URL: testDatabaseUrl(E2E_PASSWORD_DB),
       EMAIL_MODE: "log",
       // A test server: the dev outbox, which these tests read invitation and reset links from, opens only on one.

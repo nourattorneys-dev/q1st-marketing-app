@@ -15,6 +15,8 @@ import { tryDirectory, type DirectoryInvite, type DirectoryUser } from "@/lib/us
 // Ids go into database lookups: letters, digits, "_" and "-" only, like the ids the dashboard makes.
 const DirectoryId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const RoleChoice = z.enum(ROLES);
+// P1b: the sites a Reviewer may open; null = every site. Unknown ids are dropped by the directory.
+const SiteChoice = z.array(DirectoryId).max(200).nullable();
 const SELF = { ok: false as const, error: { status: 403, code: "self", message: "You can't change your own access." } };
 
 /** An invitation plus whether its email stayed on this server (password mode with EMAIL_MODE=log, spec M5c). */
@@ -28,12 +30,23 @@ function invitationsNotSent(): boolean {
 // invitation to the same email is refused as a duplicate; setting the same role twice changes nothing).
 
 /** Design §5: the Admin invites someone by email with a role; the role reaches their account when they sign up. */
-export async function inviteUserAction(input: { locale: string; email: string; role: Role; idempotencyKey: string }): Promise<ActionResult<SentInvite>> {
-  const parsed = z.object({ locale: Locale, email: z.string().max(320), role: RoleChoice, idempotencyKey: IdempotencyKey }).safeParse(input);
+export async function inviteUserAction(input: {
+  locale: string;
+  email: string;
+  role: Role;
+  siteIds?: string[] | null;
+  idempotencyKey: string;
+}): Promise<ActionResult<SentInvite>> {
+  const parsed = z
+    .object({ locale: Locale, email: z.string().max(320), role: RoleChoice, siteIds: SiteChoice.optional(), idempotencyKey: IdempotencyKey })
+    .safeParse(input);
   if (!parsed.success) return INVALID;
-  const { locale, email, role } = parsed.data;
+  const { locale, email, role, siteIds } = parsed.data;
   const session = await requirePermission(locale, "users.manage");
-  const result = await tryDirectory(async () => ({ ...(await (await getDirectory()).invite(email, role, session.userId)), notSent: invitationsNotSent() }));
+  const result = await tryDirectory(async () => ({
+    ...(await (await getDirectory()).invite(email, role, session.userId, siteIds ?? null)),
+    notSent: invitationsNotSent(),
+  }));
   if (result.ok) refresh();
   return result;
 }
@@ -72,6 +85,23 @@ export async function setUserRoleAction(input: {
   const session = await requirePermission(locale, "users.manage");
   if (!canChangeAccess(session.userId, userId)) return SELF;
   const result = await tryDirectory(async () => (await getDirectory()).setRole(userId, role));
+  if (result.ok) refresh();
+  return result;
+}
+
+/** P1b: the sites a Reviewer may open (null = every site). Admins always open every site. */
+export async function setUserSitesAction(input: {
+  locale: string;
+  userId: string;
+  siteIds: string[] | null;
+  idempotencyKey: string;
+}): Promise<ActionResult<DirectoryUser>> {
+  const parsed = z.object({ locale: Locale, userId: DirectoryId, siteIds: SiteChoice, idempotencyKey: IdempotencyKey }).safeParse(input);
+  if (!parsed.success) return INVALID;
+  const { locale, userId, siteIds } = parsed.data;
+  const session = await requirePermission(locale, "users.manage");
+  if (!canChangeAccess(session.userId, userId)) return SELF;
+  const result = await tryDirectory(async () => (await getDirectory()).setSites(userId, siteIds));
   if (result.ok) refresh();
   return result;
 }

@@ -29,6 +29,7 @@ describe("parseServicesEnv (M4c)", () => {
     dbPoolMax: 5,
       databaseUrl: null,
       encryptionKey: null,
+      appEncryptionKey: null,
       emailMode: "log",
       smtp: null,
     graph: null,

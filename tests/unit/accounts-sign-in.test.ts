@@ -20,7 +20,7 @@ beforeEach(async () => {
   info = vi.spyOn(console, "info").mockImplementation(() => {});
   warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   store = createMemoryAccountStore();
-  sara = { id: "usr_sara", email: "sara@example.com", name: "Sara", role: "admin", passwordHash, createdAt: at(0), passwordChangedAt: at(0), lastSignInAt: null };
+  sara = { id: "usr_sara", email: "sara@example.com", name: "Sara", role: "admin", clientId: "cli_test", passwordHash, createdAt: at(0), passwordChangedAt: at(0), lastSignInAt: null };
   await store.createAccount(sara);
 });
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { AppLocale } from "@/i18n/locales";
 import { can } from "@/lib/auth/roles";
 import { requireSession } from "@/lib/auth/session";
-import { getStore } from "@/lib/db";
+import { getAppStore } from "@/lib/db";
 import { servicesEnv } from "@/lib/services-env";
 import { EmailToggle } from "./email-toggle";
 import { TestEmailButton } from "./test-email-button";
@@ -16,7 +16,7 @@ export async function NotificationsView({ locale }: { locale: AppLocale }) {
   await connection();
   const session = await requireSession(locale);
   const t = await getTranslations("Notifications");
-  const enabled = !(await getStore().emailOffUsers()).has(session.userId);
+  const enabled = !(await getAppStore().emailOffUsers()).has(session.userId);
   return (
     <Card>
       <CardHeader>

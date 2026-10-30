@@ -22,21 +22,24 @@ export function maskEmail(email: string): string {
  */
 export async function ensureFirstAdmin(deps: {
   store: AccountStore;
+  /** P1b: the first client (made from the settings file), whose first Admin this is; null while there is none. */
+  clientId: string | null;
   exclusive: AppStore["exclusive"];
   mailer: Mailer;
   appUrl: string;
   adminEmail: string | null;
   now: Date;
 }): Promise<FirstAdmin> {
-  const { store, adminEmail, now } = deps;
-  if (await store.hasAdmin()) return { state: "ready" };
+  const { store, adminEmail, now, clientId } = deps;
+  if (!clientId) return { state: "unset" };
+  if (await store.hasAdmin(clientId)) return { state: "ready" };
   if (!adminEmail) return { state: "unset" };
   const invited: FirstAdmin = { state: "invited", to: maskEmail(adminEmail) };
 
   const outcome = await deps.exclusive("articles_ai_first_admin", async (): Promise<FirstAdmin> => {
-    if (await store.hasAdmin()) return { state: "ready" };
+    if (await store.hasAdmin(clientId)) return { state: "ready" };
     // A corrected ADMIN_EMAIL: an invitation sent to an earlier address must not make someone else the Admin.
-    for (const earlier of await store.invitations()) {
+    for (const earlier of await store.invitations(clientId)) {
       if (earlier.role !== "admin" || earlier.invitedBy !== null || earlier.email === adminEmail) continue;
       await store.deleteInvitation(earlier.id);
       console.info(`First Admin: withdrew the invitation to ${earlier.email} (ADMIN_EMAIL changed)`);
@@ -57,6 +60,8 @@ export async function ensureFirstAdmin(deps: {
       id: newId("inv"),
       email: adminEmail,
       role: "admin",
+      clientId,
+      siteIds: null,
       tokenHash: hashToken(token),
       invitedBy: null,
       createdAt: now,

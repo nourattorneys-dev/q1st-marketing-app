@@ -35,6 +35,7 @@ export async function acceptInvitation(
     email: invitation.email,
     name,
     role: invitation.role,
+    clientId: invitation.clientId,
     passwordHash: await hashPassword(input.password),
     createdAt: input.now,
     passwordChangedAt: input.now,

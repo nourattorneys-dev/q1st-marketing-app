@@ -6,8 +6,16 @@ export type StoredNotification = { eventId: string; kind: string; audience: Audi
 /** This portal's webhook registration: the address the engine calls and its signing secret, encrypted (design §11). */
 export type WebhookConfig = { url: string; secretCipher: string; updatedAt: Date };
 
-/** What the dashboard keeps (design §4 "Small database"): in memory locally and in tests, in the dashboard's Postgres on a server. */
+/**
+ * What the dashboard keeps (design §4 "Small database") for ONE site (P1b): its webhook registration, the deliveries it
+ * received and the notifications they cause. Notification choices and locks are per person and per app, not per site.
+ * In memory locally and in tests, in the dashboard's Postgres on a server.
+ */
 export interface AppStore {
+  /** The site these records belong to. */
+  readonly siteId: string;
+  /** Records made before sites existed (the one webhook registration, events, notifications) become this site's. */
+  adoptUnassigned(): Promise<void>;
   /** Whether this X-Event-Id was handled already. */
   hasEvent(id: string): Promise<boolean>;
   /** Records a handled delivery and the notification it causes, together; each is a no-op if it's already there. */

@@ -1,7 +1,7 @@
-import { and, asc, DrizzleQueryError, eq, gt, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
+import { and, asc, DrizzleQueryError, eq, gt, isNull, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
 import type { PostgresConnection } from "@/lib/db/postgres";
-import { invitations, passwordResets, sessions, signInLimits, users } from "@/lib/db/schema";
-import type { Account, AccountStore, Invitation } from "./store";
+import { clients, invitations, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
+import type { Account, AccountStore, Client, Invitation, Site } from "./store";
 
 /** Postgres's unique_violation (23505); Drizzle wraps query errors with the original as `cause`. */
 function isDuplicate(error: unknown): boolean {
@@ -11,6 +11,7 @@ function isDuplicate(error: unknown): boolean {
 
 const toAccount = (row: typeof users.$inferSelect): Account => ({
   id: row.id,
+  clientId: row.clientId ?? null,
   email: row.email,
   name: row.name,
   role: row.role ?? null,
@@ -22,6 +23,8 @@ const toAccount = (row: typeof users.$inferSelect): Account => ({
 
 const toInvitation = (row: typeof invitations.$inferSelect): Invitation => ({
   id: row.id,
+  clientId: row.clientId ?? null,
+  siteIds: row.siteIds ?? null,
   email: row.email,
   role: row.role,
   tokenHash: row.tokenHash,
@@ -53,13 +56,13 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       const [row] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       return row ? toAccount(row) : null;
     },
-    async accounts() {
+    async accounts(clientId) {
       await connection.ready();
-      return (await db.select().from(users).orderBy(asc(users.createdAt), asc(users.id))).map(toAccount);
+      return (await db.select().from(users).where(eq(users.clientId, clientId)).orderBy(asc(users.createdAt), asc(users.id))).map(toAccount);
     },
-    async hasAdmin() {
+    async hasAdmin(clientId) {
       await connection.ready();
-      const [row] = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+      const [row] = await db.select({ id: users.id }).from(users).where(and(eq(users.clientId, clientId), eq(users.role, "admin"))).limit(1);
       return Boolean(row);
     },
     async createAccount(created) {
@@ -109,9 +112,21 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       await db.delete(sessions).where(except ? and(eq(sessions.userId, userId), ne(sessions.tokenHash, except)) : eq(sessions.userId, userId));
     },
 
-    async invitations() {
+    async sessionSite(tokenHash) {
       await connection.ready();
-      return (await db.select().from(invitations).orderBy(asc(invitations.createdAt), asc(invitations.id))).map(toInvitation);
+      const [row] = await db.select({ siteId: sessions.siteId }).from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
+      return row?.siteId ?? null;
+    },
+    async setSessionSite(tokenHash, siteId) {
+      await connection.ready();
+      await db.update(sessions).set({ siteId }).where(eq(sessions.tokenHash, tokenHash));
+    },
+
+    async invitations(clientId) {
+      await connection.ready();
+      return (
+        await db.select().from(invitations).where(eq(invitations.clientId, clientId)).orderBy(asc(invitations.createdAt), asc(invitations.id))
+      ).map(toInvitation);
     },
     invitation: (id) => oneInvitation(eq(invitations.id, id)),
     invitationByEmail: (email) => oneInvitation(eq(invitations.email, email)),
@@ -141,15 +156,65 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       try {
         // One transaction: the invitation is used up exactly when the account appears.
         await db.transaction(async (tx) => {
-          const result = await tx.delete(invitations).where(eq(invitations.id, id));
-          if ((result.rowCount ?? 0) === 0) tx.rollback();
+          const [used] = await tx.delete(invitations).where(eq(invitations.id, id)).returning({ siteIds: invitations.siteIds });
+          if (!used) tx.rollback();
           await tx.insert(users).values(created);
+          if (used.siteIds?.length) await tx.insert(userSites).values(used.siteIds.map((siteId) => ({ userId: created.id, siteId })));
         });
         return true;
       } catch (error) {
         if (error instanceof TransactionRollbackError || isDuplicate(error)) return false;
         throw error;
       }
+    },
+
+    async userSites(userId) {
+      await connection.ready();
+      return (await db.select({ siteId: userSites.siteId }).from(userSites).where(eq(userSites.userId, userId)).orderBy(asc(userSites.siteId))).map(
+        (row) => row.siteId,
+      );
+    },
+    async setUserSites(userId, siteIds) {
+      await connection.ready();
+      await db.transaction(async (tx) => {
+        await tx.delete(userSites).where(eq(userSites.userId, userId));
+        const unique = [...new Set(siteIds)];
+        if (unique.length) await tx.insert(userSites).values(unique.map((siteId) => ({ userId, siteId })));
+      });
+    },
+    async clients() {
+      await connection.ready();
+      return (await db.select().from(clients).orderBy(asc(clients.createdAt), asc(clients.id))) as Client[];
+    },
+    async client(id) {
+      await connection.ready();
+      const [row] = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
+      return row ?? null;
+    },
+    async createClient(client) {
+      await connection.ready();
+      await db.insert(clients).values(client);
+    },
+    async sites(clientId) {
+      await connection.ready();
+      const query = db.select().from(sites);
+      return (await (clientId === undefined ? query : query.where(eq(sites.clientId, clientId))).orderBy(asc(sites.createdAt), asc(sites.id))) as Site[];
+    },
+    async site(id) {
+      await connection.ready();
+      const [row] = await db.select().from(sites).where(eq(sites.id, id)).limit(1);
+      return row ?? null;
+    },
+    async createSite(site) {
+      await connection.ready();
+      await db.insert(sites).values(site);
+    },
+    async adoptUnassigned(clientId) {
+      await connection.ready();
+      await db.transaction(async (tx) => {
+        await tx.update(users).set({ clientId }).where(isNull(users.clientId));
+        await tx.update(invitations).set({ clientId }).where(isNull(invitations.clientId));
+      });
     },
 
     async createReset(reset) {
@@ -197,6 +262,8 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
     async forgetExpired({ now, invitationsBefore, limitsBefore }) {
       await connection.ready();
       await db.delete(sessions).where(lte(sessions.expiresAt, now));
+      // A site removed from the app takes its access rows with it (P1b).
+      await db.delete(userSites).where(sql`${userSites.siteId} NOT IN (SELECT ${sites.id} FROM ${sites})`);
       await db.delete(passwordResets).where(lte(passwordResets.expiresAt, now));
       await db.delete(invitations).where(lte(invitations.expiresAt, invitationsBefore));
       await db.delete(signInLimits).where(lte(signInLimits.windowStart, limitsBefore));

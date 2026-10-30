@@ -2,11 +2,14 @@ import type { Session } from "./types";
 
 export const MOCK_SESSION_COOKIE = "dev_session";
 
+/** The built-in client of test logins (P1b). */
+export const MOCK_CLIENT_ID = "cli_mock";
+
 export const MOCK_USERS: readonly Session[] = [
-  { userId: "dev_admin", email: "admin@example.com", name: "Admin (test)", role: "admin", twoFactor: true },
-  { userId: "dev_reviewer", email: "reviewer@example.com", name: "Reviewer (test)", role: "reviewer", twoFactor: false },
-  { userId: "dev_norole", email: "pending@example.com", name: "No role (test)", role: null, twoFactor: false },
-  { userId: "dev_admin_no2fa", email: "admin2@example.com", name: "Admin without two-factor (test)", role: "admin", twoFactor: false },
+  { userId: "dev_admin", clientId: MOCK_CLIENT_ID, email: "admin@example.com", name: "Admin (test)", role: "admin", twoFactor: true },
+  { userId: "dev_reviewer", clientId: MOCK_CLIENT_ID, email: "reviewer@example.com", name: "Reviewer (test)", role: "reviewer", twoFactor: false },
+  { userId: "dev_norole", clientId: MOCK_CLIENT_ID, email: "pending@example.com", name: "No role (test)", role: null, twoFactor: false },
+  { userId: "dev_admin_no2fa", clientId: MOCK_CLIENT_ID, email: "admin2@example.com", name: "Admin without two-factor (test)", role: "admin", twoFactor: false },
 ];
 
 /** The cookie holds only the id of one of the fixed test users, so it can't be used to invent a role. */

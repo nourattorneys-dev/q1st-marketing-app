@@ -112,7 +112,12 @@ describe("password sessions (AUTH_MODE=password, spec M5c)", () => {
     const store = getAccountStore();
     const id = newId("usr");
     const now = new Date();
-    await store.createAccount({ id, email: `${id}@example.com`.toLowerCase(), name: "Omar", role, passwordHash: "scrypt$x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+    // P1b: the person's client and its one site.
+    if (!(await store.client("cli_test"))) {
+      await store.createClient({ id: "cli_test", name: "Test", createdAt: now });
+      await store.createSite({ id: "site_test", clientId: "cli_test", name: "Test site", keyCipher: "v1:x", createdAt: now });
+    }
+    await store.createAccount({ id, email: `${id}@example.com`.toLowerCase(), name: "Omar", role, clientId: "cli_test", passwordHash: "scrypt$x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
     cookieJar.set("session", (await startSession(store, id, now)).token);
     return id;
   }

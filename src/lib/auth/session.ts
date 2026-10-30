@@ -14,6 +14,7 @@ import { decodeMockSession, MOCK_SESSION_COOKIE } from "./mock-session";
 import { can, type Permission, type Role } from "./roles";
 import { twoFactorStatus, type TwoFactorPolicy } from "./two-factor";
 import type { AuthedSession, Session } from "./types";
+import { getCurrentSite } from "@/lib/tenancy";
 
 /** Reads the signed-in person once per request (React cache), so a page's many guards make one lookup. Call only under <Suspense>. */
 export const getSession = cache(async (): Promise<Session | null> => {
@@ -36,7 +37,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
   // The expiry is checked against the clock, which a build or a prefetch render must not read (Cache Components).
   await connection();
   const account = await sessionAccount(getAccountStore(), token, new Date());
-  return account ? { userId: account.id, email: account.email, name: account.name, role: account.role, twoFactor: false } : null;
+  return account ? { userId: account.id, clientId: account.clientId, email: account.email, name: account.name, role: account.role, twoFactor: false } : null;
 });
 
 /**
@@ -57,6 +58,8 @@ export async function requireSession(locale: string): Promise<AuthedSession> {
   const session = await getSession();
   if (!session) redirect(`/${locale}/sign-in`);
   if (!session.role) redirect(`/${locale}/no-access`);
+  // P1b: a role but no site to open (none granted, or the client has none yet).
+  if (!(await getCurrentSite())) redirect(`/${locale}/no-access`);
   if (twoFactorStatus(await getTwoFactorPolicy(), session) === "required") redirect(`/${locale}/security`);
   return { ...session, role: session.role };
 }

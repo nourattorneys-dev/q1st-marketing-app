@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { cache } from "react";
 import { serverEnv } from "@/lib/env";
+import { currentEngineKey } from "@/lib/tenancy";
 import { createEngineApi } from "./api";
+import { EngineError } from "./errors";
 import { createEngineClient, type FetchLike } from "./client";
 import { createMockFetch, isMockScenario, MOCK_SCENARIO_COOKIE } from "./mock/server";
 import { MOCK_STORE_COOKIE, mockStoreFor } from "./mock/registry";
@@ -26,9 +28,11 @@ export const getEngine = cache(async () => {
       scenario: isMockScenario(scenario) ? scenario : "normal",
       store: mockStoreFor(jar.get(MOCK_STORE_COOKIE)?.value, { firstRun: scenario === "firstrun" }),
     });
-  } else {
-    fetchImpl = (input, init) => fetch(input, init);
+    return createEngineApi(createEngineClient({ baseUrl: env.engineBaseUrl, apiKey: env.engineApiKey, fetch: fetchImpl }));
   }
-
-  return createEngineApi(createEngineClient({ baseUrl: env.engineBaseUrl, apiKey: env.engineApiKey, fetch: fetchImpl }));
+  // P1b: the current site's own key, decrypted here for this request only; it never reaches the browser or a log.
+  const apiKey = await currentEngineKey();
+  if (!apiKey) throw new EngineError({ status: 403, code: "no_site", message: "No website is set up for this account yet." });
+  fetchImpl = (input, init) => fetch(input, init);
+  return createEngineApi(createEngineClient({ baseUrl: env.engineBaseUrl, apiKey, fetch: fetchImpl }));
 });

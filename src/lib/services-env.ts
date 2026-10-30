@@ -8,6 +8,7 @@ const ServicesSchema = z.object({
   DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
   DATABASE_URL: z.string().optional(),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
+  APP_ENCRYPTION_KEY: z.string().optional(),
   EMAIL_MODE: z.enum(["log", "smtp", "graph"]).default("log"),
   GRAPH_TENANT_ID: z.string().optional(),
   GRAPH_CLIENT_ID: z.string().optional(),
@@ -31,6 +32,8 @@ export type ServicesEnv = {
   dbPoolMax: number;
   /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
   encryptionKey: Buffer | null;
+  /** The key for each site's engine key (P1b): APP_ENCRYPTION_KEY, else WEBHOOK_ENCRYPTION_KEY; null when neither is set. */
+  appEncryptionKey: Buffer | null;
   emailMode: "log" | "smtp" | "graph";
   /** The client's mail server (EMAIL_MODE=smtp), or null. */
   smtp: SmtpSettings | null;
@@ -122,8 +125,15 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
     if (encryptionKey.length !== 32) throw new Error("WEBHOOK_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32).");
   }
 
+  let appEncryptionKey = encryptionKey;
+  if (env.APP_ENCRYPTION_KEY) {
+    appEncryptionKey = Buffer.from(env.APP_ENCRYPTION_KEY, "base64");
+    if (appEncryptionKey.length !== 32) throw new Error("APP_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32).");
+  }
+
   return {
     dbMode: env.DB_MODE,
+    appEncryptionKey,
     databaseUrl: env.DATABASE_URL ?? null,
     dbPoolMax: env.DB_POOL_MAX,
     encryptionKey,

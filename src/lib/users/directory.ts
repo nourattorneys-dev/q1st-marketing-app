@@ -7,6 +7,7 @@ import { MOCK_SCENARIO_COOKIE } from "@/lib/engine/mock/server";
 import { serverEnv } from "@/lib/env";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { servicesEnv } from "@/lib/services-env";
+import { getCurrentSite } from "@/lib/tenancy";
 import { createMockDirectory } from "./mock-directory";
 import { DirectoryError, type UserDirectory } from "./types";
 
@@ -21,12 +22,21 @@ export async function getDirectory(): Promise<UserDirectory> {
     if (jar.get(MOCK_SCENARIO_COOKIE)?.value === SIGNIN_DOWN) return unreachableDirectory();
     return createMockDirectory(jar.get(MOCK_STORE_COOKIE)?.value);
   }
-  return createAccountsDirectory({ store: getAccountStore(), mailer: mailerFor(servicesEnv()), appUrl: env.appUrl ?? "" });
+  // P1b: the signed-in person's client; with no client to show, the page says the directory can't be reached.
+  const current = await getCurrentSite();
+  if (!current) return unreachableDirectory();
+  return createAccountsDirectory({
+    store: getAccountStore(),
+    mailer: mailerFor(servicesEnv()),
+    appUrl: env.appUrl ?? "",
+    clientId: current.client.id,
+    sites: current.sites,
+  });
 }
 
 function unreachableDirectory(): UserDirectory {
   const fail = async (): Promise<never> => {
     throw new DirectoryError("unavailable", "The sign-in service can't be reached right now. Try again shortly.");
   };
-  return { list: fail, invite: fail, resendInvite: fail, revokeInvite: fail, setRole: fail };
+  return { list: fail, invite: fail, resendInvite: fail, revokeInvite: fail, setRole: fail, setSites: fail };
 }

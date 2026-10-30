@@ -14,7 +14,7 @@ const drafted = (eventId: string, minute: number) => ({
   createdAt: at(minute),
 });
 
-const TABLES = ["webhook_events", "webhook_config", "notifications", "notification_deliveries", "notification_prefs"];
+const TABLES = ["webhook_events", "webhook_config", "webhook_configs", "notifications", "notification_deliveries", "notification_prefs"];
 let pgc: PostgresConnection;
 
 beforeAll(async () => {
@@ -29,11 +29,11 @@ afterAll(async () => {
 /** A Postgres store over emptied tables, so each case starts clean, as a new in-memory store does. */
 async function emptyPostgresStore(): Promise<AppStore> {
   for (const table of TABLES) await pgc.pool.query(`DELETE FROM "${table}"`);
-  return createPostgresStore(pgc);
+  return createPostgresStore(pgc, "site_a");
 }
 
 describe.each([
-  { name: "the in-memory store (DB_MODE=memory)", createStore: async (): Promise<AppStore> => createMemoryStore() },
+  { name: "the in-memory store (DB_MODE=memory)", createStore: async (): Promise<AppStore> => createMemoryStore("site_a") },
   { name: "the Postgres store (DB_MODE=postgres)", createStore: emptyPostgresStore },
 ])("$name", ({ createStore }) => {
   it("remembers a delivery once, with its notification, however often it's recorded (spec v1.1 §8: deliveries are retried)", async () => {

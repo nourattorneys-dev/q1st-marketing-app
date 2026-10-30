@@ -28,6 +28,7 @@ beforeAll(async () => {
     id: "usr_action",
     email: "action@example.com",
     name: "Action",
+    clientId: "cli_test",
     role: "admin",
     passwordHash: await hashPassword("correct horse battery"),
     createdAt: now,

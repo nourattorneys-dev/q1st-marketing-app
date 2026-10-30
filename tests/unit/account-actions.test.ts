@@ -66,7 +66,7 @@ afterEach(() => {
 async function account(): Promise<{ id: string; email: string }> {
   const id = `usr_actions${++sequence}`;
   const now = new Date();
-  await getAccountStore().createAccount({ id, email: `${id}@example.com`, name: "Omar", role: "reviewer", passwordHash, createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+  await getAccountStore().createAccount({ id, email: `${id}@example.com`, name: "Omar", role: "reviewer", clientId: "cli_test", passwordHash, createdAt: now, passwordChangedAt: now, lastSignInAt: null });
   return { id, email: `${id}@example.com` };
 }
 
@@ -82,7 +82,7 @@ describe("accepting an invitation (spec M5c)", () => {
     const token = newToken();
     const now = new Date();
     const email = `new${++sequence}@example.com`;
-    await getAccountStore().addInvitation({ id: `inv_actions${sequence}`, email, role: "reviewer", tokenHash: hashToken(token), invitedBy: null, createdAt: now, expiresAt: new Date(now.getTime() + 86_400_000) });
+    await getAccountStore().addInvitation({ id: `inv_actions${sequence}`, email, role: "reviewer", clientId: "cli_test", siteIds: null, tokenHash: hashToken(token), invitedBy: null, createdAt: now, expiresAt: new Date(now.getTime() + 86_400_000) });
     await expect(acceptInvitationAction(null, form({ locale: "ar", token, name: "Omar", password: PASSWORD, confirm: PASSWORD }))).rejects.toThrow("REDIRECT:/ar");
     expect(state.set).toEqual(["session"]);
     expect(await getAccountStore().accountByEmail(email)).toMatchObject({ name: "Omar", role: "reviewer" });
