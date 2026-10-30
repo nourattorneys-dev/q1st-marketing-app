@@ -18,6 +18,10 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 
     pnpm lint && pnpm typecheck && pnpm test && pnpm e2e && ALLOW_TEST_LOGINS=1 pnpm build
 
+And the build exactly as the server image makes it (no settings at build time; a page that reads a setting before the request fails here):
+
+    env -i PATH="$PATH" HOME="$HOME" NEXT_OUTPUT=standalone AUTH_MODE=password ENGINE_MODE=live TWO_FACTOR=off pnpm build
+
 `pnpm test` and `pnpm e2e` need a local Postgres (`TEST_DATABASE_URL`, default `postgres://postgres@127.0.0.1:5432/articles_ai_test`). `pnpm e2e` runs two suites: test logins, then password mode on the database `articles_ai_test_e2e_password` (`pnpm e2e:password` alone, after `ALLOW_TEST_LOGINS=1 pnpm build`).
 
 ## Docs

@@ -94,6 +94,9 @@ const currentSiteRecord = cache(async (): Promise<{ client: { id: string; name: 
 
 /** The site this request works on, and the others the person may open (P1b). Null: signed out, or no site to open. */
 export const getCurrentSite = cache(async (): Promise<CurrentSite | null> => {
+  // The request first, as in getSession: while Next builds a page, cookies() stops it before any setting is read, so a
+  // build never needs the settings (they are read at request time only).
+  await cookies();
   if (serverEnv().authMode === "mock") {
     const session = await getSession();
     return session?.role ? { client: { ...MOCK_CLIENT }, site: MOCK_SITE, sites: [MOCK_SITE] } : null;
@@ -104,6 +107,7 @@ export const getCurrentSite = cache(async (): Promise<CurrentSite | null> => {
 
 /** The current site's engine key, decrypted on the server for this request; null when there is no site or it can't be read. */
 export async function currentEngineKey(): Promise<string | null> {
+  await cookies();
   const record = await currentSiteRecord();
   if (!record) return null;
   const key = siteKeyFor(servicesEnv());
