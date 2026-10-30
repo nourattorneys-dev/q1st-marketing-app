@@ -26,6 +26,7 @@ describe("parseServicesEnv (M4c)", () => {
   it("defaults to the in-memory store and logged emails, with a two-minute quiet period", () => {
     expect(parseServicesEnv({})).toEqual({
       dbMode: "memory",
+    dbPoolMax: 5,
       databaseUrl: null,
       encryptionKey: null,
       emailMode: "log",
@@ -35,35 +36,36 @@ describe("parseServicesEnv (M4c)", () => {
     });
   });
 
-  it("keeps data in MySQL: DB_MODE=mysql needs a mysql:// address, and the retired Neon mode says what to use", () => {
-    expect(() => parseServicesEnv({ DB_MODE: "mysql" })).toThrow(/needs DATABASE_URL/);
-    expect(() => parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/must start with mysql:\/\//);
-    expect(parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: "mysql://u:p@localhost:3306/db" })).toMatchObject({
-      dbMode: "mysql",
-      databaseUrl: "mysql://u:p@localhost:3306/db",
+  it("keeps data in Postgres: DB_MODE=postgres needs a postgres:// address, and the retired MySQL and Neon modes say what to use", () => {
+    expect(() => parseServicesEnv({ DB_MODE: "postgres", DATABASE_URL: "mysql://u:p@host/db" })).toThrow(/must start with postgres:\/\//);
+    expect(() => parseServicesEnv({ DB_MODE: "postgres" })).toThrow(/needs DATABASE_URL/);
+    expect(parseServicesEnv({ DB_MODE: "postgres", DATABASE_URL: "postgresql://u:p@localhost:5432/db" }).dbMode).toBe("postgres");
+    expect(parseServicesEnv({ DB_MODE: "postgres", DATABASE_URL: "postgres://u:p@localhost:5432/db" })).toMatchObject({
+      dbMode: "postgres",
+      databaseUrl: "postgres://u:p@localhost:5432/db",
     });
-    expect(() => parseServicesEnv({ DB_MODE: "neon", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/DB_MODE=mysql/);
+    expect(() => parseServicesEnv({ DB_MODE: "neon", DATABASE_URL: "postgres://u:p@host/db" })).toThrow(/DB_MODE=postgres/);
   });
 
   it("refuses a DATABASE_URL that isn't a valid address, without repeating it (final review: a password with # / ? not encoded)", () => {
     // What the settings file holds when a password's #, / or ? isn't URL-encoded (a # even starts a comment there).
-    for (const url of ["mysql://dash:Secret", "mysql://dash:pa/ss9@localhost:3306/db", "mysql://dash:pa?ss9@localhost:3306/db"]) {
+    for (const url of ["postgres://dash:Secret", "postgres://dash:pa/ss9@localhost:5432/db", "postgres://dash:pa?ss9@localhost:5432/db"]) {
       let message = "";
       try {
-        parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: url });
+        parseServicesEnv({ DB_MODE: "postgres", DATABASE_URL: url });
       } catch (error) {
         message = (error as Error).message;
       }
       expect(message).toMatch(/URL-encode/);
       expect(message).not.toMatch(/Secret|pa\/ss9|pa\?ss9/);
     }
-    expect(parseServicesEnv({ DB_MODE: "mysql", DATABASE_URL: `mysql://dash:${encodeURIComponent("pa/ss?9#")}@localhost:3306/db` }).dbMode).toBe("mysql");
+    expect(parseServicesEnv({ DB_MODE: "postgres", DATABASE_URL: `postgres://dash:${encodeURIComponent("pa/ss?9#")}@localhost:5432/db` }).dbMode).toBe("postgres");
   });
 
   it("refuses the in-memory store on a production server, which would lose its data on every restart", () => {
     expect(() => parseServicesEnv({ NODE_ENV: "production" })).toThrow(/refused in production/);
     expect(parseServicesEnv({ NODE_ENV: "production", ALLOW_TEST_LOGINS: "1" }).dbMode).toBe("memory");
-    expect(parseServicesEnv({ NODE_ENV: "production", DB_MODE: "mysql", DATABASE_URL: "mysql://u:p@localhost:3306/db" }).dbMode).toBe("mysql");
+    expect(parseServicesEnv({ NODE_ENV: "production", DB_MODE: "postgres", DATABASE_URL: "postgres://u:p@localhost:5432/db" }).dbMode).toBe("postgres");
     expect(parseServicesEnv({ NODE_ENV: "development" }).dbMode).toBe("memory");
   });
 

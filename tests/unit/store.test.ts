@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMemoryStore } from "@/lib/db/memory-store";
-import { connectMysql, type MysqlConnection } from "@/lib/db/mysql";
-import { createMysqlStore } from "@/lib/db/mysql-store";
+import { connectPostgres, type PostgresConnection } from "@/lib/db/postgres";
+import { createPostgresStore } from "@/lib/db/postgres-store";
 import type { AppStore } from "@/lib/db/store";
-import { freshTestDatabase } from "./mysql-test-db";
+import { freshTestDatabase } from "./postgres-test-db";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 22, 8, minute));
 const drafted = (eventId: string, minute: number) => ({
@@ -15,26 +15,26 @@ const drafted = (eventId: string, minute: number) => ({
 });
 
 const TABLES = ["webhook_events", "webhook_config", "notifications", "notification_deliveries", "notification_prefs"];
-let mysql: MysqlConnection;
+let pgc: PostgresConnection;
 
 beforeAll(async () => {
-  mysql = connectMysql(await freshTestDatabase("store"));
-  await mysql.ready();
+  pgc = connectPostgres(await freshTestDatabase("store"));
+  await pgc.ready();
 });
 
 afterAll(async () => {
-  await mysql?.close();
+  await pgc?.close();
 });
 
-/** A MySQL store over emptied tables, so each case starts clean, as a new in-memory store does. */
-async function emptyMysqlStore(): Promise<AppStore> {
-  for (const table of TABLES) await mysql.pool.query(`DELETE FROM \`${table}\``);
-  return createMysqlStore(mysql);
+/** A Postgres store over emptied tables, so each case starts clean, as a new in-memory store does. */
+async function emptyPostgresStore(): Promise<AppStore> {
+  for (const table of TABLES) await pgc.pool.query(`DELETE FROM "${table}"`);
+  return createPostgresStore(pgc);
 }
 
 describe.each([
   { name: "the in-memory store (DB_MODE=memory)", createStore: async (): Promise<AppStore> => createMemoryStore() },
-  { name: "the MySQL store (DB_MODE=mysql)", createStore: emptyMysqlStore },
+  { name: "the Postgres store (DB_MODE=postgres)", createStore: emptyPostgresStore },
 ])("$name", ({ createStore }) => {
   it("remembers a delivery once, with its notification, however often it's recorded (spec v1.1 §8: deliveries are retried)", async () => {
     const store = await createStore();

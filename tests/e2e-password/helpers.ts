@@ -1,11 +1,11 @@
 import { expect, type Page } from "@playwright/test";
-import { createMysqlAccountStore } from "../../src/lib/accounts/mysql-store";
+import { createPostgresAccountStore } from "../../src/lib/accounts/postgres-store";
 import { hashPassword } from "../../src/lib/accounts/passwords";
 import type { Account, AccountStore } from "../../src/lib/accounts/store";
 import { newId } from "../../src/lib/accounts/tokens";
 import type { Role } from "../../src/lib/auth/roles";
-import { connectMysql } from "../../src/lib/db/mysql";
-import { adminQuery, testDatabaseName, testDatabaseUrl } from "../unit/mysql-test-db";
+import { connectPostgres } from "../../src/lib/db/postgres";
+import { testDatabaseUrl } from "../unit/postgres-test-db";
 import { E2E_PASSWORD_DB } from "./constants";
 
 export const PASSWORD = "correct horse battery";
@@ -13,9 +13,9 @@ const ACCOUNT_TABLES = ["users", "sessions", "invitations", "password_resets", "
 
 /** Runs `run` on the suite's accounts, in the database the server uses. */
 export async function withAccounts<T>(run: (store: AccountStore) => Promise<T>): Promise<T> {
-  const connection = connectMysql(testDatabaseUrl(E2E_PASSWORD_DB));
+  const connection = connectPostgres(testDatabaseUrl(E2E_PASSWORD_DB));
   try {
-    return await run(createMysqlAccountStore(connection));
+    return await run(createPostgresAccountStore(connection));
   } finally {
     await connection.close();
   }
@@ -23,7 +23,12 @@ export async function withAccounts<T>(run: (store: AccountStore) => Promise<T>):
 
 /** No accounts, invitations, sessions or limits: every test starts from the same place. */
 export async function resetAccounts(): Promise<void> {
-  for (const table of ACCOUNT_TABLES) await adminQuery(`DELETE FROM \`${testDatabaseName(E2E_PASSWORD_DB)}\`.\`${table}\``);
+  const connection = connectPostgres(testDatabaseUrl(E2E_PASSWORD_DB));
+  try {
+    for (const table of ACCOUNT_TABLES) await connection.pool.query(`DELETE FROM "${table}"`);
+  } finally {
+    await connection.close();
+  }
 }
 
 export async function seedAccount(input: { email: string; role: Role | null; name?: string; password?: string }): Promise<Account> {

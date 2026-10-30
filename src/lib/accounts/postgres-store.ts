@@ -1,12 +1,12 @@
 import { and, asc, DrizzleQueryError, eq, gt, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
-import type { MysqlConnection } from "@/lib/db/mysql";
+import type { PostgresConnection } from "@/lib/db/postgres";
 import { invitations, passwordResets, sessions, signInLimits, users } from "@/lib/db/schema";
 import type { Account, AccountStore, Invitation } from "./store";
 
-/** MySQL's "Duplicate entry" (1062), as mysql2 reports it; Drizzle wraps query errors with the original as `cause`. */
+/** Postgres's unique_violation (23505); Drizzle wraps query errors with the original as `cause`. */
 function isDuplicate(error: unknown): boolean {
   const original = error instanceof DrizzleQueryError ? error.cause : error;
-  return typeof original === "object" && original !== null && (original as { code?: unknown }).code === "ER_DUP_ENTRY";
+  return typeof original === "object" && original !== null && (original as { code?: unknown }).code === "23505";
 }
 
 const toAccount = (row: typeof users.$inferSelect): Account => ({
@@ -30,8 +30,8 @@ const toInvitation = (row: typeof invitations.$inferSelect): Invitation => ({
   expiresAt: row.expiresAt,
 });
 
-/** DB_MODE=mysql (spec M5c): the accounts in the client's MySQL. Every call first makes sure the tables are prepared. */
-export function createMysqlAccountStore(connection: Pick<MysqlConnection, "db" | "ready">): AccountStore {
+/** DB_MODE=postgres: the accounts in the dashboard's Postgres. Every call first makes sure the tables are prepared. */
+export function createPostgresAccountStore(connection: Pick<PostgresConnection, "db" | "ready">): AccountStore {
   const { db } = connection;
 
   async function account(id: string): Promise<Account | null> {
@@ -128,21 +128,21 @@ export function createMysqlAccountStore(connection: Pick<MysqlConnection, "db" |
     },
     async renewInvitation(id, renewal) {
       await connection.ready();
-      const [header] = await db.update(invitations).set(renewal).where(eq(invitations.id, id));
-      return header.affectedRows > 0;
+      const result = await db.update(invitations).set(renewal).where(eq(invitations.id, id));
+      return (result.rowCount ?? 0) > 0;
     },
     async deleteInvitation(id) {
       await connection.ready();
-      const [header] = await db.delete(invitations).where(eq(invitations.id, id));
-      return header.affectedRows > 0;
+      const result = await db.delete(invitations).where(eq(invitations.id, id));
+      return (result.rowCount ?? 0) > 0;
     },
     async acceptInvitation(id, created) {
       await connection.ready();
       try {
         // One transaction: the invitation is used up exactly when the account appears.
         await db.transaction(async (tx) => {
-          const [header] = await tx.delete(invitations).where(eq(invitations.id, id));
-          if (header.affectedRows === 0) tx.rollback();
+          const result = await tx.delete(invitations).where(eq(invitations.id, id));
+          if ((result.rowCount ?? 0) === 0) tx.rollback();
           await tx.insert(users).values(created);
         });
         return true;
@@ -169,18 +169,19 @@ export function createMysqlAccountStore(connection: Pick<MysqlConnection, "db" |
     async hit(key, now, windowMs) {
       await connection.ready();
       const cutoff = new Date(now.getTime() - windowMs);
-      // One statement: a window that has passed starts again at 1. MySQL applies the SET list left to right, so the
-      // count reads window_start before it changes.
-      await db
+      // One statement: a window that has passed starts again at 1. In Postgres every expression in SET reads the row
+      // as it was before the update, so the count and the window are judged on the same old window_start.
+      const [row] = await db
         .insert(signInLimits)
         .values({ key, count: 1, windowStart: now })
-        .onDuplicateKeyUpdate({
+        .onConflictDoUpdate({
+          target: signInLimits.key,
           set: {
-            count: sql`IF(${signInLimits.windowStart} <= ${cutoff}, 1, ${signInLimits.count} + 1)`,
-            windowStart: sql`IF(${signInLimits.windowStart} <= ${cutoff}, ${now}, ${signInLimits.windowStart})`,
+            count: sql`CASE WHEN ${signInLimits.windowStart} <= ${cutoff} THEN 1 ELSE ${signInLimits.count} + 1 END`,
+            windowStart: sql`CASE WHEN ${signInLimits.windowStart} <= ${cutoff} THEN ${now} ELSE ${signInLimits.windowStart} END`,
           },
-        });
-      const [row] = await db.select({ count: signInLimits.count }).from(signInLimits).where(eq(signInLimits.key, key)).limit(1);
+        })
+        .returning({ count: signInLimits.count });
       return row?.count ?? 1;
     },
     async hits(key, now, windowMs) {

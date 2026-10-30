@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMemoryAccountStore } from "@/lib/accounts/memory-store";
-import { createMysqlAccountStore } from "@/lib/accounts/mysql-store";
+import { createPostgresAccountStore } from "@/lib/accounts/postgres-store";
 import type { Account, AccountStore, Invitation } from "@/lib/accounts/store";
-import { connectMysql, type MysqlConnection } from "@/lib/db/mysql";
-import { freshTestDatabase } from "./mysql-test-db";
+import { connectPostgres, type PostgresConnection } from "@/lib/db/postgres";
+import { freshTestDatabase } from "./postgres-test-db";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 27, 8, minute, 0, 123));
 let sequence = 0;
@@ -30,25 +30,25 @@ const invitation = (email: string, changes: Partial<Invitation> = {}): Invitatio
 });
 
 const TABLES = ["users", "sessions", "invitations", "password_resets", "sign_in_limits"];
-let mysql: MysqlConnection;
+let pgc: PostgresConnection;
 
 beforeAll(async () => {
-  mysql = connectMysql(await freshTestDatabase("account_store"));
-  await mysql.ready();
+  pgc = connectPostgres(await freshTestDatabase("account_store"));
+  await pgc.ready();
 });
 
 afterAll(async () => {
-  await mysql?.close();
+  await pgc?.close();
 });
 
-async function emptyMysqlStore(): Promise<AccountStore> {
-  for (const table of TABLES) await mysql.pool.query(`DELETE FROM \`${table}\``);
-  return createMysqlAccountStore(mysql);
+async function emptyPostgresStore(): Promise<AccountStore> {
+  for (const table of TABLES) await pgc.pool.query(`DELETE FROM "${table}"`);
+  return createPostgresAccountStore(pgc);
 }
 
 describe.each([
   { name: "the in-memory account store", createStore: async (): Promise<AccountStore> => createMemoryAccountStore() },
-  { name: "the MySQL account store", createStore: emptyMysqlStore },
+  { name: "the Postgres account store", createStore: emptyPostgresStore },
 ])("$name (spec M5c)", ({ createStore }) => {
   it("keeps one account per email, finds it by id and email, and lists them oldest first", async () => {
     const store = await createStore();

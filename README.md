@@ -11,14 +11,14 @@ Review, approve and schedule AI-drafted articles and social posts. One deploymen
 - `AUTH_MODE=mock`: local test logins (Admin, Reviewer, a user with no role, and an Admin without two-factor login). Refused in production builds unless `ALLOW_TEST_LOGINS=1` (the e2e suite sets it). The real sign-in is `AUTH_MODE=password` (see "Sign-in").
 - `ENGINE_MODE=mock`: built-in sample data. To simulate engine problems, set the browser cookie `mock_scenario` to `unauthorized`, `down` or `drift`.
 - Mock scenario `signin_down` (the same `mock_scenario` cookie): the sign-in service can't be reached. The Users page shows a notice; the engine stays normal.
-- `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; a server keeps its data in MySQL (see "Database, webhook and email").
+- `DB_MODE=memory` and `EMAIL_MODE=log` (the defaults): the dashboard's small database lives in the server's memory, and emails are only kept for the test outbox (`/api/dev/outbox`). Both are for local use; a server keeps its data in Postgres (see "Database, webhook and email").
 - With test logins, `POST /api/dev/mock-webhook` with `{ "event": "post.drafted", "data": { "postId": "p_201", "status": "pending" } }` makes the mock engine deliver a signed webhook (set the webhook up first, in Settings → Webhook). `GET /api/cron/notifications` with `Authorization: Bearer $CRON_SECRET` sends what's due.
 
 ## Checks
 
     pnpm lint && pnpm typecheck && pnpm test && pnpm e2e && ALLOW_TEST_LOGINS=1 pnpm build
 
-`pnpm test` and `pnpm e2e` need the local MySQL (`brew services start mysql@8.4`). `pnpm e2e` runs two suites: test logins, then password mode on the database `articles_ai_test_e2e_password` (`pnpm e2e:password` alone, after `ALLOW_TEST_LOGINS=1 pnpm build`).
+`pnpm test` and `pnpm e2e` need a local Postgres (`TEST_DATABASE_URL`, default `postgres://postgres@127.0.0.1:5432/articles_ai_test`). `pnpm e2e` runs two suites: test logins, then password mode on the database `articles_ai_test_e2e_password` (`pnpm e2e:password` alone, after `ALLOW_TEST_LOGINS=1 pnpm build`).
 
 ## Docs
 
@@ -54,12 +54,12 @@ The dashboard signs people in itself (M5c). Accounts, sessions, invitations and 
 
 ## Database, webhook and email
 
-1. **Database:** the client's MySQL 8.
-   - Settings: `DB_MODE=mysql` and `DATABASE_URL=mysql://user:password@host:3306/database` (URL-encode special characters in the password).
-   - **The app creates and updates its own tables** the first time it uses the database after a release, from `drizzle/`, under the MySQL lock `articles_ai_migrations`. Locally, `pnpm db:migrate` does the same for the database in `DATABASE_URL`.
+1. **Database:** the dashboard's own Postgres (16 or newer).
+   - Settings: `DB_MODE=postgres`, `DATABASE_URL=postgres://user:password@host:5432/database` (URL-encode special characters in the password) and, optionally, `DB_POOL_MAX` (connections per server process, default 5).
+   - **The app creates and updates its own tables** the first time it uses the database after a release, from `drizzle/`, under a Postgres advisory lock, so several processes starting together apply them once. Each migration runs in one transaction: an interrupted one leaves nothing half done. Locally, `pnpm db:migrate` does the same for the database in `DATABASE_URL`.
    - Set `WEBHOOK_ENCRYPTION_KEY` to `openssl rand -base64 32`. Keep it: changing it means getting a new webhook secret.
-   - **Backups:** the host's backups of the database. cPanel's account backups include MySQL databases.
-   - **Tests:** `pnpm test` needs a local MySQL, set by `TEST_DATABASE_URL` (default `mysql://root@127.0.0.1:3306/articles_ai_test`; start it with `brew services start mysql@8.4`). Each test file uses its own `articles_ai_test_<name>` database.
+   - **Backups:** the server's Postgres backups (`pg_dump` of the dashboard's database).
+   - **Tests:** `pnpm test` needs a local Postgres, set by `TEST_DATABASE_URL` (default `postgres://postgres@127.0.0.1:5432/articles_ai_test`). Each test file uses its own `articles_ai_test_<name>` database.
 2. **Email:** the client's own mail server, over SMTP.
    - **On a cPanel host:**
      - cPanel → **Email Accounts**: create a mailbox on the dashboard's own subdomain (for Fakher & Co, `notifications@dashboard.fakhernco.com`).
@@ -80,6 +80,8 @@ The dashboard signs people in itself (M5c). Accounts, sessions, invitations and 
 4. **Webhook:** after a release, open **Settings → Webhook** on the live address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted.
 
 ## Hosting on cPanel (dashboard.fakhernco.com)
+
+> The single-client copy on cPanel. The hosted, many-client app moves to Docker on Quantum1st's server (P1e); this section is kept until then. With Postgres, `DATABASE_URL` points to a Postgres the host provides.
 
 The dashboard runs as a Node app under Passenger on the fakhernco cPanel account. The account has no shell (SFTP only) and 2 GB of memory, shared with the WordPress site, so everything is built on a Mac and uploaded ready to run.
 
@@ -277,7 +279,16 @@ The dashboard runs as a Node app under Passenger on the fakhernco cPanel account
   - The dashboard's own refusals, the plural counts, the keyword limits and the dialog's Close label are translated.
 - **Photos** are limited to 4 MB, under Vercel's 4.5 MB request limit, whatever the engine allows.
 
+## Decisions in P1a (Postgres)
+
+- **Postgres instead of MySQL,** the same database technology as Quantum1st's engine on the same server: one kind of database to run and back up. The 10 tables and their queries are unchanged in meaning.
+- **Advisory locks instead of `GET_LOCK`:** the migration lock and the one-notification-run-at-a-time lock. They belong to one database, so other databases on the server never clash, and they go with the connection if a process dies.
+- **A closed connection never stops the app:** the pool reports it and opens a new one on the next query (a Postgres restart or idle timeout).
+- **Connections per process are a setting** (`DB_POOL_MAX`, default 5).
+
 ## Decisions in M5a (own database)
+
+> Superseded by P1a for the database itself; kept for the history.
 
 - **The client's MySQL instead of Neon,** so a copy depends on no outside database service. Any host with MySQL 8 works; the settings file is the only difference.
 - **The app creates its own tables** on first use after a release, under the MySQL lock `articles_ai_migrations`, because the cPanel account has no shell. A failed attempt is retried on the next request, and its error names the migrations folder.

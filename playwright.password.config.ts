@@ -1,10 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_PASSWORD_DB, E2E_PASSWORD_PORT, E2E_PASSWORD_URL, OWNER_EMAIL } from "./tests/e2e-password/constants";
-import { testDatabaseUrl } from "./tests/unit/mysql-test-db";
+import { testDatabaseUrl } from "./tests/unit/postgres-test-db";
 
 /**
  * The password-mode suite (spec M5c): the production build the main suite made (pnpm e2e runs that one first; alone,
- * run ALLOW_TEST_LOGINS=1 pnpm build before pnpm e2e:password), started with AUTH_MODE=password on the local MySQL. Playwright starts the
+ * run ALLOW_TEST_LOGINS=1 pnpm build before pnpm e2e:password), started with AUTH_MODE=password on the local Postgres. Playwright starts the
  * server before globalSetup, which recreates the database: /api/health, which Playwright polls, never touches it.
  */
 export default defineConfig({
@@ -26,7 +26,7 @@ export default defineConfig({
       APP_URL: E2E_PASSWORD_URL,
       ADMIN_EMAIL: OWNER_EMAIL,
       TWO_FACTOR: "off",
-      DB_MODE: "mysql",
+      DB_MODE: "postgres",
       DATABASE_URL: testDatabaseUrl(E2E_PASSWORD_DB),
       EMAIL_MODE: "log",
       // A test server: the dev outbox, which these tests read invitation and reset links from, opens only on one.

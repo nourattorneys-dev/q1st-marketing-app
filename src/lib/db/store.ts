@@ -6,7 +6,7 @@ export type StoredNotification = { eventId: string; kind: string; audience: Audi
 /** This portal's webhook registration: the address the engine calls and its signing secret, encrypted (design §11). */
 export type WebhookConfig = { url: string; secretCipher: string; updatedAt: Date };
 
-/** What the dashboard keeps (design §4 "Small database"): in memory locally and in tests, in the client's MySQL on a server. */
+/** What the dashboard keeps (design §4 "Small database"): in memory locally and in tests, in the dashboard's Postgres on a server. */
 export interface AppStore {
   /** Whether this X-Event-Id was handled already. */
   hasEvent(id: string): Promise<boolean>;

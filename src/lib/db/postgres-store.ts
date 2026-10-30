@@ -1,17 +1,12 @@
-import { createHash } from "node:crypto";
-import type { RowDataPacket } from "mysql2/promise";
 import { and, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
-import type { MysqlConnection, MysqlDb } from "./mysql";
+import { lockKey, type PostgresConnection, type PostgresDb } from "./postgres";
 import * as schema from "./schema";
 import type { AppStore, StoredNotification, WebhookConfig } from "./store";
 
 const WEBHOOK_ROW = 1;
 const { webhookEvents, webhookConfig, notifications, notificationDeliveries, notificationPrefs } = schema;
 
-/**
- * Key columns are varchar(191) and emails varchar(255). A longer value is refused here, before the insert: INSERT
- * IGNORE would otherwise cut it with only a warning (spec M5a risks).
- */
+/** Key columns are varchar(191) and emails varchar(255): a longer value is refused here, with a plain message. */
 export const MAX_KEY_LENGTH = 191;
 export const MAX_EMAIL_LENGTH = 255;
 
@@ -20,7 +15,7 @@ function fits(value: string, max: number, what: string): void {
 }
 
 /** The database, or a transaction on it: both run these queries. */
-type Runner = Pick<MysqlDb, "select" | "insert" | "update" | "delete">;
+type Runner = Pick<PostgresDb, "select" | "insert" | "update" | "delete">;
 
 /** The queries, kept apart from running them so tests can read the SQL they make. */
 export const queries = {
@@ -28,16 +23,16 @@ export const queries = {
   insertNotification: (db: Runner, item: StoredNotification) =>
     db
       .insert(notifications)
-      .ignore()
-      .values({ eventId: item.eventId, kind: item.kind, audience: item.audience, data: item.data, createdAt: item.createdAt }),
-  insertEvent: (db: Runner, event: { id: string; event: string; receivedAt: Date }) => db.insert(webhookEvents).ignore().values(event),
+      .values({ eventId: item.eventId, kind: item.kind, audience: item.audience, data: item.data, createdAt: item.createdAt })
+      .onConflictDoNothing(),
+  insertEvent: (db: Runner, event: { id: string; event: string; receivedAt: Date }) => db.insert(webhookEvents).values(event).onConflictDoNothing(),
   lastEventAt: (db: Runner) => db.select({ at: webhookEvents.receivedAt }).from(webhookEvents).orderBy(desc(webhookEvents.receivedAt)).limit(1),
   webhook: (db: Runner) => db.select().from(webhookConfig).where(eq(webhookConfig.id, WEBHOOK_ROW)).limit(1),
   saveWebhook: (db: Runner, config: WebhookConfig) =>
     db
       .insert(webhookConfig)
       .values({ id: WEBHOOK_ROW, ...config })
-      .onDuplicateKeyUpdate({ set: { url: config.url, secretCipher: config.secretCipher, updatedAt: config.updatedAt } }),
+      .onConflictDoUpdate({ target: webhookConfig.id, set: { url: config.url, secretCipher: config.secretCipher, updatedAt: config.updatedAt } }),
   pending: (db: Runner) => db.select().from(notifications).where(isNull(notifications.sentAt)).orderBy(notifications.createdAt),
   markSent: (db: Runner, eventIds: string[], recipients: string[], at: Date) =>
     db
@@ -52,8 +47,8 @@ export const queries = {
   recordDelivery: (db: Runner, eventIds: string[], email: string, at: Date) =>
     db
       .insert(notificationDeliveries)
-      .ignore()
-      .values(eventIds.map((eventId) => ({ eventId, email, sentAt: at }))),
+      .values(eventIds.map((eventId) => ({ eventId, email, sentAt: at })))
+      .onConflictDoNothing(),
   forgetDeliveries: (db: Runner, cutoff: Date) => db.delete(notificationDeliveries).where(lt(notificationDeliveries.sentAt, cutoff)),
   forgetEvents: (db: Runner, cutoff: Date) => db.delete(webhookEvents).where(lt(webhookEvents.receivedAt, cutoff)),
   forgetSent: (db: Runner, cutoff: Date) => db.delete(notifications).where(and(isNotNull(notifications.sentAt), lt(notifications.sentAt, cutoff))),
@@ -62,20 +57,11 @@ export const queries = {
     db
       .insert(notificationPrefs)
       .values({ userId, emailOff: off, updatedAt: at })
-      .onDuplicateKeyUpdate({ set: { emailOff: off, updatedAt: at } }),
+      .onConflictDoUpdate({ target: notificationPrefs.userId, set: { emailOff: off, updatedAt: at } }),
 };
 
-// MySQL refuses a lock name over 64 characters (cPanel allows 64 for the database's name alone).
-const LOCK_NAME_MAX = 64;
-
-/** GET_LOCK names are shared by the whole MySQL server: the database's name in it keeps other copies' locks apart. */
-function lockName(name: string, database: string): string {
-  const full = `${name}:${database}`;
-  return full.length <= LOCK_NAME_MAX ? full : `${name}:${createHash("sha256").update(database).digest("hex")}`.slice(0, LOCK_NAME_MAX);
-}
-
-/** DB_MODE=mysql (spec M5a): the client's MySQL. Every call first makes sure the tables are prepared. */
-export function createMysqlStore(connection: Pick<MysqlConnection, "db" | "ready" | "pool">): AppStore {
+/** DB_MODE=postgres: the dashboard's own Postgres. Every call first makes sure the tables are prepared. */
+export function createPostgresStore(connection: Pick<PostgresConnection, "db" | "ready" | "pool">): AppStore {
   const { db } = connection;
 
   return {
@@ -165,17 +151,17 @@ export function createMysqlStore(connection: Pick<MysqlConnection, "db" | "ready
     },
 
     async exclusive<T>(name: string, run: () => Promise<T>): Promise<{ ran: true; value: T } | { ran: false }> {
-      // Its own connection: a MySQL lock belongs to the connection that took it, and goes with it if the process dies.
-      const held = await connection.pool.getConnection();
+      // Its own connection: a session advisory lock belongs to the connection that took it, and goes with it if the
+      // process dies. Advisory locks are per database, so other copies of the app on the same server never clash.
+      const held = await connection.pool.connect();
       try {
-        const [here] = await held.query<RowDataPacket[]>("SELECT DATABASE() AS name");
-        const lock = lockName(name, String(here[0]?.name ?? ""));
-        const [taken] = await held.query<RowDataPacket[]>("SELECT GET_LOCK(?, 0) AS got", [lock]);
-        if (taken[0]?.got !== 1) return { ran: false };
+        const { rows } = await held.query<{ key: string }>(lockKey(name));
+        const taken = await held.query<{ got: boolean }>("SELECT pg_try_advisory_lock($1) AS got", [rows[0].key]);
+        if (!taken.rows[0]?.got) return { ran: false };
         try {
           return { ran: true, value: await run() };
         } finally {
-          await held.query("SELECT RELEASE_LOCK(?)", [lock]);
+          await held.query("SELECT pg_advisory_unlock($1)", [rows[0].key]);
         }
       } finally {
         held.release();

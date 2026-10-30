@@ -30,9 +30,9 @@ const PROCESS_KEY = Symbol.for("articles-ai.process-key");
 
 /**
  * The key for the webhook secret: WEBHOOK_ENCRYPTION_KEY; with the in-memory store, one that lives as long as the
- * process (as the store does); with MySQL and no key, none: the secret can't be kept.
+ * process (as the store does); with Postgres and no key, none: the secret can't be kept.
  */
-export function secretKeyFor(env: { dbMode: "memory" | "mysql"; encryptionKey: Buffer | null }): Buffer | null {
+export function secretKeyFor(env: { dbMode: "memory" | "postgres"; encryptionKey: Buffer | null }): Buffer | null {
   if (env.encryptionKey) return env.encryptionKey;
   if (env.dbMode !== "memory") return null;
   const holder = globalThis as unknown as Record<symbol, Buffer | undefined>;

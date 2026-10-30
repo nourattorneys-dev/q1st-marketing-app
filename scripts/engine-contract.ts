@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- a check script: it reads loose answers and reports them */
 /**
  * Contract check: calls the dashboard's own engine functions against a LIVE engine and validates every answer with the
  * dashboard's own schemas. Reads first, then a safe write sequence on a test site. Prints one line per call.

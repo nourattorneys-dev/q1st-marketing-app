@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { SmtpSettings } from "@/lib/notifications/mailer";
 
 const ServicesSchema = z.object({
-  DB_MODE: z.enum(["memory", "mysql"]).default("memory"),
+  DB_MODE: z.enum(["memory", "postgres"]).default("memory"),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
   DATABASE_URL: z.string().optional(),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
   EMAIL_MODE: z.enum(["log", "smtp"]).default("log"),
@@ -20,8 +21,10 @@ const ServicesSchema = z.object({
 
 /** The database, webhook secret, email and cron settings (M4c, M5a, M5b). Server-only: none of these may reach the browser. */
 export type ServicesEnv = {
-  dbMode: "memory" | "mysql";
+  dbMode: "memory" | "postgres";
   databaseUrl: string | null;
+  /** Most connections one server process opens (DB_POOL_MAX). */
+  dbPoolMax: number;
   /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
   encryptionKey: Buffer | null;
   emailMode: "log" | "smtp";
@@ -69,8 +72,8 @@ function smtpSettings(env: z.infer<typeof ServicesSchema>): SmtpSettings {
 
 export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
   const cleaned = Object.fromEntries(Object.entries(source).map(([key, value]) => [key, value === "" ? undefined : value]));
-  if (cleaned.DB_MODE === "neon") {
-    throw new Error("DB_MODE=neon is no longer supported: the dashboard keeps its data in the client's MySQL. Set DB_MODE=mysql and DATABASE_URL.");
+  if (cleaned.DB_MODE === "neon" || cleaned.DB_MODE === "mysql") {
+    throw new Error(`DB_MODE=${cleaned.DB_MODE} is no longer supported: the dashboard keeps its data in its own Postgres. Set DB_MODE=postgres and DATABASE_URL.`);
   }
   if (cleaned.EMAIL_MODE === "resend") {
     throw new Error(
@@ -81,12 +84,12 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
 
   if (env.DB_MODE === "memory" && env.NODE_ENV === "production" && env.ALLOW_TEST_LOGINS !== "1") {
     throw new Error(
-      "DB_MODE=memory keeps data in one server process's memory and loses it on every restart, so it's refused in production. Set DB_MODE=mysql and DATABASE_URL.",
+      "DB_MODE=memory keeps data in one server process's memory and loses it on every restart, so it's refused in production. Set DB_MODE=postgres and DATABASE_URL.",
     );
   }
-  if (env.DB_MODE === "mysql") {
-    if (!env.DATABASE_URL) throw new Error("DB_MODE=mysql needs DATABASE_URL=mysql://user:password@host:3306/database.");
-    if (!env.DATABASE_URL.startsWith("mysql://")) throw new Error("DATABASE_URL must start with mysql:// (DB_MODE=mysql).");
+  if (env.DB_MODE === "postgres") {
+    if (!env.DATABASE_URL) throw new Error("DB_MODE=postgres needs DATABASE_URL=postgres://user:password@host:5432/database.");
+    if (!/^postgres(ql)?:\/\//.test(env.DATABASE_URL)) throw new Error("DATABASE_URL must start with postgres:// (DB_MODE=postgres).");
     // The message never repeats the address: it holds the database password (M5a final review).
     if (!URL.canParse(env.DATABASE_URL)) {
       throw new Error("DATABASE_URL isn't a valid address. URL-encode special characters in the password (for example # as %23, / as %2F, ? as %3F).");
@@ -102,6 +105,7 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
   return {
     dbMode: env.DB_MODE,
     databaseUrl: env.DATABASE_URL ?? null,
+    dbPoolMax: env.DB_POOL_MAX,
     encryptionKey,
     emailMode: env.EMAIL_MODE,
     smtp: env.EMAIL_MODE === "smtp" ? smtpSettings(env) : null,

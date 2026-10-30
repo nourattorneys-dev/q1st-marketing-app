@@ -15,7 +15,7 @@ export type Invitation = { id: string; email: string; role: Role; tokenHash: str
 export type PasswordReset = { tokenHash: string; userId: string; createdAt: Date; expiresAt: Date };
 export type SessionRecord = { tokenHash: string; userId: string; createdAt: Date; expiresAt: Date };
 
-/** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the client's MySQL on a server. */
+/** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the dashboard's Postgres on a server. */
 export interface AccountStore {
   account(id: string): Promise<Account | null>;
   accountByEmail(email: string): Promise<Account | null>;

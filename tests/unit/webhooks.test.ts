@@ -23,9 +23,9 @@ describe("the webhook secret at rest (design §11)", () => {
     expect(decryptSecret("plain", KEY)).toBeNull();
   });
 
-  it("uses WEBHOOK_ENCRYPTION_KEY, or one key per process with the in-memory store, and none for MySQL without it", () => {
-    expect(secretKeyFor({ dbMode: "mysql", encryptionKey: KEY })).toBe(KEY);
-    expect(secretKeyFor({ dbMode: "mysql", encryptionKey: null })).toBeNull();
+  it("uses WEBHOOK_ENCRYPTION_KEY, or one key per process with the in-memory store, and none for Postgres without it", () => {
+    expect(secretKeyFor({ dbMode: "postgres", encryptionKey: KEY })).toBe(KEY);
+    expect(secretKeyFor({ dbMode: "postgres", encryptionKey: null })).toBeNull();
     const memory = secretKeyFor({ dbMode: "memory", encryptionKey: null });
     expect(memory?.length).toBe(32);
     expect(secretKeyFor({ dbMode: "memory", encryptionKey: null })).toBe(memory);
