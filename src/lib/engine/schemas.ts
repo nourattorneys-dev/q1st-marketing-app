@@ -341,6 +341,7 @@ export const SeoSettingsSchema = z.object({
   tone: z.string().nullish(),
   audience: z.string().nullish(),
   avoid: list(z.string()),
+  services: list(z.string()),
   version: z.number().int(),
 });
 export type SeoSettings = z.output<typeof SeoSettingsSchema>;
@@ -361,6 +362,7 @@ export const SeoUpdateSchema = z.object({
   tone: z.string().max(2000).nullable(),
   audience: z.string().max(2000).nullable(),
   avoid: z.array(z.string().max(2000)).max(500),
+  services: z.array(z.string().max(2000)).max(500),
   version: z.number().int(),
 });
 export type SeoUpdate = z.infer<typeof SeoUpdateSchema>;

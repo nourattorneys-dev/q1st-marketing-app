@@ -567,7 +567,7 @@
         "profile": "AI profile",
         "links": "Links and sharing"
       },
-      "profileHint": "The AI follows this profile whenever it writes for the site.",
+      "profileHint": "The AI follows this profile whenever it writes for the site. Fill from my website reads the site's own pages and fills the empty fields; what you typed stays.",
       "fields": {
         "siteName": "Site name",
         "siteUrl": "Site address",
@@ -582,13 +582,14 @@
         "avoid": "Avoid",
         "linkedin": "LinkedIn page",
         "instagram": "Instagram page",
-        "ogImage": "Share image address"
+        "ogImage": "Share image address",
+        "services": "Services"
       },
       "listHint": "Separate with commas or new lines.",
-      "propose": "Suggest focus keywords and a call to action",
-      "proposing": "Suggesting…",
-      "proposed": "Suggestions filled in. Check them, then save.",
-      "proposalUnreadable": "The suggestions came back in a form the portal can't read. Nothing was changed.",
+      "propose": "Fill from my website",
+      "proposing": "Reading your website…",
+      "proposed": "{count, plural, one {# empty field was filled} other {# empty fields were filled}} from your website. Check them, then Save.",
+      "proposalUnreadable": "The answer came back in a form Qalam can't read. Nothing was changed.",
       "picture": {
         "title": "Share picture",
         "hint": "Shown when an article is shared without its own photo. {types}, up to {size} MB.",
@@ -597,7 +598,8 @@
         "upload": "Upload a picture",
         "remove": "Remove",
         "tooLarge": "This file is {size} MB; the limit is {limit} MB."
-      }
+      },
+      "proposedNothing": "Your website added nothing new: every field it covers is already filled in."
     },
     "website": {
       "title": "Website connection",

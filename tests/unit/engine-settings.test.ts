@@ -16,6 +16,7 @@ const SEO = {
   tone: "clear",
   audience: "UAE businesses",
   avoid: [],
+  services: [],
   version: 3,
 };
 const SEO_UPDATE: SeoUpdate = { ...SEO, linkedin: null, instagram: null, ogImage: null };

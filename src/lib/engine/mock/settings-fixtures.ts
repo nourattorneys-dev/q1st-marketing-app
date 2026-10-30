@@ -18,6 +18,7 @@ export function seedSeo(): SeoSettings {
     tone: "clear, expert, plain English",
     audience: "business owners and employees in the UAE",
     avoid: ["promising case outcomes", "advice on a specific case"],
+    services: ["Employment law", "Company law", "Real estate disputes"],
     version: 3,
   };
 }

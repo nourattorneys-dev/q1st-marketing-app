@@ -43,6 +43,7 @@ const SEO_UPDATE = {
   tone: null,
   audience: null,
   avoid: [],
+  services: [],
   version: 3,
 };
 const PUBLISHING = { autoPublish: true, perDay: 2, days: ["sun"], from: "10:00", to: "17:00", gapMinutes: 180, version: 1 };

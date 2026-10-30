@@ -15,10 +15,20 @@ describe("the SEO form (spec v1.1 §4 SeoSettings)", () => {
     expect(toSeoUpdate(form, 3)).toMatchObject({ focusKeywords: ["استشارات قانونية دبي", "uae labour law", "contract review uae"], tone: null });
   });
 
-  it("an AI proposal fills focus keywords and the call to action; a result it can't read changes nothing", () => {
-    const form = toSeoForm(seedSeo());
-    const proposal = readProposal({ focusKeywords: ["legal consultancy dubai", "uae labour law advice"], cta: "Book a consultation with Fakher & Co" });
-    expect(proposal && withProposal(form, proposal)).toMatchObject({ focusKeywords: "legal consultancy dubai, uae labour law advice", cta: "Book a consultation with Fakher & Co" });
+  it("Fill from my website fills only the empty fields, any of the profile's; what a person typed stays", () => {
+    const form = { ...toSeoForm(seedSeo()), cta: "", services: "", audience: "", tone: "my own tone" };
+    const proposal = readProposal({
+      services: ["Employment law", "Company law"],
+      audience: "UAE companies",
+      cta: "Book a consultation with Fakher & Co",
+      tone: "formal",
+      focusKeywords: ["something else"],
+      pagesRead: 6,
+    });
+    const next = proposal && withProposal(form, proposal);
+    expect(next?.form).toMatchObject({ services: "Employment law, Company law", audience: "UAE companies", cta: "Book a consultation with Fakher & Co", tone: "my own tone" });
+    expect(next?.form.focusKeywords).toBe(form.focusKeywords);
+    expect(next?.filled.sort()).toEqual(["audience", "cta", "services"]);
     expect([readProposal({ nothing: true }), readProposal("text"), readProposal({ cta: 5 })]).toEqual([null, null, null]);
   });
 });

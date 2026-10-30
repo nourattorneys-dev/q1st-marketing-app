@@ -98,6 +98,7 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
       tone: optionalText(input.tone),
       audience: optionalText(input.audience),
       avoid: textList(input.avoid),
+      services: textList(input.services),
       version: seo.version + 1,
     };
     return seoView();
@@ -107,6 +108,10 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
   const seoProposal = () => ({
     focusKeywords: ["legal consultancy dubai", "uae labour law advice", "commercial contracts uae", "real estate disputes dubai"],
     cta: "Book a consultation with Fakher & Co",
+    services: ["Employment law", "Company law", "Commercial contracts", "Real estate disputes"],
+    audience: "Companies, employers and employees in the UAE",
+    locations: ["Dubai", "Abu Dhabi"],
+    tone: "clear, expert",
   });
 
   /** POST …/settings/seo/picture. The picture isn't part of the PUT, so it leaves the profile's version alone (mock rule). */

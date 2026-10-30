@@ -27,12 +27,15 @@ test("an address the engine refuses shows its message next to the field", async 
   await expect(page.getByTestId("field-error-siteUrl")).toHaveText("Enter a full address, like https://example.com.");
 });
 
-test("AI suggestions fill focus keywords and the call to action, unsaved until Save", async ({ page }) => {
+test("Fill from my website fills the empty fields only, unsaved until Save", async ({ page }) => {
   await page.goto("/en/settings/seo");
+  await page.getByTestId("seo-cta").fill("");
+  await page.getByTestId("seo-services").fill("");
   await page.getByTestId("seo-propose").click();
-  await expect(page.getByTestId("seo-proposed")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("seo-focusKeywords")).toHaveValue(/uae labour law advice/);
+  await expect(page.getByTestId("seo-proposed")).toHaveText("2 empty fields were filled from your website. Check them, then Save.", { timeout: 15_000 });
+  await expect(page.getByTestId("seo-services")).toHaveValue(/Commercial contracts/);
   await expect(page.getByTestId("seo-cta")).toHaveValue("Book a consultation with Fakher & Co");
+  await expect(page.getByTestId("seo-tone")).toHaveValue("clear, expert, plain English");
   await expect(page.getByTestId("settings-unsaved")).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("seo-cta")).toHaveValue("Book a consultation");

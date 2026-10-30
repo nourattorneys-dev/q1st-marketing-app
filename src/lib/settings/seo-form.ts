@@ -15,12 +15,13 @@ export type SeoForm = {
   tone: string;
   audience: string;
   avoid: string;
+  services: string;
   linkedin: string;
   instagram: string;
   ogImage: string;
 };
 
-export const SEO_LISTS = ["focusKeywords", "locations", "avoid"] as const;
+export const SEO_LISTS = ["focusKeywords", "locations", "avoid", "services"] as const;
 
 export function toSeoForm(settings: SeoSettings): SeoForm {
   return {
@@ -35,6 +36,7 @@ export function toSeoForm(settings: SeoSettings): SeoForm {
     tone: settings.tone ?? "",
     audience: settings.audience ?? "",
     avoid: settings.avoid.join(", "),
+    services: settings.services.join(", "),
     linkedin: settings.linkedin ?? "",
     instagram: settings.instagram ?? "",
     ogImage: settings.ogImage ?? "",
@@ -60,24 +62,51 @@ export function toSeoUpdate(form: SeoForm, version: number): SeoUpdate {
     tone: orNull(form.tone),
     audience: orNull(form.audience),
     avoid: parsePhrases(form.avoid),
+    services: parsePhrases(form.services),
     version,
   };
 }
 
-const ProposalSchema = z.object({ focusKeywords: z.array(z.string()).optional(), cta: z.string().optional() });
+/** "Fill from my website" (P2b): the whole profile as the engine proposed it from the site's own pages; any part may be missing. */
+const text = z.string().min(1).optional();
+const items = z.array(z.string()).optional();
+const ProposalSchema = z.object({
+  siteName: text,
+  author: text,
+  cta: text,
+  tone: text,
+  audience: text,
+  linkedin: text,
+  instagram: text,
+  defaultLang: text,
+  focusKeywords: items,
+  locations: items,
+  avoid: items,
+  services: items,
+});
 export type SeoProposal = z.infer<typeof ProposalSchema>;
+const PROPOSED = ["siteName", "author", "cta", "tone", "audience", "linkedin", "instagram", "defaultLang", "focusKeywords", "locations", "avoid", "services"] as const;
 
-/** The proposal job's result (spec v1.1 §7: proposed values, not saved), or null when it's in a shape the portal can't read. */
+/** The proposal job's result (proposed values, not saved), or null when it holds nothing the form can use. */
 export function readProposal(result: unknown): SeoProposal | null {
   const parsed = ProposalSchema.safeParse(result);
-  return parsed.success && (parsed.data.focusKeywords !== undefined || parsed.data.cta !== undefined) ? parsed.data : null;
+  return parsed.success && PROPOSED.some((key) => parsed.data[key] !== undefined) ? parsed.data : null;
 }
 
-/** The proposal fills the form; nothing is saved until the Admin presses Save. */
-export function withProposal(form: SeoForm, proposal: SeoProposal): SeoForm {
-  return {
-    ...form,
-    ...(proposal.focusKeywords ? { focusKeywords: proposal.focusKeywords.join(", ") } : {}),
-    ...(proposal.cta ? { cta: proposal.cta } : {}),
-  };
+/**
+ * The proposal fills only the fields that are still empty: what a person typed is never replaced. Nothing is saved until
+ * the Admin presses Save. Returns the new form and which fields it filled.
+ */
+export function withProposal(form: SeoForm, proposal: SeoProposal): { form: SeoForm; filled: (keyof SeoForm)[] } {
+  const next = { ...form };
+  const filled: (keyof SeoForm)[] = [];
+  for (const key of PROPOSED) {
+    const value = proposal[key];
+    if (value === undefined || form[key].trim() !== "") continue;
+    const asText = Array.isArray(value) ? value.join(", ") : value;
+    if (!asText) continue;
+    next[key] = asText;
+    filled.push(key);
+  }
+  return { form: next, filled };
 }

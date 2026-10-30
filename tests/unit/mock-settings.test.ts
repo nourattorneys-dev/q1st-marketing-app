@@ -37,6 +37,7 @@ const seoUpdate = (seo: SeoSettings): SeoUpdate => ({
   tone: seo.tone ?? null,
   audience: seo.audience ?? null,
   avoid: seo.avoid,
+  services: seo.services,
   version: seo.version,
 });
 const seoInput = () => seoUpdate(data(store.settings.seo())) as Record<string, unknown>;

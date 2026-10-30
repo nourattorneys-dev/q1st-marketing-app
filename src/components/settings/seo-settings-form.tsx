@@ -22,7 +22,7 @@ import { useSettingsDraft } from "./use-settings-draft";
 const SELECT = "h-9 rounded-md border border-input bg-card px-3 text-sm";
 const GROUPS = [
   { key: "site", fields: ["siteName", "siteUrl", "blogPath", "defaultLang", "author"] },
-  { key: "profile", fields: ["focusKeywords", "locations", "cta", "tone", "audience", "avoid"] },
+  { key: "profile", fields: ["services", "audience", "locations", "focusKeywords", "cta", "tone", "avoid"] },
   { key: "links", fields: ["linkedin", "instagram", "ogImage"] },
 ] as const satisfies readonly { key: string; fields: readonly (keyof SeoForm)[] }[];
 const FIELDS: readonly string[] = GROUPS.flatMap((group) => group.fields);
@@ -38,7 +38,8 @@ export function SeoSettingsForm({ locale, settings, languages, pollSeconds, canR
   const save = useEngineAction(saveSeoAction);
   const propose = useEngineAction(proposeSeoAction);
   const [proposalJob, setProposalJob] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<"filled" | "unreadable" | null>(null);
+  const [proposal, setProposal] = useState<"filled" | "nothing" | "unreadable" | null>(null);
+  const [filledCount, setFilledCount] = useState(0);
   const [proposeError, setProposeError] = useState<EngineFailure | null>(null);
   const draft = useSettingsDraft({
     saved: settings,
@@ -61,8 +62,14 @@ export function SeoSettingsForm({ locale, settings, languages, pollSeconds, canR
 
   function proposalDone(result: unknown) {
     const read = readProposal(result);
-    setProposal(read ? "filled" : "unreadable");
-    if (read) draft.update((current) => withProposal(current, read));
+    if (!read) {
+      setProposal("unreadable");
+      return;
+    }
+    const next = withProposal(form, read);
+    setFilledCount(next.filled.length);
+    setProposal(next.filled.length > 0 ? "filled" : "nothing");
+    if (next.filled.length > 0) draft.update(() => next.form);
   }
 
   function field(key: keyof SeoForm) {
@@ -128,7 +135,12 @@ export function SeoSettingsForm({ locale, settings, languages, pollSeconds, canR
                 )}
                 {proposal === "filled" && (
                   <p role="status" data-testid="seo-proposed" className="text-sm text-ok-fg">
-                    {t("proposed")}
+                    {t("proposed", { count: filledCount })}
+                  </p>
+                )}
+                {proposal === "nothing" && (
+                  <p role="status" data-testid="seo-proposed-nothing" className="text-sm text-muted-foreground">
+                    {t("proposedNothing")}
                   </p>
                 )}
                 {proposal === "unreadable" && (
