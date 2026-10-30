@@ -1,6 +1,6 @@
 import { and, asc, DrizzleQueryError, eq, gt, inArray, isNull, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
 import type { PostgresConnection } from "@/lib/db/postgres";
-import { clients, invitations, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
+import { clientLogos, clients, invitations, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
 import type { Account, AccountStore, Client, Invitation, Site } from "./store";
 
 /** Postgres's unique_violation (23505); Drizzle wraps query errors with the original as `cause`. */
@@ -218,9 +218,27 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       await connection.ready();
       if (Object.keys(change).length) await db.update(clients).set(change).where(eq(clients.id, id));
     },
+    async setClientLogo(id, logo) {
+      await connection.ready();
+      await db.transaction(async (tx) => {
+        if (logo) {
+          const row = { clientId: id, contentType: logo.contentType, data: logo.data.toString("base64"), updatedAt: logo.updatedAt };
+          await tx.insert(clientLogos).values(row).onConflictDoUpdate({ target: clientLogos.clientId, set: row });
+        } else {
+          await tx.delete(clientLogos).where(eq(clientLogos.clientId, id));
+        }
+        await tx.update(clients).set({ logoAt: logo ? logo.updatedAt : null }).where(eq(clients.id, id));
+      });
+    },
+    async clientLogo(id) {
+      await connection.ready();
+      const [row] = await db.select().from(clientLogos).where(eq(clientLogos.clientId, id)).limit(1);
+      return row ? { contentType: row.contentType, data: Buffer.from(row.data, "base64"), updatedAt: row.updatedAt } : null;
+    },
     async deleteClient(id) {
       await connection.ready();
       await db.transaction(async (tx) => {
+        await tx.delete(clientLogos).where(eq(clientLogos.clientId, id));
         const people = tx.select({ id: users.id }).from(users).where(eq(users.clientId, id));
         await tx.delete(sessions).where(inArray(sessions.userId, people));
         await tx.delete(passwordResets).where(inArray(passwordResets.userId, people));

@@ -29,6 +29,13 @@
       "when": 1793391258594,
       "tag": "0003_client_status",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793393694208,
+      "tag": "0004_client_brand",
+      "breakpoints": true
     }
   ]
 }

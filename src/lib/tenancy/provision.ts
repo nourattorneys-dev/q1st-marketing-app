@@ -7,11 +7,17 @@ import type { Mailer } from "@/lib/notifications/mailer";
 import { DirectoryError } from "@/lib/users/types";
 import { encryptSecret } from "@/lib/webhooks/secret";
 import { hookUrlFor } from "@/lib/webhooks/status";
+import type { FetchLogo } from "./logo";
 import { encryptSiteKey } from "./site-key";
 
 const Id = z.string().regex(/^[A-Za-z0-9_-]{1,191}$/);
 const Name = z.string().trim().min(1).max(200);
 const Secret = z.string().min(16).max(500);
+/** P2: a client's own look: its main colour and the https address of its logo; null clears either. */
+const Brand = z.object({
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
+  logoUrl: z.string().url().max(500).nullable(),
+});
 
 /**
  * P1c: what the staff portal (through the engine) asks of the app. A client is one engine account; a site is one engine
@@ -27,11 +33,13 @@ export const ProvisionRequest = z.discriminatedUnion("action", [
     engineKey: Secret.optional(),
     webhookSecret: Secret.optional(),
     admin: z.object({ email: z.string().trim().min(3).max(254) }).optional(),
+    brand: Brand.optional(),
   }),
   z.object({ action: z.literal("site.remove"), accountId: Id, siteId: Id }),
   z.object({ action: z.literal("client.rename"), accountId: Id, accountName: Name }),
   z.object({ action: z.literal("client.status"), accountId: Id, status: z.enum(CLIENT_STATUSES) }),
   z.object({ action: z.literal("client.remove"), accountId: Id }),
+  z.object({ action: z.literal("client.brand"), accountId: Id, brand: Brand }),
 ]);
 export type ProvisionRequest = z.infer<typeof ProvisionRequest>;
 
@@ -51,13 +59,18 @@ export async function provision(
     appUrl: string;
     key: Buffer;
     now: () => Date;
+    fetchLogo: FetchLogo;
   },
   request: ProvisionRequest,
 ): Promise<ProvisionResult> {
   const { accounts } = deps;
-  if (request.action === "client.rename" || request.action === "client.status" || request.action === "client.remove") {
+  if (request.action === "client.rename" || request.action === "client.status" || request.action === "client.remove" || request.action === "client.brand") {
     const client = await accounts.clientByEngineAccount(request.accountId);
     if (!client) return fail(404, "not_found", "No client in the app for this account.");
+    if (request.action === "client.brand") {
+      const problem = await applyBrand(deps, client.id, request.brand);
+      return problem ?? { ok: true, data: { clientId: client.id } };
+    }
     if (request.action === "client.rename") await accounts.updateClient(client.id, { name: request.accountName });
     if (request.action === "client.status") {
       await accounts.updateClient(client.id, { status: request.status });
@@ -101,7 +114,15 @@ export async function provision(
   }
   const at = deps.now();
   if (!client) {
-    const made = { id: newId("cli"), name: request.accountName, engineAccountId: request.accountId, status: "active" as const, createdAt: at };
+    const made = {
+      id: newId("cli"),
+      name: request.accountName,
+      engineAccountId: request.accountId,
+      status: "active" as const,
+      brandColor: null,
+      logoAt: null,
+      createdAt: at,
+    };
     await accounts.createClient(made);
     client = made;
   } else if (client.name !== request.accountName) {
@@ -111,6 +132,10 @@ export async function provision(
   if (site) await accounts.updateSite(site.id, { name: request.siteName, ...(keyCipher ? { keyCipher } : {}) });
   else await accounts.createSite({ id: request.siteId, clientId: client.id, name: request.siteName, keyCipher: keyCipher!, createdAt: at });
 
+  if (request.brand) {
+    const problem = await applyBrand(deps, client.id, request.brand);
+    if (problem) return problem;
+  }
   const hookUrl = hookUrlFor(deps.appUrl);
   if (request.webhookSecret) {
     await deps.storeFor(request.siteId).saveWebhook({ url: hookUrl, secretCipher: encryptSecret(request.webhookSecret, deps.key), updatedAt: at });
@@ -124,6 +149,19 @@ export async function provision(
   }
   console.info(`Site ${site ? "updated" : "added"} in the app: ${request.siteId} (client ${client.id})`);
   return { ok: true, data: { clientId: client.id, siteId: request.siteId, hookUrl, ...(admin ? { admin } : {}) } };
+}
+
+/** The client's colour and logo. The logo is fetched first: if it can't be, nothing changes and the answer says why. */
+async function applyBrand(
+  deps: Parameters<typeof provision>[0],
+  clientId: string,
+  brand: { color: string | null; logoUrl: string | null },
+): Promise<ProvisionResult | null> {
+  const logo = brand.logoUrl ? await deps.fetchLogo(brand.logoUrl) : null;
+  if (logo && "problem" in logo) return fail(422, "logo_failed", logo.problem);
+  await deps.accounts.updateClient(clientId, { brandColor: brand.color ? brand.color.toLowerCase() : null });
+  await deps.accounts.setClientLogo(clientId, logo);
+  return null;
 }
 
 /** The client's first Admin: invited by email, or the pending invitation sent again (a new link). */

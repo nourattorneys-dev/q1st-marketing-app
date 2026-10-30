@@ -40,11 +40,11 @@ describe("the Postgres store on a real database", () => {
     await connection?.close();
   });
 
-  it("creates the dashboard's 10 tables", async () => {
+  it("creates the dashboard's tables", async () => {
     const { rows } = await connection.pool.query<{ n: string }>(
       "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = 'public'",
     );
-    expect(Number(rows[0]?.n)).toBe(14);
+    expect(Number(rows[0]?.n)).toBe(15);
   });
 
   it("returns Arabic text and emoji unchanged, and times as the same instant", async () => {

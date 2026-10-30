@@ -31,13 +31,13 @@ test.describe("dashboard, signed in as a reviewer", () => {
     await expect(page.getByTestId("connections-help")).toHaveText("Ask your admin to fix this.");
   });
 
-  test("shows quota states, and a metric the interface doesn't know under its raw name", async ({ page }) => {
+  test("shows quota states, and a metric the interface doesn't know spelled out, never raw", async ({ page }) => {
     await page.goto("/en");
     await expect(page.getByTestId("quota-articles")).toHaveAttribute("data-state", "ok");
     await expect(page.getByTestId("quota-socialPosts")).toHaveAttribute("data-state", "warning");
     await expect(page.getByTestId("quota-socialPosts")).toContainText("110 of 120");
     await expect(page.getByTestId("quota-photos")).toHaveAttribute("data-state", "unlimited");
-    await expect(page.getByTestId("quota-videoMinutes")).toContainText("videoMinutes");
+    await expect(page.getByTestId("quota-videoMinutes")).toContainText("Video minutes");
   });
 
   test("works in Arabic with Latin digits and Dubai time", async ({ page }) => {

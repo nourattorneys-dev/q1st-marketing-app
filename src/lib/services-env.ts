@@ -21,6 +21,8 @@ const ServicesSchema = z.object({
   CRON_SECRET: z.string().optional(),
   PROVISION_SECRET: z.string().min(32).optional(),
   PROVISION_MAX_SKEW_SECONDS: z.coerce.number().int().min(10).max(3600).default(300),
+  LOGO_MAX_KB: z.coerce.number().int().min(16).max(4096).default(512),
+  LOGO_TIMEOUT_SECONDS: z.coerce.number().int().min(1).max(60).default(10),
   NOTIFY_QUIET_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
   NODE_ENV: z.string().optional(),
   ALLOW_TEST_LOGINS: z.string().optional(),
@@ -46,6 +48,8 @@ export type ServicesEnv = {
   provisionSecret: string | null;
   /** How far a signed portal request's time may be from ours (PROVISION_MAX_SKEW_SECONDS). */
   provisionMaxSkewMs: number;
+  /** P2: the largest client logo kept, and how long its address may take to answer (LOGO_MAX_KB, LOGO_TIMEOUT_SECONDS). */
+  logoLimits: { maxBytes: number; timeoutMs: number };
   notifyQuietMs: number;
 };
 
@@ -149,6 +153,7 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
     cronSecret: env.CRON_SECRET ?? null,
     provisionSecret: env.PROVISION_SECRET ?? null,
     provisionMaxSkewMs: env.PROVISION_MAX_SKEW_SECONDS * 1000,
+    logoLimits: { maxBytes: env.LOGO_MAX_KB * 1024, timeoutMs: env.LOGO_TIMEOUT_SECONDS * 1000 },
     notifyQuietMs: env.NOTIFY_QUIET_SECONDS * 1000,
   };
 }

@@ -36,6 +36,7 @@ describe("parseServicesEnv (M4c)", () => {
       cronSecret: null,
       provisionSecret: null,
       provisionMaxSkewMs: 300_000,
+      logoLimits: { maxBytes: 524_288, timeoutMs: 10_000 },
       notifyQuietMs: 120_000,
     });
   });

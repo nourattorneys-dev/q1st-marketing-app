@@ -20,10 +20,21 @@ export const clients = pgTable(
     engineAccountId: key("engine_account_id"),
     /** Follows the engine account (P1c): only an active client's people may work; suspended pauses, closed is on its way out. */
     status: varchar("status", { length: 20 }).$type<ClientStatus>().notNull().default("active"),
+    /** P2: the client's own look. Its main colour (#rrggbb) and when its logo last changed (null = no logo: the Quantum1st mark). */
+    brandColor: varchar("brand_color", { length: 7 }),
+    logoAt: at("logo_at"),
     createdAt: at("created_at").notNull(),
   },
   (table) => [uniqueIndex("clients_engine_account_id").on(table.engineAccountId)],
 );
+
+/** P2: a client's logo, kept here (fetched once from the address staff gave), so pages never load it from another site. */
+export const clientLogos = pgTable("client_logos", {
+  clientId: key("client_id").primaryKey(),
+  contentType: varchar("content_type", { length: 40 }).notNull(),
+  data: text("data").notNull(),
+  updatedAt: at("updated_at").notNull(),
+});
 
 /** One website of a client: the engine's site id, and that site's engine key, encrypted (never stored plain). */
 export const sites = pgTable(

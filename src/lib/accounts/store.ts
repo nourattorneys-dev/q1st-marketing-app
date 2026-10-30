@@ -31,8 +31,17 @@ export type SessionRecord = { tokenHash: string; userId: string; createdAt: Date
 /** P1b: a client company, and one of its websites (the engine's site id; its engine key stays encrypted). */
 export const CLIENT_STATUSES = ["active", "suspended", "closed"] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
-export type Client = { id: string; name: string; engineAccountId: string | null; status: ClientStatus; createdAt: Date };
-export type NewClient = Omit<Client, "engineAccountId" | "status"> & { engineAccountId?: string | null; status?: ClientStatus };
+export type Client = {
+  id: string;
+  name: string;
+  engineAccountId: string | null;
+  status: ClientStatus;
+  brandColor: string | null;
+  logoAt: Date | null;
+  createdAt: Date;
+};
+export type ClientLogo = { contentType: string; data: Buffer; updatedAt: Date };
+export type NewClient = Omit<Client, "engineAccountId" | "status" | "brandColor" | "logoAt"> & { engineAccountId?: string | null; status?: ClientStatus };
 export type Site = { id: string; clientId: string; name: string; keyCipher: string; createdAt: Date };
 
 /** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the dashboard's Postgres on a server. */
@@ -87,7 +96,10 @@ export interface AccountStore {
   createSite(site: Site): Promise<void>;
   /** P1c: the client that is this engine account, or null. */
   clientByEngineAccount(engineAccountId: string): Promise<Client | null>;
-  updateClient(id: string, change: { name?: string; engineAccountId?: string; status?: ClientStatus }): Promise<void>;
+  updateClient(id: string, change: { name?: string; engineAccountId?: string; status?: ClientStatus; brandColor?: string | null }): Promise<void>;
+  /** P2: the client's logo; null removes it. */
+  setClientLogo(id: string, logo: ClientLogo | null): Promise<void>;
+  clientLogo(id: string): Promise<ClientLogo | null>;
   /** Deletes a client with its people (and their sessions and site access), invitations and sites; each site's webhook is the AppStore's. */
   deleteClient(id: string): Promise<void>;
   updateSite(id: string, change: { name?: string; keyCipher?: string }): Promise<void>;

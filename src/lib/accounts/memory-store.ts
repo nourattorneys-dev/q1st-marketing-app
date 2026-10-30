@@ -1,4 +1,4 @@
-import type { Account, AccountStore, Client, Invitation, PasswordReset, SessionRecord, Site } from "./store";
+import type { Account, AccountStore, Client, ClientLogo, Invitation, PasswordReset, SessionRecord, Site } from "./store";
 
 const copy = <T>(value: T): T => structuredClone(value);
 const oldestFirst = (a: { createdAt: Date; id: string }, b: { createdAt: Date; id: string }) =>
@@ -15,6 +15,7 @@ export function createMemoryAccountStore(): AccountStore {
   const userSites = new Map<string, string[]>();
   const clients = new Map<string, Client>();
   const sites = new Map<string, Site>();
+  const logos = new Map<string, ClientLogo>();
   const byEmail = (email: string) => [...accounts.values()].find((account) => account.email === email);
   const live = (key: string, now: Date, windowMs: number) => {
     const entry = limits.get(key);
@@ -137,7 +138,7 @@ export function createMemoryAccountStore(): AccountStore {
       return found ? copy(found) : null;
     },
     async createClient(client) {
-      clients.set(client.id, { engineAccountId: null, status: "active", ...copy(client) });
+      clients.set(client.id, { engineAccountId: null, status: "active", brandColor: null, logoAt: null, ...copy(client) });
     },
     async sites(clientId) {
       return [...sites.values()].filter((site) => clientId === undefined || site.clientId === clientId).sort(oldestFirst).map(copy);
@@ -157,7 +158,19 @@ export function createMemoryAccountStore(): AccountStore {
       const found = clients.get(id);
       if (found) clients.set(id, { ...found, ...change });
     },
+    async setClientLogo(id, logo) {
+      const found = clients.get(id);
+      if (!found) return;
+      if (logo) logos.set(id, { ...logo, data: Buffer.from(logo.data) });
+      else logos.delete(id);
+      clients.set(id, { ...found, logoAt: logo ? logo.updatedAt : null });
+    },
+    async clientLogo(id) {
+      const found = logos.get(id);
+      return found ? { ...found, data: Buffer.from(found.data) } : null;
+    },
     async deleteClient(id) {
+      logos.delete(id);
       for (const [userId, account] of accounts) {
         if (account.clientId !== id) continue;
         accounts.delete(userId);

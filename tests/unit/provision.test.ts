@@ -13,6 +13,7 @@ import type { AppStore } from "@/lib/db/store";
 import type { Email, Mailer } from "@/lib/notifications/mailer";
 import { sitesFor } from "@/lib/tenancy/access";
 import { provision, type ProvisionRequest } from "@/lib/tenancy/provision";
+import type { FetchLogo } from "@/lib/tenancy/logo";
 import { decryptSiteKey, encryptSiteKey } from "@/lib/tenancy/site-key";
 import { decryptSecret } from "@/lib/webhooks/secret";
 import { signBody } from "@/lib/webhooks/signature";
@@ -27,7 +28,8 @@ let accounts: AccountStore;
 let storeFor: (siteId: string) => AppStore;
 let sent: Email[];
 let mailer: Mailer;
-const run = (request: ProvisionRequest) => provision({ accounts, storeFor, mailer, appUrl: APP, key: KEY, now: () => at }, request);
+let fetchLogo: FetchLogo;
+const run = (request: ProvisionRequest) => provision({ accounts, storeFor, mailer, appUrl: APP, key: KEY, now: () => at, fetchLogo }, request);
 const upsert = (extra: Partial<Extract<ProvisionRequest, { action: "site.upsert" }>> = {}): ProvisionRequest => ({
   action: "site.upsert",
   accountId: "acc_1",
@@ -53,6 +55,8 @@ const person = (email: string, clientId: string): Account => ({
 beforeEach(() => {
   sent = [];
   mailer = { send: async (email) => void sent.push(email) };
+  fetchLogo = async (url) =>
+    url.endsWith("/bad.png") ? { problem: "The logo address answered 404." } : { contentType: "image/png", data: Buffer.from(`png:${url}`), updatedAt: at };
   vi.spyOn(console, "info").mockImplementation(() => {});
 });
 
@@ -197,6 +201,22 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     expect(await accounts.site("site_9")).toMatchObject({ name: "Other site" });
     expect(await storeFor("site_9").webhook()).not.toBeNull();
     expect(await run({ action: "client.remove", accountId: "acc_1" })).toMatchObject({ ok: false, status: 404 });
+  });
+
+  it("brand: colour and logo are kept (the logo as the app's own copy); a logo that can't be fetched changes nothing", async () => {
+    await run(upsert({ brand: { color: "#AA3322", logoUrl: "https://acme.example/logo.png" } }));
+    const acme = (await accounts.clients())[0];
+    expect(acme).toMatchObject({ brandColor: "#aa3322", logoAt: at });
+    expect((await accounts.clientLogo(acme.id))?.data.toString()).toBe("png:https://acme.example/logo.png");
+    expect(await run({ action: "client.brand", accountId: "acc_1", brand: { color: "#000000", logoUrl: "https://acme.example/bad.png" } })).toMatchObject({
+      ok: false,
+      status: 422,
+      code: "logo_failed",
+    });
+    expect((await accounts.client(acme.id))!.brandColor).toBe("#aa3322");
+    expect(await run({ action: "client.brand", accountId: "acc_1", brand: { color: null, logoUrl: null } })).toMatchObject({ ok: true });
+    expect(await accounts.client(acme.id)).toMatchObject({ brandColor: null, logoAt: null });
+    expect(await accounts.clientLogo(acme.id)).toBeNull();
   });
 
   it("removing a site: gone from the app; a Reviewer limited to it opens nothing (never every site)", async () => {

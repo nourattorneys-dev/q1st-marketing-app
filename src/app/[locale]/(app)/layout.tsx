@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
+import { ClientBrandStyle } from "@/components/brand/client-brand";
 import { ServiceBanner } from "@/components/shell/service-banner";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
@@ -10,6 +11,9 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[loc
   setRequestLocale(locale);
   return (
     <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[15rem_minmax(0,1fr)]">
+      <Suspense fallback={null}>
+        <ClientBrandStyle />
+      </Suspense>
       <Sidebar locale={locale} />
       <div className="flex min-w-0 flex-col">
         <Topbar locale={locale} />
