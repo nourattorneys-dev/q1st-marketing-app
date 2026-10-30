@@ -154,6 +154,18 @@ export const PhotosSchema = z.array(PhotoSchema);
 export const RemovedSchema = z.object({ removed: z.literal(true) });
 
 // ── Scheduled (spec v1.1 §7 GET …/scheduled) ─────────────────────────────────
+
+/**
+ * The engine names a photo it keeps by its own address, which needs the engine's key. The browser gets it through
+ * the app instead (/api/photo/<post id>), keeping the version so a changed photo is fetched again.
+ */
+function viaApp<T extends { id: string; image?: PostImage | null }>(post: T): T {
+  const url = post.image?.url;
+  if (!url || !url.startsWith("/api/v1/")) return post;
+  const version = new URL(url, "http://engine").searchParams.get("v");
+  return { ...post, image: { ...post.image!, url: `/api/photo/${encodeURIComponent(post.id)}${version ? `?v=${encodeURIComponent(version)}` : ""}` } };
+}
+
 export const PostSummarySchema = z.object({
   id: z.string(),
   kind: z.string(),
@@ -167,7 +179,7 @@ export const PostSummarySchema = z.object({
     .nullish(),
   updatedAt: isoDateTime,
   actions: list(z.string()),
-});
+}).transform(viaApp);
 export type PostSummary = z.output<typeof PostSummarySchema>;
 
 export const ScheduledSchema = z
@@ -238,7 +250,7 @@ export const PostSchema = z.object({
   updatedAt: isoDateTime,
   version: z.number().int(),
   actions: list(z.string()), // GET …/posts/{id} returns the allowed actions
-});
+}).transform(viaApp);
 export type Post = z.output<typeof PostSchema>;
 export const PostsSchema = z.array(PostSchema);
 

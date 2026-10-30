@@ -26,7 +26,7 @@ export async function ClientBrand() {
       </span>
       <span className="flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground">
         <QalamMark size={14} className="text-foreground" />
-        {t("brand")} <ByQuantum1st />
+        {t("brand")} <ByQuantum1st inText />
       </span>
     </div>
   );

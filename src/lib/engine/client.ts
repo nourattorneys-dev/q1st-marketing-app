@@ -114,7 +114,21 @@ export function createEngineClient(config: EngineClientConfig) {
     });
   }
 
-  return { request, requestFile };
+  /** A binary file (a post's photo): the bytes as they are. */
+  async function requestBytes(req: { path: string; query?: Query }): Promise<{ body: ArrayBuffer; contentType: string }> {
+    const url = urlOf(req.path, req.query);
+    const headers = { "X-Api-Key": config.apiKey, Accept: "*/*" };
+    return withRetries(retryDelays.length + 1, async (signal) => {
+      const response = await config.fetch(url.toString(), { method: "GET", headers, cache: "no-store", signal });
+      if (!response.ok) {
+        await parseResponse(response, z.unknown());
+        throw new EngineError({ status: response.status, code: "invalid_response", message: "The content engine sent an unexpected answer." });
+      }
+      return { body: await response.arrayBuffer(), contentType: response.headers.get("Content-Type") ?? "application/octet-stream" };
+    });
+  }
+
+  return { request, requestFile, requestBytes };
 }
 
 export type EngineClient = ReturnType<typeof createEngineClient>;

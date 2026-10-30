@@ -34,11 +34,14 @@ export function QalamMark({ size = 32, className }: { size?: number; className?:
   );
 }
 
-/** The endorsement line: "by quantum1st", with the gold "1st" of the parent brand. */
-export function ByQuantum1st({ className }: { className?: string }) {
+/**
+ * The endorsement line, with the gold "1st" of the parent brand. Beside the lowercase "qalam" wordmark it is lowercase
+ * too ("by quantum1st"); in a line of text, after "Qalam", both names are capitalised ("by Quantum1st").
+ */
+export function ByQuantum1st({ className, inText = false }: { className?: string; inText?: boolean }) {
   return (
     <span className={className} dir="ltr">
-      by quantum<span className="text-brand-gold">1st</span>
+      by {inText ? "Q" : "q"}uantum<span className="text-brand-gold">1st</span>
     </span>
   );
 }

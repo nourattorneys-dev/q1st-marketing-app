@@ -211,6 +211,9 @@ export function createEngineApi(client: EngineClient) {
 
   const exportPost = async (id: string, format: "html" | "md") => client.requestFile({ path: await postPath(id, `/export.${format}`) });
 
+  /** A post's photo as the engine keeps it; the browser gets it through /api/photo/<post id>. */
+  const photo = async (id: string) => client.requestBytes({ path: `${await sitePath()}/media/${idSegment(id)}` });
+
   const job = async (id: string) =>
     (await client.request({ method: "GET", path: `/jobs/${idSegment(id)}`, schema: JobSchema })).data;
 
@@ -430,6 +433,7 @@ export function createEngineApi(client: EngineClient) {
 
   return {
     siteId,
+    photo,
     meta,
     site,
     siteCounts,
