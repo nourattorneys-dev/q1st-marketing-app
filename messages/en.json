@@ -42,7 +42,9 @@
     },
     "menu": "Menu",
     "closeMenu": "Close",
-    "loading_brand": "Preparing your workspace"
+    "loading_brand": "Preparing your workspace",
+    "pitch": "Your website's articles, researched, written and published. You approve every word.",
+    "pitchSub": "Keyword research, drafts in English and Arabic, search checks and a publishing calendar, in one place."
   },
   "SignIn": {
     "title": "Sign in",
@@ -204,7 +206,18 @@
     "publishSelected": "Publish selected ({count})",
     "publishSelectedTitle": "Publish the selected posts now?",
     "publishSelectedBody": "Each one is approved and published right away. Posts that need a reason or a photo are skipped and listed.",
-    "bulkPublishFailed": "Not published:"
+    "bulkPublishFailed": "Not published:",
+    "intro": "Read, edit and approve what the AI drafted. Nothing is published until it is approved.",
+    "ready": "Ready",
+    "open": "Open",
+    "filters": {
+      "label": "Show",
+      "all": "All",
+      "blog": "Articles",
+      "social": "Social posts",
+      "fix": "Needs a fix"
+    },
+    "noneHere": "Nothing here with this filter."
   },
   "Editor": {
     "back": "← Review",
@@ -332,7 +345,12 @@
       "empty": "Nothing to post yet.",
       "count": "{count, plural, one {{n} character} other {{n} characters}}"
     },
-    "leaveConfirm": "Leave without saving? Your changes to this post will be lost."
+    "leaveConfirm": "Leave without saving? Your changes to this post will be lost.",
+    "searchPreview": {
+      "title": "Search preview",
+      "noTitle": "Add a title",
+      "noDescription": "Add a meta description: it is the text people read under the title."
+    }
   },
   "Scheduled": {
     "title": "Scheduled",

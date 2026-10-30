@@ -10,7 +10,10 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/[
   const t = await getTranslations("Review");
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-3xl">{t("title")}</h1>
+      <div className="flex flex-col gap-1.5">
+        <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
+        <p className="text-[15px] text-muted-foreground">{t("intro")}</p>
+      </div>
       <Suspense fallback={<SectionSkeleton />}>
         <ReviewQueue locale={locale} searchParams={searchParams} />
       </Suspense>

@@ -10,7 +10,7 @@ export default async function PlanPage({ params }: PageProps<"/[locale]/plan">) 
   const t = await getTranslations("Plan");
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-3xl">{t("title")}</h1>
+      <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
       <Suspense fallback={<SectionSkeleton />}>
         <PlanView locale={locale} />
       </Suspense>

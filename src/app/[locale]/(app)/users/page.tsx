@@ -11,7 +11,7 @@ export default async function UsersPage({ params }: PageProps<"/[locale]/users">
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-3xl">{t("title")}</h1>
+        <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("intro")}</p>
       </div>
       <Suspense fallback={<SectionSkeleton />}>

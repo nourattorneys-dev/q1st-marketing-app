@@ -10,16 +10,24 @@ import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { BulkAction } from "@/lib/engine/api";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { Post } from "@/lib/engine/schemas";
+import { findingCounts } from "@/lib/posts/rules";
 import { bulkFailureLines } from "@/lib/review/summary";
+import { cn } from "@/lib/utils";
 import { AutoRefresh } from "./auto-refresh";
 import { PostCard } from "./post-card";
 
 type Props = { locale: string; posts: Post[]; total: number; pollSeconds: number };
 type Failures = { heading: string; lines: { id: string; title: string; message: string }[] };
+type Filter = "all" | "blog" | "social" | "fix";
+const FILTERS: Filter[] = ["all", "blog", "social", "fix"];
+const shows = (filter: Filter, post: Post) =>
+  filter === "all" || (filter === "fix" ? findingCounts(post).critical > 0 : post.kind === filter);
 
 export function ReviewBoard({ locale, posts, total, pollSeconds }: Props) {
   const t = useTranslations("Review");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<Filter>("all");
+  const shown = posts.filter((post) => shows(filter, post));
   const [failures, setFailures] = useState<Failures | null>(null);
   const [error, setError] = useState<EngineFailure | null>(null);
   const bulk = useEngineAction(bulkPostsAction);
@@ -93,11 +101,37 @@ export function ReviewBoard({ locale, posts, total, pollSeconds }: Props) {
           </ul>
         </div>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} selected={selected.has(post.id)} onSelect={(checked) => toggle(post.id, checked)} />
-        ))}
+      <div role="group" aria-label={t("filters.label")} className="flex flex-wrap gap-2">
+        {FILTERS.map((key) => {
+          const count = posts.filter((post) => shows(key, post)).length;
+          if (key !== "all" && count === 0) return null;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={filter === key}
+              data-testid={`review-filter-${key}`}
+              onClick={() => setFilter(key)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-[13px] transition-colors duration-200",
+                filter === key ? "border-foreground bg-foreground font-semibold text-background" : "border-border bg-card hover:bg-accent",
+                key === "fix" && filter !== key && "border-bad-fg/30 text-bad-fg",
+              )}
+            >
+              {t(`filters.${key}`)} · {count}
+            </button>
+          );
+        })}
       </div>
+      {shown.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("noneHere")}</p>
+      ) : (
+        <ul className="overflow-hidden rounded-[20px] border border-border bg-card">
+          {shown.map((post) => (
+            <PostCard key={post.id} post={post} selected={selected.has(post.id)} onSelect={(checked) => toggle(post.id, checked)} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchPreview } from "./search-preview";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -242,7 +243,7 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex flex-col gap-4" lang={current.language}>
+        <div className="flex flex-col gap-4 rounded-[20px] border border-border bg-card p-5 md:p-8" lang={current.language}>
           <FieldCounter id="title" error={errors.byField.title} testId="field-title" label={t("fields.title")} value={form.title} onChange={set("title")} disabled={!editable} dir={dir} />
           <FieldCounter
             id="subtitle" error={errors.byField.subtitle}
@@ -336,6 +337,9 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
             limits={photoLimits}
             error={errors.byField.image}
           />
+          {current.kind !== "social" && (
+            <SearchPreview title={form.metaTitle || form.title} description={form.metaDescription ?? ""} slug={form.slug ?? ""} language={current.language} />
+          )}
           <ChecksPanel post={current} />
           <SourcesList post={current} />
         </aside>

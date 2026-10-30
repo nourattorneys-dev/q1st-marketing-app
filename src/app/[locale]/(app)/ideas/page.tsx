@@ -11,7 +11,7 @@ export default async function IdeasPage({ params, searchParams }: PageProps<"/[l
   const t = await getTranslations("Ideas");
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-3xl">{t("title")}</h1>
+      <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
       <Suspense fallback={<SectionSkeleton />}>
         <IdeasView locale={locale} searchParams={searchParams} />
       </Suspense>

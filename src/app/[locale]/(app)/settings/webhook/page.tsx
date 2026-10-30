@@ -11,7 +11,7 @@ export default async function WebhookSettingsPage({ params }: PageProps<"/[local
   const t = await getTranslations("Settings");
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-heading text-3xl">{t("title")}</h1>
+      <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
       <SettingsTabs current="webhook" />
       <Suspense fallback={<SectionSkeleton />}>
         <WebhookView locale={locale} />
