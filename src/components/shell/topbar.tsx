@@ -7,7 +7,7 @@ import { UserMenu } from "./user-menu";
 
 export function Topbar({ locale }: { locale: AppLocale }) {
   return (
-    <header className="flex items-center justify-end gap-2 border-b border-border bg-card px-6 py-3">
+    <header className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-b border-border bg-card px-4 py-3 md:px-6">
       <Suspense fallback={null}>
         <SiteSwitcher locale={locale} />
       </Suspense>

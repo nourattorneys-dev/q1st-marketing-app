@@ -4,12 +4,13 @@ import type { AppLocale } from "@/i18n/locales";
 import type { Usage } from "@/lib/engine/schemas";
 import { formatMonth } from "@/lib/format/datetime";
 import { formatNumber } from "@/lib/format/number";
+import { metricLabel, type MetricNames } from "@/lib/plan/metric-label";
 import { metricSeries } from "@/lib/plan/usage";
 
-type Props = { locale: AppLocale; metrics: string[]; months: string[]; usage: Usage; siteId: string };
+type Props = { locale: AppLocale; metrics: string[]; names: MetricNames; months: string[]; usage: Usage; siteId: string };
 
 /** Spec v1.1 §6 Plan & usage: this site's usage per metric (metrics from /account/plan), as plain bars; each metric's busiest month is full height. */
-export async function UsageChart({ locale, metrics, months, usage, siteId }: Props) {
+export async function UsageChart({ locale, metrics, names, months, usage, siteId }: Props) {
   const t = await getTranslations("Plan.usage");
   const tMetrics = await getTranslations("Dashboard.quota.metrics");
   return (
@@ -22,7 +23,7 @@ export async function UsageChart({ locale, metrics, months, usage, siteId }: Pro
         {metrics.map((metric) => {
           const series = metricSeries(usage, siteId, months, metric);
           const max = Math.max(1, ...series.map((point) => point.value));
-          const label = tMetrics.has(metric) ? tMetrics(metric) : metric;
+          const label = metricLabel(metric, names, { has: (key) => tMetrics.has(key), get: (key) => tMetrics(key as never) });
           return (
             <figure key={metric} data-testid={`usage-${metric}`} className="flex flex-col gap-2">
               <figcaption className="flex items-baseline justify-between gap-3 text-sm">

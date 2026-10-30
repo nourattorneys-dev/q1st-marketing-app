@@ -16,7 +16,7 @@ test("the first Admin: with no Admin, the sign-in page emails ADMIN_EMAIL an inv
   await page.reload();
   const sent = newEmails(before, await readOutbox(page));
   expect(sent.map((email) => email.to)).toEqual([OWNER_EMAIL]);
-  expect(sent[0].subject).toBe("You're invited to Articles AI · دعوة إلى Articles AI");
+  expect(sent[0].subject).toBe("You're invited to Q1st Marketing · دعوة إلى Q1st Marketing");
 
   await page.goto(linkIn(sent[0].text, "invitation"));
   await expect(page.getByTestId("invitation-email")).toHaveValue(OWNER_EMAIL);

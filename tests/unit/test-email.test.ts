@@ -88,12 +88,12 @@ describe("sending a test email (M5b)", () => {
 describe("the test email's words (M5b)", () => {
   it("uses the notification emails' format: English, then Arabic right to left, with no links", () => {
     const email = renderTestEmail();
-    expect(email.subject).toBe("Articles AI test email · رسالة تجريبية من Articles AI");
+    expect(email.subject).toBe("Q1st Marketing test email · رسالة تجريبية من Q1st Marketing");
     expect(email.html).toContain('<div dir="ltr" lang="en"');
     expect(email.html).toContain('<div dir="rtl" lang="ar"');
     expect(email.html).not.toContain("<a ");
-    expect(email.text).toContain("This is a test from Articles AI. If you can read this, the dashboard's emails work.");
-    expect(email.text).toContain("هذه رسالة تجريبية من Articles AI.");
+    expect(email.text).toContain("This is a test from Q1st Marketing. If you can read this, the dashboard's emails work.");
+    expect(email.text).toContain("هذه رسالة تجريبية من Q1st Marketing.");
   });
 
   it("has the spec's sentence for every kind of failure, and an Arabic one", () => {

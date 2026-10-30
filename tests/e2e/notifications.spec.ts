@@ -86,8 +86,8 @@ test("an Admin sends themselves a test email; with EMAIL_MODE=log it's only kept
 
   const sent = newEmails(before, await readOutbox(page));
   expect(sent.map((email) => email.to)).toEqual(["admin@example.com"]);
-  expect(sent[0].subject).toBe("Articles AI test email · رسالة تجريبية من Articles AI");
-  expect(sent[0].text).toContain("This is a test from Articles AI. If you can read this, the dashboard's emails work.");
+  expect(sent[0].subject).toBe("Q1st Marketing test email · رسالة تجريبية من Q1st Marketing");
+  expect(sent[0].text).toContain("This is a test from Q1st Marketing. If you can read this, the dashboard's emails work.");
   expect(sent[0].html).toContain('<div dir="rtl" lang="ar"');
 
   await page.getByTestId("test-email-send").click(); // each press is a new email

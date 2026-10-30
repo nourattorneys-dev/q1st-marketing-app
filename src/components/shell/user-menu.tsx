@@ -13,7 +13,7 @@ export async function UserMenu({ locale }: { locale: AppLocale }) {
   const status = twoFactorStatus(await getTwoFactorPolicy(), session);
   const remind = status === "required" || status === "recommended";
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span className="text-sm" data-testid="user-name">
         {session.name}
       </span>

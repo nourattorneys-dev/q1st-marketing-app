@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { EngineFailure } from "@/lib/engine/result";
+import { metricLabel, type MetricNames } from "@/lib/plan/metric-label";
 
 const SELECT = "h-9 rounded-md border border-input bg-card px-3 text-sm";
 
 /** Spec v1.1 §6 Plan & usage "Request upgrade": an optional limit and note; Quantum1st answers outside the portal. */
-export function RequestUpgrade({ locale, metrics }: { locale: string; metrics: string[] }) {
+export function RequestUpgrade({ locale, metrics, names }: { locale: string; metrics: string[]; names: MetricNames }) {
   const t = useTranslations("Plan.upgrade");
   const tMetrics = useTranslations("Dashboard.quota.metrics");
   const request = useEngineAction(requestUpgradeAction);
@@ -49,7 +50,7 @@ export function RequestUpgrade({ locale, metrics }: { locale: string; metrics: s
                 <option value="">{t("anyMetric")}</option>
                 {metrics.map((code) => (
                   <option key={code} value={code}>
-                    {tMetrics.has(code) ? tMetrics(code) : code}
+                    {metricLabel(code, names, { has: (key) => tMetrics.has(key), get: (key) => tMetrics(key as never) })}
                   </option>
                 ))}
               </select>

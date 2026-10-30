@@ -3,6 +3,7 @@ import type { AppLocale } from "@/i18n/locales";
 import { quotaView } from "@/lib/dashboard/quota";
 import type { Quota } from "@/lib/engine/schemas";
 import { formatNumber } from "@/lib/format/number";
+import { metricLabel, metricNames } from "@/lib/plan/metric-label";
 import { cn } from "@/lib/utils";
 
 type Props = { locale: AppLocale; quotas: Quota[]; siteUsage: Record<string, number> | null };
@@ -10,11 +11,13 @@ type Props = { locale: AppLocale; quotas: Quota[]; siteUsage: Record<string, num
 /** Account-wide quota bars from /account/plan (spec v1.1 §4), each with this site's share this month when the engine reports it. */
 export async function QuotaBars({ locale, quotas, siteUsage }: Props) {
   const t = await getTranslations("Dashboard.quota");
+  const names = metricNames(quotas, locale);
+  const own = { has: (key: string) => t.has(`metrics.${key}`), get: (key: string) => t(`metrics.${key}` as never) };
   return (
     <ul className="flex flex-col gap-4">
       {quotas.map((quota) => {
         const q = quotaView(quota);
-        const label = t.has(`metrics.${q.metric}`) ? t(`metrics.${q.metric}`) : q.metric;
+        const label = metricLabel(q.metric, names, own);
         const used = formatNumber(q.used, locale);
         const share = siteUsage?.[q.metric];
         return (

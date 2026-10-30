@@ -1,8 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
-import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { AuthPage } from "@/components/auth/auth-page";
 import { SignOutControl } from "@/components/shell/sign-out-control";
-import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { asAppLocale } from "@/i18n/locales";
 
@@ -27,12 +26,8 @@ export default async function NoAccessPage({ params, searchParams }: PageProps<"
   setRequestLocale(locale);
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center p-6">
-      <div className="absolute end-4 top-4 flex gap-2">
-        <ThemeToggle />
-        <LocaleSwitch />
-      </div>
-      <Card className="w-full max-w-md animate-in fade-in-0 duration-300">
+    <AuthPage>
+      <Card className="w-full max-w-md">
         <Suspense fallback={<CardHeader className="min-h-24" />}>
           <Notice searchParams={searchParams} />
         </Suspense>
@@ -40,6 +35,6 @@ export default async function NoAccessPage({ params, searchParams }: PageProps<"
           <SignOutControl locale={locale} />
         </CardContent>
       </Card>
-    </main>
+    </AuthPage>
   );
 }

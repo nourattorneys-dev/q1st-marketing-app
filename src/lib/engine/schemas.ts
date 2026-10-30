@@ -111,6 +111,8 @@ export const SiteRefsSchema = z.array(z.object({ id: z.string(), name: z.string(
 // ── Plan & Quota (spec §4) ───────────────────────────────────────────────────
 export const QuotaSchema = z.object({
   metric: z.string(),
+  label: z.string().nullish(),
+  labelAr: z.string().nullish(),
   limit: z.number().nullable(),
   used: z.number(),
   scope: z.string().nullish(),

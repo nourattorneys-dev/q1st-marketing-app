@@ -25,7 +25,7 @@ export function SiteSelect({ locale, label, failed, current, sites }: Props) {
   }
 
   return (
-    <div className="me-auto flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <select
         aria-label={label}
         data-testid="site-switcher"

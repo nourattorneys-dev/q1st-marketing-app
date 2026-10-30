@@ -9,8 +9,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-serif: var(--font-serif);
-  --font-heading: var(--font-serif);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
+  --color-brand-gold: var(--brand-gold);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -59,105 +60,111 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Light — values from the prototype ("Design from Nour Attorneys portal/Admin Portal.dc.html"). */
+/* Light (default) — Quantum1st brand, light theme: Paper ground, white panels, Ink text, Signal Blue for actions, gold
+   only for highlights. Corners: 12px controls, 20px cards. No gradients, no glow. */
 :root {
-  --font-sans: var(--font-plex-sans), var(--font-plex-arabic), system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), var(--font-naskh), Georgia, serif;
-  --radius: 0.5rem;
+  --font-sans: var(--font-geist-sans), var(--font-plex-arabic), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius: 0.75rem;
 
-  --background: #f6f5f2;
-  --foreground: #1d1c1a;
+  --background: #f4f3ee;
+  --foreground: #0a0f1c;
   --card: #ffffff;
-  --card-foreground: #1d1c1a;
+  --card-foreground: #0a0f1c;
   --popover: #ffffff;
-  --popover-foreground: #1d1c1a;
-  --primary: #1f3a5f;
+  --popover-foreground: #0a0f1c;
+  --primary: #2f6bff;
   --primary-foreground: #ffffff;
-  --secondary: #f0eee9;
-  --secondary-foreground: #1d1c1a;
-  --muted: #f0eee9;
-  --muted-foreground: #6b675f;
-  --accent: #e7ecf2;
-  --accent-foreground: #1f3a5f;
-  --destructive: oklch(0.47 0.12 25);
-  --border: #e4e1da;
-  --input: #e4e1da;
-  --ring: #1f3a5f;
+  --secondary: #ecebe6;
+  --secondary-foreground: #0a0f1c;
+  --muted: #ecebe6;
+  --muted-foreground: #465065;
+  --accent: #e8eeff;
+  --accent-foreground: #1f4fd1;
+  --destructive: #b4322a;
+  --border: #d3d1c8;
+  --input: #d3d1c8;
+  --ring: #2f6bff;
+  --link: #1f4fd1;
+  --brand-gold: #9a6418;
 
-  --ok-bg: oklch(0.95 0.035 155);
-  --ok-fg: oklch(0.42 0.09 155);
-  --warn-bg: oklch(0.95 0.04 80);
-  --warn-fg: oklch(0.45 0.09 65);
-  --bad-bg: oklch(0.95 0.03 25);
-  --bad-fg: oklch(0.47 0.12 25);
-  --info-bg: oklch(0.95 0.025 250);
-  --info-fg: oklch(0.42 0.08 250);
-  --neutral-bg: #efede8;
-  --neutral-fg: #55524c;
+  --ok-bg: #e3f2e9;
+  --ok-fg: #1c7a4a;
+  --warn-bg: #f8eedc;
+  --warn-fg: #7a5212;
+  --bad-bg: #f9e5e3;
+  --bad-fg: #b4322a;
+  --info-bg: #e8eeff;
+  --info-fg: #1f4fd1;
+  --neutral-bg: #ecebe6;
+  --neutral-fg: #3a4152;
 
-  --chart-1: #1f3a5f;
-  --chart-2: oklch(0.42 0.09 155);
-  --chart-3: oklch(0.45 0.09 65);
-  --chart-4: oklch(0.47 0.12 25);
-  --chart-5: oklch(0.42 0.08 250);
+  --chart-1: #2f6bff;
+  --chart-2: #1c7a4a;
+  --chart-3: #9a6418;
+  --chart-4: #b4322a;
+  --chart-5: #5b6478;
 
   --sidebar: #ffffff;
-  --sidebar-foreground: #1d1c1a;
-  --sidebar-primary: #1f3a5f;
+  --sidebar-foreground: #0a0f1c;
+  --sidebar-primary: #2f6bff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7ecf2;
-  --sidebar-accent-foreground: #1f3a5f;
-  --sidebar-border: #e4e1da;
-  --sidebar-ring: #1f3a5f;
+  --sidebar-accent: #e8eeff;
+  --sidebar-accent-foreground: #1f4fd1;
+  --sidebar-border: #d3d1c8;
+  --sidebar-ring: #2f6bff;
 
   color-scheme: light;
 }
 
+/* Dark — the brand's website theme: Ink ground, near-black panels, light text, lighter blue links, Dune Gold. */
 [data-theme="dark"] {
-  --background: #131312;
-  --foreground: #eceae5;
-  --card: #1b1a19;
-  --card-foreground: #eceae5;
-  --popover: #1b1a19;
-  --popover-foreground: #eceae5;
-  --primary: #9db6d6;
-  --primary-foreground: #0e1826;
-  --secondary: #252422;
-  --secondary-foreground: #eceae5;
-  --muted: #252422;
-  --muted-foreground: #a29d93;
-  --accent: #223143;
-  --accent-foreground: #9db6d6;
-  --destructive: oklch(0.82 0.1 25);
-  --border: #34322f;
-  --input: #34322f;
-  --ring: #9db6d6;
+  --background: #07090f;
+  --foreground: #eef1f7;
+  --card: #0a0d15;
+  --card-foreground: #eef1f7;
+  --popover: #0d111b;
+  --popover-foreground: #eef1f7;
+  --primary: #2f6bff;
+  --primary-foreground: #ffffff;
+  --secondary: #151b29;
+  --secondary-foreground: #eef1f7;
+  --muted: #151b29;
+  --muted-foreground: #a9b1c4;
+  --accent: #16224a;
+  --accent-foreground: #8fb1ff;
+  --destructive: #f08a80;
+  --border: #232b3d;
+  --input: #2a3245;
+  --ring: #8fb1ff;
+  --link: #8fb1ff;
+  --brand-gold: #e3a857;
 
-  --ok-bg: oklch(0.3 0.045 155);
-  --ok-fg: oklch(0.83 0.09 155);
-  --warn-bg: oklch(0.3 0.045 70);
-  --warn-fg: oklch(0.85 0.09 75);
-  --bad-bg: oklch(0.3 0.05 25);
-  --bad-fg: oklch(0.82 0.1 25);
-  --info-bg: oklch(0.3 0.04 250);
-  --info-fg: oklch(0.83 0.07 250);
-  --neutral-bg: #2a2926;
-  --neutral-fg: #c9c5bc;
+  --ok-bg: #0f2a1d;
+  --ok-fg: #7fd3a5;
+  --warn-bg: #2d220f;
+  --warn-fg: #e3a857;
+  --bad-bg: #321513;
+  --bad-fg: #f08a80;
+  --info-bg: #16224a;
+  --info-fg: #8fb1ff;
+  --neutral-bg: #151b29;
+  --neutral-fg: #c9cfdc;
 
-  --chart-1: #9db6d6;
-  --chart-2: oklch(0.83 0.09 155);
-  --chart-3: oklch(0.85 0.09 75);
-  --chart-4: oklch(0.82 0.1 25);
-  --chart-5: oklch(0.83 0.07 250);
+  --chart-1: #8fb1ff;
+  --chart-2: #7fd3a5;
+  --chart-3: #e3a857;
+  --chart-4: #f08a80;
+  --chart-5: #a9b1c4;
 
-  --sidebar: #1b1a19;
-  --sidebar-foreground: #eceae5;
-  --sidebar-primary: #9db6d6;
-  --sidebar-primary-foreground: #0e1826;
-  --sidebar-accent: #223143;
-  --sidebar-accent-foreground: #9db6d6;
-  --sidebar-border: #34322f;
-  --sidebar-ring: #9db6d6;
+  --sidebar: #0a0d15;
+  --sidebar-foreground: #eef1f7;
+  --sidebar-primary: #2f6bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16224a;
+  --sidebar-accent-foreground: #8fb1ff;
+  --sidebar-border: #232b3d;
+  --sidebar-ring: #8fb1ff;
 
   color-scheme: dark;
 }
@@ -168,6 +175,18 @@
   }
   body {
     @apply bg-background font-sans text-foreground;
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+  h1, h2, h3,
+  .font-heading {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -187,5 +206,5 @@
   .prose-article table { @apply my-3 w-full border-collapse text-sm; }
   .prose-article th,
   .prose-article td { @apply border border-border px-2 py-1 text-start; }
-  .prose-article a { @apply text-primary underline; }
+  .prose-article a { @apply underline; color: var(--link); }
 }

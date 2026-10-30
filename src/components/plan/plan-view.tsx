@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { EngineNotice } from "@/components/dashboard/engine-notice";
 import { QuotaBars } from "@/components/dashboard/quota-bars";
+import { metricNames } from "@/lib/plan/metric-label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/locales";
@@ -43,7 +44,7 @@ export async function PlanView({ locale }: { locale: AppLocale }) {
         </CardContent>
       </Card>
       {usage && !usage.ok && <EngineNotice error={usage.error} />}
-      {usage?.ok && <UsageChart locale={locale} metrics={plan.data.metrics} months={months} usage={usage.data} siteId={id} />}
+      {usage?.ok && <UsageChart locale={locale} metrics={plan.data.metrics} names={metricNames(plan.data.quotas, locale)} months={months} usage={usage.data} siteId={id} />}
       {results && (
         <Card>
           <CardHeader>
@@ -68,7 +69,7 @@ export async function PlanView({ locale }: { locale: AppLocale }) {
           </CardContent>
         </Card>
       )}
-      <RequestUpgrade locale={locale} metrics={plan.data.metrics} />
+      <RequestUpgrade locale={locale} metrics={plan.data.metrics} names={metricNames(plan.data.quotas, locale)} />
     </div>
   );
 }

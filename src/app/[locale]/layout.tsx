@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic, Newsreader, Noto_Naskh_Arabic } from "next/font/google";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import localFont from "next/font/local";
 import { notFound } from "next/navigation";
 import { DirectionProvider } from "@/components/ui/direction";
 import { directionOf } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
-const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-sans", display: "swap" });
-const plexArabic = IBM_Plex_Sans_Arabic({ subsets: ["arabic"], weight: ["400", "500", "600"], variable: "--font-plex-arabic", display: "swap" });
-const newsreader = Newsreader({ subsets: ["latin"], variable: "--font-newsreader", display: "swap" });
-const naskh = Noto_Naskh_Arabic({ subsets: ["arabic"], variable: "--font-naskh", display: "swap" });
-const FONT_VARIABLES = [plexSans.variable, plexArabic.variable, newsreader.variable, naskh.variable].join(" ");
+// Quantum1st brand type, served by this app (never downloaded from Google at build or in the browser): Geist for Latin
+// text and headings, Geist Mono for labels and numbers, IBM Plex Sans Arabic for Arabic.
+const plexArabic = localFont({
+  src: [
+    { path: "../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2", weight: "400" },
+    { path: "../fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2", weight: "500" },
+    { path: "../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2", weight: "600" },
+  ],
+  variable: "--font-plex-arabic",
+  display: "swap",
+});
+const FONT_VARIABLES = [GeistSans.variable, GeistMono.variable, plexArabic.variable].join(" ");
 
 /** Runs before first paint: applies the saved theme so dark mode never flashes light. */
 const THEME_SCRIPT = `(function(){var d=document.documentElement;try{d.setAttribute("data-theme",localStorage.getItem("theme")==="dark"?"dark":"light")}catch(e){d.setAttribute("data-theme","light")}})();`;
