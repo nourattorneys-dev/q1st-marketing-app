@@ -136,6 +136,35 @@
         "sites": "Sites"
       },
       "thisSite": "This site: {used}"
+    },
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "summary": "{count, plural, =0 {Nothing is waiting for your review.} one {# post is waiting for your review.} other {# posts are waiting for your review.}}",
+    "reviewNow": "Review now",
+    "suggestTopics": "Topic ideas",
+    "open": {
+      "suggestions": "Ready to draft",
+      "pending": "Open Review",
+      "scheduled": "See the schedule",
+      "published": "See History",
+      "failed": "See why"
+    },
+    "attention": {
+      "title": "Needs your attention",
+      "pending": "{count, plural, one {# post is} other {# posts are}} waiting for review",
+      "failed": "{count, plural, one {# post} other {# posts}} failed to publish",
+      "review": "Review",
+      "see": "See",
+      "clear": "Nothing needs you right now."
+    },
+    "schedule": {
+      "title": "Publishing schedule",
+      "next": "Next",
+      "all": "Open the full schedule",
+      "none": "Nothing is scheduled yet."
     }
   },
   "Errors": {

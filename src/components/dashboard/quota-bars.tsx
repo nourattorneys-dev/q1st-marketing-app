@@ -14,7 +14,7 @@ export async function QuotaBars({ locale, quotas, siteUsage }: Props) {
   const names = metricNames(quotas, locale);
   const own = { has: (key: string) => t.has(`metrics.${key}`), get: (key: string) => t(`metrics.${key}` as never) };
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className="grid gap-x-10 gap-y-4 lg:grid-cols-2">
       {quotas.map((quota) => {
         const q = quotaView(quota);
         const label = metricLabel(q.metric, names, own);
