@@ -15,6 +15,13 @@
       "when": 1793385205595,
       "tag": "0001_many_clients",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793389229321,
+      "tag": "0002_portal_clients",
+      "breakpoints": true
     }
   ]
 }

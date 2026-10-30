@@ -209,6 +209,23 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       await connection.ready();
       await db.insert(sites).values(site);
     },
+    async clientByEngineAccount(engineAccountId) {
+      await connection.ready();
+      const [row] = await db.select().from(clients).where(eq(clients.engineAccountId, engineAccountId)).limit(1);
+      return row ?? null;
+    },
+    async updateClient(id, change) {
+      await connection.ready();
+      if (Object.keys(change).length) await db.update(clients).set(change).where(eq(clients.id, id));
+    },
+    async updateSite(id, change) {
+      await connection.ready();
+      if (Object.keys(change).length) await db.update(sites).set(change).where(eq(sites.id, id));
+    },
+    async deleteSite(id) {
+      await connection.ready();
+      return (await db.delete(sites).where(eq(sites.id, id)).returning({ id: sites.id })).length > 0;
+    },
     async adoptUnassigned(clientId) {
       await connection.ready();
       await db.transaction(async (tx) => {
@@ -262,8 +279,6 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
     async forgetExpired({ now, invitationsBefore, limitsBefore }) {
       await connection.ready();
       await db.delete(sessions).where(lte(sessions.expiresAt, now));
-      // A site removed from the app takes its access rows with it (P1b).
-      await db.delete(userSites).where(sql`${userSites.siteId} NOT IN (SELECT ${sites.id} FROM ${sites})`);
       await db.delete(passwordResets).where(lte(passwordResets.expiresAt, now));
       await db.delete(invitations).where(lte(invitations.expiresAt, invitationsBefore));
       await db.delete(signInLimits).where(lte(signInLimits.windowStart, limitsBefore));

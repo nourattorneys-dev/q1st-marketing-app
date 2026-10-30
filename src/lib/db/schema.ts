@@ -1,4 +1,4 @@
-import { boolean, char, index, integer, jsonb, pgTable, primaryKey, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, char, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import type { Role } from "@/lib/auth/roles";
 import type { Audience } from "./store";
 
@@ -10,11 +10,17 @@ const key = (name: string) => varchar(name, { length: 191 });
 // P1b: one app, many clients. A client has sites; each site has its own engine key (encrypted) and webhook.
 
 /** One client company. */
-export const clients = pgTable("clients", {
-  id: key("id").primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  createdAt: at("created_at").notNull(),
-});
+export const clients = pgTable(
+  "clients",
+  {
+    id: key("id").primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    /** P1c: the engine's account this client is; null for a client made from the settings file until the portal links it. */
+    engineAccountId: key("engine_account_id"),
+    createdAt: at("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("clients_engine_account_id").on(table.engineAccountId)],
+);
 
 /** One website of a client: the engine's site id, and that site's engine key, encrypted (never stored plain). */
 export const sites = pgTable(

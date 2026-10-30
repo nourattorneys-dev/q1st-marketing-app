@@ -97,6 +97,7 @@ The hosted app runs in Docker on Quantum1st's server (`deploy/docker/`), next to
 - **Notifications:** systemd timer `q1st-app-notify` every 15 minutes (`deploy/docker/notify.sh`).
 - **Backups:** systemd timer `q1st-app-backup` daily, `pg_dump` into `/opt/q1st-app/backups`, kept `BACKUP_KEEP_DAYS` days.
 - **Logs:** `docker compose -f /opt/q1st-app/release/compose.yml logs -f`.
+- **New clients (P1c):** only from the staff portal (Marketing clients → a client → Client dashboard). The engine issues the site's key and webhook secret and sends them to `POST /api/provision`, signed with `PROVISION_SECRET` over `<X-Timestamp>.<body>`; a request older or newer than `PROVISION_MAX_SKEW_SECONDS` is refused. The app keeps both encrypted and emails the first Admin's invitation. A client is one engine account: renaming or removing there is followed here. Removing a site keeps the access rows that named it, so a Reviewer limited to it opens nothing rather than every site.
 
 ## Hosting on cPanel (dashboard.fakhernco.com)
 

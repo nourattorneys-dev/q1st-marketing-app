@@ -137,7 +137,7 @@ export function createMemoryAccountStore(): AccountStore {
       return found ? copy(found) : null;
     },
     async createClient(client) {
-      clients.set(client.id, copy(client));
+      clients.set(client.id, { engineAccountId: null, ...copy(client) });
     },
     async sites(clientId) {
       return [...sites.values()].filter((site) => clientId === undefined || site.clientId === clientId).sort(oldestFirst).map(copy);
@@ -148,6 +148,21 @@ export function createMemoryAccountStore(): AccountStore {
     },
     async createSite(site) {
       sites.set(site.id, copy(site));
+    },
+    async clientByEngineAccount(engineAccountId) {
+      const found = [...clients.values()].find((client) => client.engineAccountId === engineAccountId);
+      return found ? copy(found) : null;
+    },
+    async updateClient(id, change) {
+      const found = clients.get(id);
+      if (found) clients.set(id, { ...found, ...change });
+    },
+    async updateSite(id, change) {
+      const found = sites.get(id);
+      if (found) sites.set(id, { ...found, ...change });
+    },
+    async deleteSite(id) {
+      return sites.delete(id);
     },
     async adoptUnassigned(clientId) {
       for (const account of accounts.values()) account.clientId ??= clientId;

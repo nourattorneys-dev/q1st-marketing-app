@@ -29,7 +29,8 @@ export type PasswordReset = { tokenHash: string; userId: string; createdAt: Date
 export type SessionRecord = { tokenHash: string; userId: string; createdAt: Date; expiresAt: Date };
 
 /** P1b: a client company, and one of its websites (the engine's site id; its engine key stays encrypted). */
-export type Client = { id: string; name: string; createdAt: Date };
+export type Client = { id: string; name: string; engineAccountId: string | null; createdAt: Date };
+export type NewClient = Omit<Client, "engineAccountId"> & { engineAccountId?: string | null };
 export type Site = { id: string; clientId: string; name: string; keyCipher: string; createdAt: Date };
 
 /** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the dashboard's Postgres on a server. */
@@ -77,11 +78,20 @@ export interface AccountStore {
 
   clients(): Promise<Client[]>;
   client(id: string): Promise<Client | null>;
-  createClient(client: Client): Promise<void>;
+  createClient(client: NewClient): Promise<void>;
   /** A client's sites (all sites when no client is given), oldest first. */
   sites(clientId?: string): Promise<Site[]>;
   site(id: string): Promise<Site | null>;
   createSite(site: Site): Promise<void>;
+  /** P1c: the client that is this engine account, or null. */
+  clientByEngineAccount(engineAccountId: string): Promise<Client | null>;
+  updateClient(id: string, change: { name?: string; engineAccountId?: string }): Promise<void>;
+  updateSite(id: string, change: { name?: string; keyCipher?: string }): Promise<void>;
+  /**
+   * Removes a site; sessions on it fall back to another site. Access rows naming it stay: a Reviewer limited to it then
+   * opens nothing (no rows would mean every site). False when unknown.
+   */
+  deleteSite(id: string): Promise<boolean>;
   /** Accounts and invitations made before clients existed join this client. */
   adoptUnassigned(clientId: string): Promise<void>;
 

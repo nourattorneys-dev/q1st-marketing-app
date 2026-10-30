@@ -19,6 +19,8 @@ const ServicesSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   CRON_SECRET: z.string().optional(),
+  PROVISION_SECRET: z.string().min(32).optional(),
+  PROVISION_MAX_SKEW_SECONDS: z.coerce.number().int().min(10).max(3600).default(300),
   NOTIFY_QUIET_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
   NODE_ENV: z.string().optional(),
   ALLOW_TEST_LOGINS: z.string().optional(),
@@ -40,6 +42,10 @@ export type ServicesEnv = {
   /** Microsoft 365 through Graph (EMAIL_MODE=graph), or null. */
   graph: GraphSettings | null;
   cronSecret: string | null;
+  /** P1c: the secret the engine signs portal requests with (PROVISION_SECRET); null = nobody may provision. */
+  provisionSecret: string | null;
+  /** How far a signed portal request's time may be from ours (PROVISION_MAX_SKEW_SECONDS). */
+  provisionMaxSkewMs: number;
   notifyQuietMs: number;
 };
 
@@ -141,6 +147,8 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
     smtp: env.EMAIL_MODE === "smtp" ? smtpSettings(env) : null,
     graph: env.EMAIL_MODE === "graph" ? graphSettings(env) : null,
     cronSecret: env.CRON_SECRET ?? null,
+    provisionSecret: env.PROVISION_SECRET ?? null,
+    provisionMaxSkewMs: env.PROVISION_MAX_SKEW_SECONDS * 1000,
     notifyQuietMs: env.NOTIFY_QUIET_SECONDS * 1000,
   };
 }

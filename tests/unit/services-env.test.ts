@@ -34,7 +34,17 @@ describe("parseServicesEnv (M4c)", () => {
       smtp: null,
     graph: null,
       cronSecret: null,
+      provisionSecret: null,
+      provisionMaxSkewMs: 300_000,
       notifyQuietMs: 120_000,
+    });
+  });
+
+  it("P1c: PROVISION_SECRET must be long enough to resist guessing; the time window is a setting", () => {
+    expect(() => parseServicesEnv({ PROVISION_SECRET: "short" })).toThrow();
+    expect(parseServicesEnv({ PROVISION_SECRET: "x".repeat(32), PROVISION_MAX_SKEW_SECONDS: "60" })).toMatchObject({
+      provisionSecret: "x".repeat(32),
+      provisionMaxSkewMs: 60_000,
     });
   });
 
