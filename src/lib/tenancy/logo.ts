@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import type { ClientLogo } from "@/lib/accounts/store";
 
 /** Image kinds a logo may be. An SVG is only ever shown through <img>, and served with a policy that runs nothing. */
@@ -40,6 +39,7 @@ async function trimmed(data: Buffer, contentType: string): Promise<Buffer> {
   if (contentType === "image/svg+xml") return data;
   try {
     const format = contentType === "image/jpeg" ? "jpeg" : contentType === "image/webp" ? "webp" : "png";
+    const { default: sharp } = await import("sharp");
     return await sharp(data).trim().toFormat(format).toBuffer();
   } catch {
     return data;
