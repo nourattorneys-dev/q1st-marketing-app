@@ -44,7 +44,8 @@
     "closeMenu": "Close",
     "loading_brand": "Preparing your workspace",
     "pitch": "Your website's articles, researched, written and published. You approve every word.",
-    "pitchSub": "Keyword research, drafts in English and Arabic, search checks and a publishing calendar, in one place."
+    "pitchSub": "Keyword research, drafts in English and Arabic, search checks and a publishing calendar, in one place.",
+    "slogan": "From idea to published."
   },
   "SignIn": {
     "title": "Sign in",

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Theme = "light" | "dark";
@@ -30,8 +31,16 @@ export function ThemeToggle() {
   }
 
   return (
-    <Button variant="ghost" size="sm" data-testid="theme-toggle" onClick={toggle}>
-      {theme === "dark" ? t("themeLight") : t("themeDark")}
+    <Button
+      variant="outline"
+      size="icon"
+      data-testid="theme-toggle"
+      aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+      title={theme === "dark" ? t("themeLight") : t("themeDark")}
+      onClick={toggle}
+      className="size-10 rounded-xl"
+    >
+      {theme === "dark" ? <Sun aria-hidden="true" className="size-[18px]" /> : <Moon aria-hidden="true" className="size-[18px]" />}
     </Button>
   );
 }

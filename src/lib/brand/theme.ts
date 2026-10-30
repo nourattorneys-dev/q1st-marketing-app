@@ -21,18 +21,31 @@ export function textOn(hex: string): "#ffffff" | "#0a0f1c" {
   return contrast(l, 1) >= contrast(l, luminance("#0a0f1c")) ? "#ffffff" : "#0a0f1c";
 }
 
-export function brandCss(color: string | null): string | null {
-  if (!color || !HEX.test(color)) return null;
-  const c = color.toLowerCase();
-  const on = textOn(c);
-  const light = (pct: number) => `color-mix(in srgb,${c} ${pct}%,#ffffff)`;
-  const ink = (pct: number) => `color-mix(in srgb,${c} ${pct}%,#0a0f1c)`;
-  const night = (pct: number) => `color-mix(in srgb,${c} ${pct}%,#07090f)`;
-  return [
-    `:root{--primary:${c};--primary-foreground:${on};--ring:${c};--link:${ink(85)};--accent:${light(12)};--accent-foreground:${ink(80)};`,
-    `--sidebar-primary:${c};--sidebar-primary-foreground:${on};--sidebar-accent:${light(12)};--sidebar-accent-foreground:${ink(80)};`,
-    `--sidebar-ring:${c};--chart-1:${c};}`,
-    `[data-theme="dark"]{--ring:${light(60)};--link:${light(55)};--accent:${night(22)};--accent-foreground:${light(55)};`,
-    `--sidebar-accent:${night(22)};--sidebar-accent-foreground:${light(55)};--sidebar-ring:${light(60)};--chart-1:${light(60)};}`,
-  ].join("");
+/**
+ * `color` for light mode; `colorDark` for dark mode (a client's dark-mode colour). With no dark colour, dark mode uses the
+ * light one, lightened where it is text on the dark ground. Either alone is fine; neither writes nothing.
+ */
+export function brandCss(color: string | null, colorDark: string | null = null): string | null {
+  const day = color && HEX.test(color) ? color.toLowerCase() : null;
+  const night = colorDark && HEX.test(colorDark) ? colorDark.toLowerCase() : null;
+  if (!day && !night) return null;
+  const parts: string[] = [];
+  if (day) {
+    const light = (pct: number) => `color-mix(in srgb,${day} ${pct}%,#ffffff)`;
+    const ink = (pct: number) => `color-mix(in srgb,${day} ${pct}%,#0a0f1c)`;
+    parts.push(
+      `:root{--primary:${day};--primary-foreground:${textOn(day)};--ring:${day};--link:${ink(85)};--accent:${light(12)};--accent-foreground:${ink(80)};`,
+      `--sidebar-primary:${day};--sidebar-primary-foreground:${textOn(day)};--sidebar-accent:${light(12)};--sidebar-accent-foreground:${ink(80)};`,
+      `--sidebar-ring:${day};--chart-1:${day};}`,
+    );
+  }
+  const d = night ?? day!;
+  const lift = (pct: number) => (night ? `color-mix(in srgb,${d} ${Math.max(pct, 85)}%,#ffffff)` : `color-mix(in srgb,${d} ${pct}%,#ffffff)`);
+  const dim = (pct: number) => `color-mix(in srgb,${d} ${pct}%,#07090f)`;
+  parts.push(
+    `[data-theme="dark"]{--primary:${d};--primary-foreground:${textOn(d)};--sidebar-primary:${d};--sidebar-primary-foreground:${textOn(d)};`,
+    `--ring:${lift(60)};--link:${lift(55)};--accent:${dim(22)};--accent-foreground:${lift(55)};`,
+    `--sidebar-accent:${dim(22)};--sidebar-accent-foreground:${lift(55)};--sidebar-ring:${lift(60)};--chart-1:${lift(60)};}`,
+  );
+  return parts.join("");
 }

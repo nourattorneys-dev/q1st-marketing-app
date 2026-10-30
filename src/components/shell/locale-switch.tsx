@@ -34,8 +34,18 @@ function SwitchButton({ onClick }: { onClick?: () => void }) {
   const t = useTranslations("Shell");
   const other = locale === "ar" ? "en" : "ar";
   return (
-    <Button variant="ghost" size="sm" lang={other} data-testid="locale-switch" onClick={onClick} disabled={!onClick}>
-      {t("language")}
+    <Button
+      variant="outline"
+      size="icon"
+      lang={other}
+      data-testid="locale-switch"
+      aria-label={t("language")}
+      title={t("language")}
+      onClick={onClick}
+      disabled={!onClick}
+      className="size-10 rounded-xl text-[15px] font-semibold"
+    >
+      {other === "ar" ? "ع" : "EN"}
     </Button>
   );
 }

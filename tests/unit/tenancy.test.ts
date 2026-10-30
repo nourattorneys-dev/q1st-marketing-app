@@ -231,7 +231,7 @@ describe("the current site and the switcher (AUTH_MODE=password)", () => {
   it("shows the client's sites by name, never an engine key, and switches between them", async () => {
     await signedIn("admin", "cli_1");
     const current = await getCurrentSite();
-    expect(current).toEqual({ client: { id: "cli_1", name: "One", brandColor: null, logoAt: null }, site: A, sites: [A, B] });
+    expect(current).toEqual({ client: { id: "cli_1", name: "One", brandColor: null, brandColorDark: null, logoAt: null }, site: A, sites: [A, B] });
     expect(JSON.stringify(current)).not.toContain("cipher");
     expect(await selectSite("site_b")).toBe(true);
     expect((await getCurrentSite())?.site).toEqual(B);

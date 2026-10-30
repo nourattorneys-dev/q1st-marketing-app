@@ -22,11 +22,11 @@ import { decryptSiteKey, siteKeyFor } from "./site-key";
 export type { SiteRef } from "./access";
 
 /** Test logins (AUTH_MODE=mock) keep one built-in client and site. */
-export const MOCK_CLIENT: CurrentClient = { id: MOCK_CLIENT_ID, name: "Fakher & Co", brandColor: null, logoAt: null };
+export const MOCK_CLIENT: CurrentClient = { id: MOCK_CLIENT_ID, name: "Fakher & Co", brandColor: null, brandColorDark: null, logoAt: null };
 const MOCK_SITE: SiteRef = { id: MOCK_SITE_ID, name: "Fakher & Co" };
 
 /** The client as its people see it (P2: with its own colour, and when its logo last changed; null = none). */
-export type CurrentClient = { id: string; name: string; brandColor: string | null; logoAt: Date | null };
+export type CurrentClient = { id: string; name: string; brandColor: string | null; brandColorDark: string | null; logoAt: Date | null };
 export type CurrentSite = { client: CurrentClient; site: SiteRef; sites: SiteRef[] };
 
 const ref = (site: SiteRef): SiteRef => ({ id: site.id, name: site.name });
@@ -91,7 +91,7 @@ const currentSiteRecord = cache(async (): Promise<{ client: CurrentClient; site:
   if (!site) return null;
   // Removed, or access taken away: the first site they may open is used and saved.
   if (tokenHash && site.id !== saved) await accounts.setSessionSite(tokenHash, site.id);
-  return { client: { id: client.id, name: client.name, brandColor: client.brandColor, logoAt: client.logoAt }, site, sites: allowed };
+  return { client: { id: client.id, name: client.name, brandColor: client.brandColor, brandColorDark: client.brandColorDark, logoAt: client.logoAt }, site, sites: allowed };
 });
 
 /** The signed-in person's client state (P1c): a paused or closed client's people see a notice instead of the app. */

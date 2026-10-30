@@ -221,13 +221,16 @@
   .qs-tail { stroke-dasharray: 18; stroke-dashoffset: 18; animation: qs-draw 0.35s 1.05s ease-out forwards; }
   .qs-nib { transform-box: fill-box; transform-origin: left center; transform: scaleX(0); animation: qs-grow 0.35s 1.3s cubic-bezier(.2,.8,.2,1) forwards; }
   .qs-ink { animation-delay: 1.6s; animation-duration: 0.45s; }
-  .qs-pulse { transform-box: fill-box; transform-origin: center; opacity: 0; animation: qs-ripple 1.2s 1.9s ease-out; }
-  .qs-word { opacity: 0; animation: qs-rise 0.5s 1.55s cubic-bezier(.2,.8,.2,1) forwards; }
+  .qs-pulse { transform-box: fill-box; transform-origin: center; opacity: 0; animation: qs-ripple 1.3s 1.9s ease-out 2; }
+  .qs-letter { display: inline-block; opacity: 0; animation: qs-write 0.38s cubic-bezier(.2,.8,.2,1) forwards; }
+  .qs-word { opacity: 0; animation: qs-rise 0.5s 2.45s cubic-bezier(.2,.8,.2,1) forwards; }
+  .qs-slogan { opacity: 0; animation: qs-rise 0.7s 2.8s cubic-bezier(.2,.8,.2,1) forwards; }
 }
 @keyframes qs-pop { 0% { opacity: 0; transform: scale(0); } 70% { opacity: 1; transform: scale(1.35); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes qs-draw { to { stroke-dashoffset: 0; } }
 @keyframes qs-grow { to { transform: scaleX(1); } }
 @keyframes qs-ripple { 0% { opacity: 0.5; transform: scale(1); } 100% { opacity: 0; transform: scale(3.4); } }
+@keyframes qs-write { from { opacity: 0; transform: translateY(10px) scale(0.9); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes qs-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .qalam-splash { display: none; }

@@ -37,11 +37,12 @@ export type Client = {
   engineAccountId: string | null;
   status: ClientStatus;
   brandColor: string | null;
+  brandColorDark: string | null;
   logoAt: Date | null;
   createdAt: Date;
 };
 export type ClientLogo = { contentType: string; data: Buffer; updatedAt: Date };
-export type NewClient = Omit<Client, "engineAccountId" | "status" | "brandColor" | "logoAt"> & { engineAccountId?: string | null; status?: ClientStatus };
+export type NewClient = Omit<Client, "engineAccountId" | "status" | "brandColor" | "brandColorDark" | "logoAt"> & { engineAccountId?: string | null; status?: ClientStatus };
 export type Site = { id: string; clientId: string; name: string; keyCipher: string; createdAt: Date };
 
 /** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the dashboard's Postgres on a server. */
@@ -96,7 +97,7 @@ export interface AccountStore {
   createSite(site: Site): Promise<void>;
   /** P1c: the client that is this engine account, or null. */
   clientByEngineAccount(engineAccountId: string): Promise<Client | null>;
-  updateClient(id: string, change: { name?: string; engineAccountId?: string; status?: ClientStatus; brandColor?: string | null }): Promise<void>;
+  updateClient(id: string, change: { name?: string; engineAccountId?: string; status?: ClientStatus; brandColor?: string | null; brandColorDark?: string | null }): Promise<void>;
   /** P2: the client's logo; null removes it. */
   setClientLogo(id: string, logo: ClientLogo | null): Promise<void>;
   clientLogo(id: string): Promise<ClientLogo | null>;

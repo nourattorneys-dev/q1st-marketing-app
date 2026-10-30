@@ -16,6 +16,7 @@ const Secret = z.string().min(16).max(500);
 /** P2: a client's own look: its main colour and the https address of its logo; null clears either. */
 const Brand = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
+  colorDark: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   logoUrl: z.string().url().max(500).nullable(),
 });
 
@@ -120,6 +121,7 @@ export async function provision(
       engineAccountId: request.accountId,
       status: "active" as const,
       brandColor: null,
+      brandColorDark: null,
       logoAt: null,
       createdAt: at,
     };
@@ -155,11 +157,14 @@ export async function provision(
 async function applyBrand(
   deps: Parameters<typeof provision>[0],
   clientId: string,
-  brand: { color: string | null; logoUrl: string | null },
+  brand: { color: string | null; colorDark?: string | null; logoUrl: string | null },
 ): Promise<ProvisionResult | null> {
   const logo = brand.logoUrl ? await deps.fetchLogo(brand.logoUrl) : null;
   if (logo && "problem" in logo) return fail(422, "logo_failed", logo.problem);
-  await deps.accounts.updateClient(clientId, { brandColor: brand.color ? brand.color.toLowerCase() : null });
+  await deps.accounts.updateClient(clientId, {
+    brandColor: brand.color ? brand.color.toLowerCase() : null,
+    brandColorDark: brand.colorDark ? brand.colorDark.toLowerCase() : null,
+  });
   await deps.accounts.setClientLogo(clientId, logo);
   return null;
 }

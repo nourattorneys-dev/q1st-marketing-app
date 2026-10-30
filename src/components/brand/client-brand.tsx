@@ -34,6 +34,7 @@ export async function ClientBrand() {
 
 /** The client's colour for its people's pages (light and dark). Nothing when the client has none: the Quantum1st colours stay. */
 export async function ClientBrandStyle() {
-  const css = brandCss((await getCurrentSite())?.client.brandColor ?? null);
+  const client = (await getCurrentSite())?.client;
+  const css = brandCss(client?.brandColor ?? null, client?.brandColorDark ?? null);
   return css ? <style data-testid="client-brand-style">{css}</style> : null;
 }

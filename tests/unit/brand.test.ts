@@ -13,7 +13,13 @@ describe("a client's colour (P2)", () => {
     const css = brandCss("#0A3D2A")!;
     expect(css).toContain(":root{--primary:#0a3d2a;--primary-foreground:#ffffff;");
     expect(css).toContain('[data-theme="dark"]{');
-    for (const bad of [null, "red", "#12345", "#123456;}body{display:none", "</style>"]) expect(brandCss(bad)).toBeNull();
+    for (const bad of [null, "red", "#12345", "#123456;}body{display:none", "</style>"]) expect(brandCss(bad, bad)).toBeNull();
+  });
+  it("a dark-mode colour of its own is used in dark mode; without one, dark mode follows the light colour", () => {
+    expect(brandCss("#0a3d2a", "#7fd3a5")).toContain('[data-theme="dark"]{--primary:#7fd3a5;--primary-foreground:#0a0f1c;');
+    expect(brandCss("#0a3d2a")).toContain('[data-theme="dark"]{--primary:#0a3d2a;--primary-foreground:#ffffff;');
+    const darkOnly = brandCss(null, "#7fd3a5")!;
+    expect(darkOnly.startsWith('[data-theme="dark"]')).toBe(true);
   });
 });
 

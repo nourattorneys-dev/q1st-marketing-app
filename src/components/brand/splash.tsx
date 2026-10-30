@@ -89,11 +89,16 @@ export async function Splash() {
             fill="var(--brand-gold)"
           />
         </svg>
-        <div className="qs-word flex flex-col items-center gap-1.5">
-          <span className="text-3xl font-semibold tracking-[-0.05em]" dir="ltr">
-            qalam
+        <div className="flex flex-col items-center gap-2">
+          <span className="flex text-4xl font-semibold tracking-[-0.05em]" dir="ltr">
+            {[..."qalam"].map((letter, index) => (
+              <span key={index} className="qs-letter" style={{ animationDelay: `${1.85 + index * 0.09}s` }}>
+                {letter}
+              </span>
+            ))}
           </span>
-          <ByQuantum1st className="font-mono text-xs text-muted-foreground" />
+          <ByQuantum1st className="qs-word font-mono text-xs text-muted-foreground" />
+          <span className="qs-slogan mt-3 text-[15px] text-muted-foreground">{t("slogan")}</span>
         </div>
         <span className="sr-only">{t("loading_brand")}</span>
       </div>

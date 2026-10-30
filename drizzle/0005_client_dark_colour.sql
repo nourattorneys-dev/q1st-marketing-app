@@ -1,0 +1,1 @@
+ALTER TABLE "clients" ADD COLUMN "brand_color_dark" varchar(7);

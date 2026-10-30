@@ -138,7 +138,7 @@ export function createMemoryAccountStore(): AccountStore {
       return found ? copy(found) : null;
     },
     async createClient(client) {
-      clients.set(client.id, { engineAccountId: null, status: "active", brandColor: null, logoAt: null, ...copy(client) });
+      clients.set(client.id, { engineAccountId: null, status: "active", brandColor: null, brandColorDark: null, logoAt: null, ...copy(client) });
     },
     async sites(clientId) {
       return [...sites.values()].filter((site) => clientId === undefined || site.clientId === clientId).sort(oldestFirst).map(copy);

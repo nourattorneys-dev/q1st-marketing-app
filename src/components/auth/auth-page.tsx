@@ -23,6 +23,7 @@ export async function AuthPage({ children }: { children: ReactNode }) {
           </span>
         </div>
         <div className="relative z-10 mt-auto flex max-w-xl flex-col gap-5">
+          <p className="text-sm font-medium text-[#e3a857]">{t("slogan")}</p>
           <p className="text-[40px] leading-[1.12] font-semibold tracking-[-0.035em]">{t("pitch")}</p>
           <p className="text-base leading-relaxed text-[#a9b1c4]">{t("pitchSub")}</p>
         </div>

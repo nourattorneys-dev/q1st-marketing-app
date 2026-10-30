@@ -22,6 +22,8 @@ export const clients = pgTable(
     status: varchar("status", { length: 20 }).$type<ClientStatus>().notNull().default("active"),
     /** P2: the client's own look. Its main colour (#rrggbb) and when its logo last changed (null = no logo: the Quantum1st mark). */
     brandColor: varchar("brand_color", { length: 7 }),
+    /** Its main colour in dark mode; null = a lighter mix of the light-mode colour. */
+    brandColorDark: varchar("brand_color_dark", { length: 7 }),
     logoAt: at("logo_at"),
     createdAt: at("created_at").notNull(),
   },
