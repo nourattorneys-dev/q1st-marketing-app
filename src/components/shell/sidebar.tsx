@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import type { AppLocale } from "@/i18n/locales";
 import { ClientBrand } from "@/components/brand/client-brand";
-import { ProductMark } from "@/components/brand/node-q";
+import { ProductMark } from "@/components/brand/qalam-mark";
 import { SidebarFrame } from "./sidebar-frame";
 import { SidebarNav } from "./sidebar-nav";
 
@@ -12,7 +12,7 @@ export async function Sidebar({ locale }: { locale: AppLocale }) {
     <aside className="border-b border-border bg-sidebar p-4 text-sidebar-foreground md:border-e md:border-b-0">
       <SidebarFrame
         brand={
-          <Suspense fallback={<ProductMark name={t("brand")} byline={t("byline")} />}>
+          <Suspense fallback={<ProductMark name={t("brand")} />}>
             <ClientBrand />
           </Suspense>
         } menu={t("menu")} close={t("closeMenu")}>

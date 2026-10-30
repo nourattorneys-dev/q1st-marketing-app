@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
-import { ProductMark } from "@/components/brand/node-q";
+import { ProductMark } from "@/components/brand/qalam-mark";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 
@@ -13,7 +13,7 @@ export async function AuthPage({ children }: { children: ReactNode }) {
         <ThemeToggle />
         <LocaleSwitch />
       </div>
-      <ProductMark name={t("brand")} byline={t("byline")} />
+      <ProductMark name={t("brand")} />
       <div className="flex w-full justify-center animate-in fade-in-0 slide-in-from-bottom-1 duration-300">{children}</div>
     </main>
   );

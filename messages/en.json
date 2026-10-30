@@ -1,9 +1,9 @@
 {
   "Meta": {
-    "title": "Q1st Marketing"
+    "title": "Qalam"
   },
   "Shell": {
-    "brand": "Q1st Marketing",
+    "brand": "Qalam",
     "nav": {
       "label": "Main",
       "dashboard": "Dashboard",
@@ -35,9 +35,9 @@
       "failed": "That website couldn't be opened.",
       "client": "Client"
     },
-    "byline": "by Quantum1st",
     "menu": "Menu",
-    "closeMenu": "Close"
+    "closeMenu": "Close",
+    "loading_brand": "Preparing your workspace"
   },
   "SignIn": {
     "title": "Sign in",
@@ -830,22 +830,22 @@
     "quotaWarning": "{metric}: {used} of {limit} used this month",
     "quotaExceeded": "{metric}: the monthly limit of {limit} is reached",
     "scan": "{count, plural, one {Site scan finished: {n} finding} other {Site scan finished: {n} findings}}",
-    "footer": "You get these emails because you can sign in to Q1st Marketing. You can turn them off on the Email notifications page.",
+    "footer": "You get these emails because you can sign in to Qalam. You can turn them off on the Email notifications page.",
     "test": {
-      "subject": "Q1st Marketing test email",
+      "subject": "Qalam test email",
       "heading": "Test email",
-      "body": "This is a test from Q1st Marketing. If you can read this, the dashboard's emails work.",
+      "body": "This is a test from Qalam. If you can read this, the dashboard's emails work.",
       "footer": "Sent because you pressed Send me a test email on the Email notifications page."
     },
     "invitation": {
-      "subject": "You're invited to Q1st Marketing",
-      "heading": "You're invited to the Q1st Marketing dashboard as {role}.",
+      "subject": "You're invited to Qalam",
+      "heading": "You're invited to the Qalam dashboard as {role}.",
       "link": "Set your password and sign in",
       "footer": "The link works once and expires in 7 days. If you didn't expect this email, you can ignore it."
     },
     "reset": {
-      "subject": "Reset your Q1st Marketing password",
-      "heading": "Someone asked to reset the password of your Q1st Marketing account.",
+      "subject": "Reset your Qalam password",
+      "heading": "Someone asked to reset the password of your Qalam account.",
       "link": "Choose a new password",
       "footer": "The link works once and expires in 1 hour. If you didn't ask for this, ignore this email: your password stays as it is."
     }
@@ -889,7 +889,7 @@
   },
   "Invitation": {
     "title": "Create your account",
-    "intro": "You're invited to Q1st Marketing as {role}. Choose your name and a password.",
+    "intro": "You're invited to Qalam as {role}. Choose your name and a password.",
     "email": "Email",
     "name": "Your name",
     "password": "Password",

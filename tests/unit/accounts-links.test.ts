@@ -55,8 +55,8 @@ describe("invitations on the Users page (spec M5c)", () => {
     const invite = await directory().invite(" New@Example.com ", "reviewer", "usr_sara");
     expect(invite).toMatchObject({ email: "new@example.com", role: "reviewer", expiresAt: new Date(now.getTime() + INVITATION_DAYS * DAY).toISOString() });
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: "new@example.com", subject: "You're invited to Q1st Marketing · دعوة إلى Q1st Marketing" });
-    expect(sent[0].text).toContain("You're invited to the Q1st Marketing dashboard as Reviewer.");
+    expect(sent[0]).toMatchObject({ to: "new@example.com", subject: "You're invited to Qalam · دعوة إلى منصة قلم" });
+    expect(sent[0].text).toContain("You're invited to the Qalam dashboard as Reviewer.");
     expect(sent[0].text).toContain("بصفة مراجع");
     expect(sent[0].text).toContain(`${APP_URL}/ar/invitation?token=`);
     const token = tokenIn(sent[0], "invitation");
@@ -160,7 +160,7 @@ describe("forgot password", () => {
     await requestReset(deps(), { email: "  SARA@example.com ", now });
     await settle();
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: "sara@example.com", subject: "Reset your Q1st Marketing password · إعادة تعيين كلمة مرور Q1st Marketing" });
+    expect(sent[0]).toMatchObject({ to: "sara@example.com", subject: "Reset your Qalam password · إعادة تعيين كلمة مرور منصة قلم" });
     const token = tokenIn(sent[0], "reset-password");
     expect(await resetLinkValid(store, token, new Date(now.getTime() + 59 * 60_000))).toBe(true);
     expect(await resetLinkValid(store, token, new Date(now.getTime() + 60 * 60_000))).toBe(false);

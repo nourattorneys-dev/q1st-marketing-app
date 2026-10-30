@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { ClientBrandStyle } from "@/components/brand/client-brand";
+import { Splash } from "@/components/brand/splash";
 import { ServiceBanner } from "@/components/shell/service-banner";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
@@ -14,6 +15,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[loc
       <Suspense fallback={null}>
         <ClientBrandStyle />
       </Suspense>
+      <Splash />
       <Sidebar locale={locale} />
       <div className="flex min-w-0 flex-col">
         <Topbar locale={locale} />

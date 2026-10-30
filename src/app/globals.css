@@ -208,3 +208,29 @@
   .prose-article td { @apply border border-border px-2 py-1 text-start; }
   .prose-article a { @apply underline; color: var(--link); }
 }
+
+/* P2: the Qalam splash (components/brand/splash.tsx): draws the mark once per visit, then fades into the page. */
+@layer components {
+  .qalam-splash {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    background: var(--background); color: var(--foreground); pointer-events: none;
+    animation: qs-out 0.45s 2.15s ease-in forwards;
+  }
+  [data-splash="seen"] .qalam-splash { display: none; }
+  .qs-node, .qs-ink { transform-box: fill-box; transform-origin: center; opacity: 0; animation: qs-pop 0.36s cubic-bezier(.2,.8,.2,1) forwards; }
+  .qs-ring { stroke-dasharray: 110; stroke-dashoffset: 110; animation: qs-draw 0.9s 0.12s cubic-bezier(.65,0,.35,1) forwards; }
+  .qs-tail { stroke-dasharray: 18; stroke-dashoffset: 18; animation: qs-draw 0.35s 1.05s ease-out forwards; }
+  .qs-nib { transform-box: fill-box; transform-origin: left center; transform: scaleX(0); animation: qs-grow 0.35s 1.3s cubic-bezier(.2,.8,.2,1) forwards; }
+  .qs-ink { animation-delay: 1.6s; animation-duration: 0.45s; }
+  .qs-pulse { transform-box: fill-box; transform-origin: center; opacity: 0; animation: qs-ripple 1.2s 1.9s ease-out; }
+  .qs-word { opacity: 0; animation: qs-rise 0.5s 1.55s cubic-bezier(.2,.8,.2,1) forwards; }
+}
+@keyframes qs-pop { 0% { opacity: 0; transform: scale(0); } 70% { opacity: 1; transform: scale(1.35); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes qs-draw { to { stroke-dashoffset: 0; } }
+@keyframes qs-grow { to { transform: scaleX(1); } }
+@keyframes qs-ripple { 0% { opacity: 0.5; transform: scale(1); } 100% { opacity: 0; transform: scale(3.4); } }
+@keyframes qs-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes qs-out { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .qalam-splash { display: none; }
+}

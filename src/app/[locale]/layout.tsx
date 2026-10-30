@@ -24,7 +24,7 @@ const plexArabic = localFont({
 const FONT_VARIABLES = [GeistSans.variable, GeistMono.variable, plexArabic.variable].join(" ");
 
 /** Runs before first paint: applies the saved theme so dark mode never flashes light. */
-const THEME_SCRIPT = `(function(){var d=document.documentElement;try{d.setAttribute("data-theme",localStorage.getItem("theme")==="dark"?"dark":"light")}catch(e){d.setAttribute("data-theme","light")}})();`;
+const THEME_SCRIPT = `(function(){var d=document.documentElement;try{d.setAttribute("data-theme",localStorage.getItem("theme")==="dark"?"dark":"light")}catch(e){d.setAttribute("data-theme","light")}try{if(sessionStorage.getItem("qalam-splash"))d.setAttribute("data-splash","seen")}catch(e){d.setAttribute("data-splash","seen")}})();`;
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
