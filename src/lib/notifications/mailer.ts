@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { createGraphMailer, type GraphSettings } from "./graph-mailer";
 import { MailError, type MailErrorKind } from "./mail-error";
 
 export type Email = { to: string; subject: string; html: string; text: string; idempotencyKey: string };
@@ -104,7 +105,9 @@ export function createSmtpMailer(settings: SmtpSettings, limits = SMTP_LIMITS): 
   };
 }
 
-/** The mailer the settings ask for (M5b): the client's mail server for EMAIL_MODE=smtp, otherwise the log. */
-export function mailerFor(env: { emailMode: "log" | "smtp"; smtp: SmtpSettings | null }): Mailer {
-  return env.emailMode === "smtp" && env.smtp ? createSmtpMailer(env.smtp) : createLogMailer();
+/** The mailer the settings ask for: a mail server (smtp), Microsoft 365 (graph), otherwise the log. */
+export function mailerFor(env: { emailMode: "log" | "smtp" | "graph"; smtp: SmtpSettings | null; graph?: GraphSettings | null }): Mailer {
+  if (env.emailMode === "smtp" && env.smtp) return createSmtpMailer(env.smtp);
+  if (env.emailMode === "graph" && env.graph) return createGraphMailer(env.graph);
+  return createLogMailer();
 }

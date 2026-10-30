@@ -42,5 +42,5 @@ export async function sendTestEmailAction(input: { locale: string; idempotencyKe
     return { ok: false, error: { status: 502, code: "mail_failed", message: error.message, details: { source: "dashboard", kind: error.kind, reply: error.reply } } };
   }
   // With EMAIL_MODE=log the email only went to the outbox (kept for the dev outbox with test logins).
-  return { ok: true, data: { to: session.email, sent: env.emailMode === "smtp" } };
+  return { ok: true, data: { to: session.email, sent: env.emailMode !== "log" } };
 }

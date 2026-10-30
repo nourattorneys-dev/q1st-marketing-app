@@ -31,6 +31,7 @@ describe("parseServicesEnv (M4c)", () => {
       encryptionKey: null,
       emailMode: "log",
       smtp: null,
+    graph: null,
       cronSecret: null,
       notifyQuietMs: 120_000,
     });

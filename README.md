@@ -60,7 +60,9 @@ The dashboard signs people in itself (M5c). Accounts, sessions, invitations and 
    - Set `WEBHOOK_ENCRYPTION_KEY` to `openssl rand -base64 32`. Keep it: changing it means getting a new webhook secret.
    - **Backups:** the server's Postgres backups (`pg_dump` of the dashboard's database).
    - **Tests:** `pnpm test` needs a local Postgres, set by `TEST_DATABASE_URL` (default `postgres://postgres@127.0.0.1:5432/articles_ai_test`). Each test file uses its own `articles_ai_test_<name>` database.
-2. **Email:** the client's own mail server, over SMTP.
+2. **Email:** Microsoft 365 through Microsoft Graph (`EMAIL_MODE=graph`), or a mail server over SMTP (`EMAIL_MODE=smtp`, below).
+   - **Microsoft 365 (graph):** an app registration with no Graph permissions of its own, given the right to send from one mailbox only through Exchange's role-based access for applications (role `Application Mail.Send`, scoped to that mailbox). Settings: `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET` (single quotes) and `EMAIL_FROM`, for example `Q1st <notifications@quantum1st.com>`. Emails are not kept in the mailbox's Sent Items. A failure is logged with Microsoft's reason, never the secret.
+   - **SMTP:**
    - **On a cPanel host:**
      - cPanel → **Email Accounts**: create a mailbox on the dashboard's own subdomain (for Fakher & Co, `notifications@dashboard.fakhernco.com`).
      - cPanel → **Email Deliverability** → that subdomain: add the suggested **SPF** and **DKIM** records where the domain's DNS lives (Cloudflare for Fakher & Co).

@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import type { GraphSettings } from "@/lib/notifications/graph-mailer";
 import type { SmtpSettings } from "@/lib/notifications/mailer";
 
 const ServicesSchema = z.object({
@@ -7,7 +8,10 @@ const ServicesSchema = z.object({
   DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
   DATABASE_URL: z.string().optional(),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
-  EMAIL_MODE: z.enum(["log", "smtp"]).default("log"),
+  EMAIL_MODE: z.enum(["log", "smtp", "graph"]).default("log"),
+  GRAPH_TENANT_ID: z.string().optional(),
+  GRAPH_CLIENT_ID: z.string().optional(),
+  GRAPH_CLIENT_SECRET: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
   SMTP_USER: z.string().optional(),
@@ -27,9 +31,11 @@ export type ServicesEnv = {
   dbPoolMax: number;
   /** 32 bytes for AES-256-GCM, or null when unset (the in-memory store then uses a key that lives as long as the process). */
   encryptionKey: Buffer | null;
-  emailMode: "log" | "smtp";
-  /** The client's mail server (EMAIL_MODE=smtp), or null while emails are only logged. */
+  emailMode: "log" | "smtp" | "graph";
+  /** The client's mail server (EMAIL_MODE=smtp), or null. */
   smtp: SmtpSettings | null;
+  /** Microsoft 365 through Graph (EMAIL_MODE=graph), or null. */
+  graph: GraphSettings | null;
   cronSecret: string | null;
   notifyQuietMs: number;
 };
@@ -68,6 +74,20 @@ function smtpSettings(env: z.infer<typeof ServicesSchema>): SmtpSettings {
     throw new Error("EMAIL_FROM must be one address, like Articles AI <notifications@dashboard.example.com> or notifications@dashboard.example.com.");
   }
   return { host, port, user, password, fromName: parsed.name, fromAddress: parsed.address };
+}
+
+/** EMAIL_MODE=graph. No message repeats GRAPH_CLIENT_SECRET. */
+function graphSettings(env: z.infer<typeof ServicesSchema>): GraphSettings {
+  const { GRAPH_TENANT_ID: tenantId, GRAPH_CLIENT_ID: clientId, GRAPH_CLIENT_SECRET: clientSecret, EMAIL_FROM: from } = env;
+  if (!tenantId || !clientId || !clientSecret || !from) {
+    const missing = Object.entries({ GRAPH_TENANT_ID: tenantId, GRAPH_CLIENT_ID: clientId, GRAPH_CLIENT_SECRET: clientSecret, EMAIL_FROM: from })
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+    throw new Error(`EMAIL_MODE=graph needs ${missing.join(", ")}.`);
+  }
+  const parsed = sender(from);
+  if (!parsed) throw new Error("EMAIL_FROM must be one address, like Q1st <notifications@example.com> or notifications@example.com.");
+  return { tenantId, clientId, clientSecret, fromName: parsed.name, fromAddress: parsed.address };
 }
 
 export function parseServicesEnv(source: Record<string, string | undefined>): ServicesEnv {
@@ -109,6 +129,7 @@ export function parseServicesEnv(source: Record<string, string | undefined>): Se
     encryptionKey,
     emailMode: env.EMAIL_MODE,
     smtp: env.EMAIL_MODE === "smtp" ? smtpSettings(env) : null,
+    graph: env.EMAIL_MODE === "graph" ? graphSettings(env) : null,
     cronSecret: env.CRON_SECRET ?? null,
     notifyQuietMs: env.NOTIFY_QUIET_SECONDS * 1000,
   };
