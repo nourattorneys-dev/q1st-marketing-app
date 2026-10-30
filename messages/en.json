@@ -56,8 +56,22 @@
     }
   },
   "NoAccess": {
-    "title": "No access yet",
-    "body": "Your account doesn't have a role yet. Ask your admin to give you access."
+    "role": {
+      "title": "No access yet",
+      "body": "Your account doesn't have a role yet. Ask your admin to give you access."
+    },
+    "site": {
+      "title": "No website to open",
+      "body": "Your account has no website to work on right now. It may have been removed, or your access to it changed. Ask your admin."
+    },
+    "suspended": {
+      "title": "Account paused",
+      "body": "This account is paused for now. Your work is kept and will be here when it is active again. Contact Quantum1st for details."
+    },
+    "closed": {
+      "title": "Account closed",
+      "body": "This account is closed. Contact Quantum1st if you think this is a mistake."
+    }
   },
   "Dashboard": {
     "title": "Dashboard",

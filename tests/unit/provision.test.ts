@@ -167,6 +167,38 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     expect(await accounts.invitations((await accounts.clients())[0].id)).toHaveLength(0);
   });
 
+  it("status follows the portal: suspended keeps sessions, closed signs everyone out; unknown account is a 404", async () => {
+    await run(upsert({ admin: { email: "owner@acme.com" } }));
+    const acme = (await accounts.clients())[0];
+    await accounts.createAccount(person("me@acme.com", acme.id));
+    const session = { tokenHash: "h".repeat(64), userId: "usr_me", createdAt: at, expiresAt: new Date(at.getTime() + 86_400_000) };
+    await accounts.createSession(session);
+    expect(await run({ action: "client.status", accountId: "acc_1", status: "suspended" })).toMatchObject({ ok: true, data: { status: "suspended" } });
+    expect((await accounts.client(acme.id))!.status).toBe("suspended");
+    expect(await accounts.sessionAccount(session.tokenHash, at)).not.toBeNull();
+    expect(await run({ action: "client.status", accountId: "acc_1", status: "closed" })).toMatchObject({ ok: true });
+    expect(await accounts.sessionAccount(session.tokenHash, at)).toBeNull();
+    expect(await run({ action: "client.status", accountId: "acc_x", status: "closed" })).toMatchObject({ ok: false, status: 404 });
+  });
+
+  it("deleting a client: refused unless closed; then its people, invitations, sites and webhooks are gone, other clients untouched", async () => {
+    await run(upsert({ admin: { email: "owner@acme.com" } }));
+    await run(upsert({ accountId: "acc_2", accountName: "Other", siteId: "site_9", siteName: "Other site" }));
+    const acme = (await accounts.clients()).find((client) => client.engineAccountId === "acc_1")!;
+    await accounts.createAccount(person("me@acme.com", acme.id));
+    expect(await run({ action: "client.remove", accountId: "acc_1" })).toMatchObject({ ok: false, status: 409, code: "not_closed" });
+    await run({ action: "client.status", accountId: "acc_1", status: "closed" });
+    expect(await run({ action: "client.remove", accountId: "acc_1" })).toMatchObject({ ok: true, data: { removed: true } });
+    expect(await accounts.client(acme.id)).toBeNull();
+    expect(await accounts.accountByEmail("me@acme.com")).toBeNull();
+    expect(await accounts.invitationByEmail("owner@acme.com")).toBeNull();
+    expect(await accounts.site("site_1")).toBeNull();
+    expect(await storeFor("site_1").webhook()).toBeNull();
+    expect(await accounts.site("site_9")).toMatchObject({ name: "Other site" });
+    expect(await storeFor("site_9").webhook()).not.toBeNull();
+    expect(await run({ action: "client.remove", accountId: "acc_1" })).toMatchObject({ ok: false, status: 404 });
+  });
+
   it("removing a site: gone from the app; a Reviewer limited to it opens nothing (never every site)", async () => {
     await run(upsert());
     await run(upsert({ siteId: "site_2", siteName: "Acme shop" }));
@@ -176,6 +208,7 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     await accounts.setUserSites(reviewer.id, ["site_2"]);
     expect(await run({ action: "site.remove", accountId: "acc_1", siteId: "site_2" })).toMatchObject({ ok: true, data: { removed: true } });
     expect(await accounts.site("site_2")).toBeNull();
+    expect(await storeFor("site_2").webhook()).toBeNull();
     expect(sitesFor("reviewer", await accounts.sites(acme.id), await accounts.userSites(reviewer.id))).toEqual([]);
     expect(await run({ action: "site.remove", accountId: "acc_1", siteId: "site_2" })).toMatchObject({ ok: false, status: 404 });
     expect(await run({ action: "site.remove", accountId: "acc_2", siteId: "site_1" })).toMatchObject({ ok: false, status: 409 });

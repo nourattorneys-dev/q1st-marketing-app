@@ -68,7 +68,7 @@ test("the security page sends signed-out visitors to sign-in, and people without
   await expect(page).toHaveURL(/\/en\/sign-in$/);
   await signInWithCookie(context, "dev_norole");
   await page.goto("/en/security");
-  await expect(page).toHaveURL(/\/en\/no-access$/);
+  await expect(page).toHaveURL(/\/en\/no-access\?why=role$/);
 });
 
 test("the security page in Arabic", async ({ page, context }) => {

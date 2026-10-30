@@ -36,7 +36,7 @@ describe("session guards (test logins)", () => {
 
   it("sends people without a role to the no-access page", async () => {
     cookieJar.set("dev_session", "dev_norole");
-    await expect(requireSession("ar")).rejects.toThrow("REDIRECT:/ar/no-access");
+    await expect(requireSession("ar")).rejects.toThrow("REDIRECT:/ar/no-access?why=role");
   });
 
   it("returns the signed-in reviewer", async () => {
@@ -126,7 +126,7 @@ describe("password sessions (AUTH_MODE=password, spec M5c)", () => {
     const id = await signedIn("reviewer");
     await expect(requireSession("en")).resolves.toMatchObject({ userId: id, role: "reviewer", twoFactor: false });
     await getAccountStore().setRole(id, null);
-    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access");
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=role");
     await expect(getRole()).resolves.toBeNull();
   });
 

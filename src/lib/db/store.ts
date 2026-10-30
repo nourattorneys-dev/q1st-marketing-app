@@ -23,6 +23,8 @@ export interface AppStore {
   lastEventAt(): Promise<Date | null>;
   webhook(): Promise<WebhookConfig | null>;
   saveWebhook(config: WebhookConfig): Promise<void>;
+  /** Forgets the site's webhook secret (P1c: the site or its client was removed). */
+  removeWebhook(): Promise<void>;
   /** Notifications not emailed yet, oldest first. */
   pendingNotifications(): Promise<StoredNotification[]>;
   markSent(eventIds: string[], recipients: string[], at: Date): Promise<void>;

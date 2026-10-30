@@ -18,7 +18,7 @@ import { ChangePasswordForm } from "./change-password-form";
 export async function SecurityView({ locale }: { locale: AppLocale }) {
   const session = await getSession();
   if (!session) redirect(`/${locale}/sign-in`);
-  if (!session.role) redirect(`/${locale}/no-access`);
+  if (!session.role) redirect(`/${locale}/no-access?why=role`);
   if (serverEnv().authMode === "password") {
     const tAccount = await getTranslations("Account");
     const tRole = await getTranslations("Shell.role");

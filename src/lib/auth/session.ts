@@ -14,7 +14,7 @@ import { decodeMockSession, MOCK_SESSION_COOKIE } from "./mock-session";
 import { can, type Permission, type Role } from "./roles";
 import { twoFactorStatus, type TwoFactorPolicy } from "./two-factor";
 import type { AuthedSession, Session } from "./types";
-import { getCurrentSite } from "@/lib/tenancy";
+import { getClientStatus, getCurrentSite } from "@/lib/tenancy";
 
 /** Reads the signed-in person once per request (React cache), so a page's many guards make one lookup. Call only under <Suspense>. */
 export const getSession = cache(async (): Promise<Session | null> => {
@@ -57,9 +57,12 @@ export async function getTwoFactorPolicy(): Promise<TwoFactorPolicy> {
 export async function requireSession(locale: string): Promise<AuthedSession> {
   const session = await getSession();
   if (!session) redirect(`/${locale}/sign-in`);
-  if (!session.role) redirect(`/${locale}/no-access`);
-  // P1b: a role but no site to open (none granted, or the client has none yet).
-  if (!(await getCurrentSite())) redirect(`/${locale}/no-access`);
+  if (!session.role) redirect(`/${locale}/no-access?why=role`);
+  // P1c: the client is paused or closed in the staff portal.
+  const status = await getClientStatus();
+  if (status === "suspended" || status === "closed") redirect(`/${locale}/no-access?why=${status}`);
+  // P1b: a role but no site to open (none granted, removed, or the client has none yet).
+  if (!(await getCurrentSite())) redirect(`/${locale}/no-access?why=site`);
   if (twoFactorStatus(await getTwoFactorPolicy(), session) === "required") redirect(`/${locale}/security`);
   return { ...session, role: session.role };
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { sessionCookieName } from "@/lib/accounts/cookie";
-import type { Site } from "@/lib/accounts/store";
+import type { ClientStatus, Site } from "@/lib/accounts/store";
 import { hashToken } from "@/lib/accounts/tokens";
 import { getSession } from "@/lib/auth/session";
 import { getAccountStore, getExclusive, getStore } from "@/lib/db";
@@ -78,7 +78,7 @@ const currentSiteRecord = cache(async (): Promise<{ client: { id: string; name: 
   await ensureTenancy();
   const accounts = getAccountStore();
   const client = await accounts.client(session.clientId);
-  if (!client) return null;
+  if (!client || client.status !== "active") return null;
   const granted = session.role === "admin" ? [] : await accounts.userSites(session.userId);
   const allowed = sitesFor(session.role, await accounts.sites(client.id), granted);
   const env = serverEnv();
@@ -90,6 +90,15 @@ const currentSiteRecord = cache(async (): Promise<{ client: { id: string; name: 
   // Removed, or access taken away: the first site they may open is used and saved.
   if (tokenHash && site.id !== saved) await accounts.setSessionSite(tokenHash, site.id);
   return { client: { id: client.id, name: client.name }, site, sites: allowed };
+});
+
+/** The signed-in person's client state (P1c): a paused or closed client's people see a notice instead of the app. */
+export const getClientStatus = cache(async (): Promise<ClientStatus | null> => {
+  await cookies();
+  if (serverEnv().authMode === "mock") return "active";
+  const session = await getSession();
+  if (!session?.clientId) return null;
+  return (await getAccountStore().client(session.clientId))?.status ?? null;
 });
 
 /** The site this request works on, and the others the person may open (P1b). Null: signed out, or no site to open. */

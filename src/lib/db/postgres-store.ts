@@ -115,6 +115,10 @@ export function createPostgresStore(connection: Pick<PostgresConnection, "db" | 
       await connection.ready();
       await queries.saveWebhook(db, siteId, config);
     },
+    async removeWebhook() {
+      await connection.ready();
+      await db.delete(webhookConfigs).where(eq(webhookConfigs.siteId, siteId));
+    },
 
     async pendingNotifications() {
       await connection.ready();

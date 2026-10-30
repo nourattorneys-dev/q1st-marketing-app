@@ -137,7 +137,7 @@ export function createMemoryAccountStore(): AccountStore {
       return found ? copy(found) : null;
     },
     async createClient(client) {
-      clients.set(client.id, { engineAccountId: null, ...copy(client) });
+      clients.set(client.id, { engineAccountId: null, status: "active", ...copy(client) });
     },
     async sites(clientId) {
       return [...sites.values()].filter((site) => clientId === undefined || site.clientId === clientId).sort(oldestFirst).map(copy);
@@ -156,6 +156,18 @@ export function createMemoryAccountStore(): AccountStore {
     async updateClient(id, change) {
       const found = clients.get(id);
       if (found) clients.set(id, { ...found, ...change });
+    },
+    async deleteClient(id) {
+      for (const [userId, account] of accounts) {
+        if (account.clientId !== id) continue;
+        accounts.delete(userId);
+        userSites.delete(userId);
+        for (const [hash, session] of sessions) if (session.userId === userId) sessions.delete(hash);
+        for (const [hash, reset] of resets) if (reset.userId === userId) resets.delete(hash);
+      }
+      for (const [inviteId, invitation] of invitations) if (invitation.clientId === id) invitations.delete(inviteId);
+      for (const [siteId, site] of sites) if (site.clientId === id) sites.delete(siteId);
+      clients.delete(id);
     },
     async updateSite(id, change) {
       const found = sites.get(id);

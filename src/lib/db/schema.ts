@@ -1,6 +1,7 @@
 import { boolean, char, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import type { Role } from "@/lib/auth/roles";
 import type { Audience } from "./store";
+import type { ClientStatus } from "@/lib/accounts/store";
 
 // Design §4: the dashboard's only database, its own Postgres. Articles, keywords, photos and schedules stay in
 // Quantum1st's engine. Times are stored with their time zone, to the millisecond; keys are varchar(191).
@@ -17,6 +18,8 @@ export const clients = pgTable(
     name: varchar("name", { length: 200 }).notNull(),
     /** P1c: the engine's account this client is; null for a client made from the settings file until the portal links it. */
     engineAccountId: key("engine_account_id"),
+    /** Follows the engine account (P1c): only an active client's people may work; suspended pauses, closed is on its way out. */
+    status: varchar("status", { length: 20 }).$type<ClientStatus>().notNull().default("active"),
     createdAt: at("created_at").notNull(),
   },
   (table) => [uniqueIndex("clients_engine_account_id").on(table.engineAccountId)],

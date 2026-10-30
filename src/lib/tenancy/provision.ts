@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createAccountsDirectory } from "@/lib/accounts/accounts-directory";
-import type { AccountStore } from "@/lib/accounts/store";
+import { CLIENT_STATUSES, type AccountStore } from "@/lib/accounts/store";
 import { newId } from "@/lib/accounts/tokens";
 import type { AppStore } from "@/lib/db/store";
 import type { Mailer } from "@/lib/notifications/mailer";
@@ -30,13 +30,15 @@ export const ProvisionRequest = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("site.remove"), accountId: Id, siteId: Id }),
   z.object({ action: z.literal("client.rename"), accountId: Id, accountName: Name }),
+  z.object({ action: z.literal("client.status"), accountId: Id, status: z.enum(CLIENT_STATUSES) }),
+  z.object({ action: z.literal("client.remove"), accountId: Id }),
 ]);
 export type ProvisionRequest = z.infer<typeof ProvisionRequest>;
 
 /** `member`: already has an account in this client; `invited`: a new invitation; `reinvited`: a pending one sent again. */
 export type AdminInvite = "member" | "invited" | "reinvited";
 export type ProvisionResult =
-  | { ok: true; data: { clientId: string; siteId?: string; hookUrl?: string; admin?: AdminInvite; removed?: boolean } }
+  | { ok: true; data: { clientId: string; siteId?: string; hookUrl?: string; admin?: AdminInvite; removed?: boolean; status?: string } }
   | { ok: false; status: number; code: string; message: string };
 
 const fail = (status: number, code: string, message: string): ProvisionResult => ({ ok: false, status, code, message });
@@ -53,10 +55,24 @@ export async function provision(
   request: ProvisionRequest,
 ): Promise<ProvisionResult> {
   const { accounts } = deps;
-  if (request.action === "client.rename") {
+  if (request.action === "client.rename" || request.action === "client.status" || request.action === "client.remove") {
     const client = await accounts.clientByEngineAccount(request.accountId);
     if (!client) return fail(404, "not_found", "No client in the app for this account.");
-    await accounts.updateClient(client.id, { name: request.accountName });
+    if (request.action === "client.rename") await accounts.updateClient(client.id, { name: request.accountName });
+    if (request.action === "client.status") {
+      await accounts.updateClient(client.id, { status: request.status });
+      // Closed: everyone is signed out now. Suspended keeps sessions; every page shows the paused notice until it is active again.
+      if (request.status === "closed") for (const person of await accounts.accounts(client.id)) await accounts.deleteSessionsOf(person.id);
+      console.info(`Client ${client.id} is now ${request.status}`);
+      return { ok: true, data: { clientId: client.id, status: request.status } };
+    }
+    if (request.action === "client.remove") {
+      if (client.status !== "closed") return fail(409, "not_closed", "Close the client before deleting it.");
+      for (const owned of await accounts.sites(client.id)) await deps.storeFor(owned.id).removeWebhook();
+      await accounts.deleteClient(client.id);
+      console.info(`Client removed from the app: ${client.id}`);
+      return { ok: true, data: { clientId: client.id, removed: true } };
+    }
     return { ok: true, data: { clientId: client.id } };
   }
 
@@ -74,6 +90,7 @@ export async function provision(
 
   if (request.action === "site.remove") {
     if (!site || !client) return fail(404, "not_found", "No such site in the app.");
+    await deps.storeFor(site.id).removeWebhook();
     await accounts.deleteSite(site.id);
     console.info(`Site removed from the app: ${site.id}`);
     return { ok: true, data: { clientId: client.id, siteId: site.id, removed: true } };
@@ -84,8 +101,9 @@ export async function provision(
   }
   const at = deps.now();
   if (!client) {
-    client = { id: newId("cli"), name: request.accountName, engineAccountId: request.accountId, createdAt: at };
-    await accounts.createClient(client);
+    const made = { id: newId("cli"), name: request.accountName, engineAccountId: request.accountId, status: "active" as const, createdAt: at };
+    await accounts.createClient(made);
+    client = made;
   } else if (client.name !== request.accountName) {
     await accounts.updateClient(client.id, { name: request.accountName });
   }

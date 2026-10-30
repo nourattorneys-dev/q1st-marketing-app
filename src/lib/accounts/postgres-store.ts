@@ -1,4 +1,4 @@
-import { and, asc, DrizzleQueryError, eq, gt, isNull, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
+import { and, asc, DrizzleQueryError, eq, gt, inArray, isNull, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
 import type { PostgresConnection } from "@/lib/db/postgres";
 import { clients, invitations, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
 import type { Account, AccountStore, Client, Invitation, Site } from "./store";
@@ -217,6 +217,19 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
     async updateClient(id, change) {
       await connection.ready();
       if (Object.keys(change).length) await db.update(clients).set(change).where(eq(clients.id, id));
+    },
+    async deleteClient(id) {
+      await connection.ready();
+      await db.transaction(async (tx) => {
+        const people = tx.select({ id: users.id }).from(users).where(eq(users.clientId, id));
+        await tx.delete(sessions).where(inArray(sessions.userId, people));
+        await tx.delete(passwordResets).where(inArray(passwordResets.userId, people));
+        await tx.delete(userSites).where(inArray(userSites.userId, people));
+        await tx.delete(users).where(eq(users.clientId, id));
+        await tx.delete(invitations).where(eq(invitations.clientId, id));
+        await tx.delete(sites).where(eq(sites.clientId, id));
+        await tx.delete(clients).where(eq(clients.id, id));
+      });
     },
     async updateSite(id, change) {
       await connection.ready();

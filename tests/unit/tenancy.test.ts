@@ -249,7 +249,20 @@ describe("the current site and the switcher (AUTH_MODE=password)", () => {
     const store = getAccountStore();
     await store.createClient({ id: "cli_empty", name: "Empty", createdAt: at });
     await signedIn("admin", "cli_empty");
-    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access");
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=site");
+  });
+
+  it("a paused or closed client's people see why on the no-access page; active again opens the app with nothing lost", async () => {
+    const store = getAccountStore();
+    await signedIn("admin", "cli_1");
+    await expect(requireSession("en")).resolves.toMatchObject({ role: "admin" });
+    await store.updateClient("cli_1", { status: "suspended" });
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=suspended");
+    expect(await getCurrentSite()).toBeNull();
+    await store.updateClient("cli_1", { status: "closed" });
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=closed");
+    await store.updateClient("cli_1", { status: "active" });
+    await expect(requireSession("en")).resolves.toMatchObject({ role: "admin" });
   });
 
   it("a site's emails go to the client's Admins and the Reviewers who may open it", async () => {

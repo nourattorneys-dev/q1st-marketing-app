@@ -58,6 +58,9 @@ export function createMemoryStore(siteId: string, state: MemoryState = createMem
     async saveWebhook(config) {
       webhooks.set(siteId, { ...config, updatedAt: new Date(config.updatedAt) });
     },
+    async removeWebhook() {
+      webhooks.delete(siteId);
+    },
 
     async pendingNotifications() {
       return [...notifications.values()]

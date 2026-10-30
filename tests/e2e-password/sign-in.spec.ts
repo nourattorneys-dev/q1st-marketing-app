@@ -43,7 +43,8 @@ test("five wrong passwords lock the email for 15 minutes, even for the right one
 test("someone without a role signs in to the No access page", async ({ page }) => {
   await seedAccount({ email: "pending@example.com", role: null });
   await signInWithPassword(page, "pending@example.com");
-  await expect(page).toHaveURL(/\/en\/no-access$/);
+  await expect(page).toHaveURL(/\/en\/no-access\?why=role$/);
+  await expect(page.getByText("No access yet")).toBeVisible();
 });
 
 test("removing someone's role takes effect on their next page (Review Focus 1)", async ({ page }) => {
@@ -52,7 +53,20 @@ test("removing someone's role takes effect on their next page (Review Focus 1)",
   await expect(page).toHaveURL(/\/en$/);
   await withAccounts((store) => store.setRole(reviewer.id, null));
   await page.goto("/en/keywords");
-  await expect(page).toHaveURL(/\/en\/no-access$/);
+  await expect(page).toHaveURL(/\/en\/no-access\?why=role$/);
+});
+
+test("a paused client's people see why, and get back in with nothing lost when it is active again (P1c)", async ({ page }) => {
+  const admin = await seedAccount({ email: "paused@example.com", role: "admin" });
+  await signInWithPassword(page, "paused@example.com");
+  await expect(page).toHaveURL(/\/en$/);
+  await withAccounts((store) => store.updateClient(admin.clientId!, { status: "suspended" }));
+  await page.goto("/en/keywords");
+  await expect(page).toHaveURL(/\/en\/no-access\?why=suspended$/);
+  await expect(page.getByText("Account paused")).toBeVisible();
+  await withAccounts((store) => store.updateClient(admin.clientId!, { status: "active" }));
+  await page.goto("/en/keywords");
+  await expect(page).toHaveURL(/\/en\/keywords$/);
 });
 
 test("the sign-in page in Arabic", async ({ page }) => {

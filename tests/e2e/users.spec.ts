@@ -40,7 +40,7 @@ test("removing a reviewer's access takes effect on their next page; giving it ba
   await admin.getByTestId("user-apply-dev_reviewer").click();
   await expect(admin.getByTestId("user-changed-dev_reviewer")).toBeVisible();
   await reviewer.goto("/en/keywords");
-  await expect(reviewer).toHaveURL(/\/en\/no-access$/);
+  await expect(reviewer).toHaveURL(/\/en\/no-access\?why=role$/);
 
   await admin.getByTestId("user-role-dev_reviewer").selectOption("reviewer");
   await admin.getByTestId("user-apply-dev_reviewer").click();

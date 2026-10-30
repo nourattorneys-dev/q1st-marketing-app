@@ -18,7 +18,7 @@ test("a reviewer signs in and sees their name and role", async ({ page }) => {
 test("a user without a role is sent to the no-access page", async ({ page, context }) => {
   await signInWithCookie(context, "dev_norole");
   await page.goto("/en");
-  await expect(page).toHaveURL(/\/en\/no-access$/);
+  await expect(page).toHaveURL(/\/en\/no-access\?why=role$/);
 });
 
 test("signing out returns to sign-in and stays signed out", async ({ page, context }) => {
