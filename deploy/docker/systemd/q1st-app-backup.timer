@@ -1,0 +1,7 @@
+[Unit]
+Description=Q1st app: daily database backup
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+[Install]
+WantedBy=timers.target

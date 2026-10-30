@@ -1,0 +1,21 @@
+# The hosted app on Quantum1st's server (README, "Hosting on the server"). Host networking: the app reaches the engine
+# (127.0.0.1:8140) and Postgres (127.0.0.1:5432) on this machine, and listens only on 127.0.0.1 for the Cloudflare tunnel.
+name: q1st-app
+services:
+  app:
+    image: q1st-app:${REVISION:-latest}
+    network_mode: host
+    restart: unless-stopped
+    env_file: /opt/q1st-app/app.env
+    environment:
+      HOSTNAME: 127.0.0.1
+      PORT: ${APP_PORT:-3200}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }

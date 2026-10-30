@@ -1,0 +1,7 @@
+[Unit]
+Description=Q1st app: notification emails every 15 minutes
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+[Install]
+WantedBy=timers.target

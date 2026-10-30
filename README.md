@@ -81,6 +81,17 @@ The dashboard signs people in itself (M5c). Accounts, sessions, invitations and 
 3. **Cron:** set `CRON_SECRET` (a long random string). The host calls `/api/cron/notifications` every 15 minutes: on cPanel, a cron job (see "Hosting on cPanel"). One run sends at a time: a run that starts while another is sending answers `{ "skipped": true }`.
 4. **Webhook:** after a release, open **Settings → Webhook** on the live address and press **Set up webhook**. It registers `https://<address>/api/hooks/marketing` with Quantum1st, and keeps the signing secret encrypted.
 
+## Hosting on the server (app.q1st.io)
+
+The hosted app runs in Docker on Quantum1st's server (`deploy/docker/`), next to the engine. Host networking: it reaches the engine at `127.0.0.1:8140` and its own Postgres database at `127.0.0.1:5432`, and listens only on `127.0.0.1:3200` (`APP_PORT`); the Cloudflare tunnel publishes it as app.q1st.io.
+
+- **Settings:** `/opt/q1st-app/app.env` (mode 600), from `deploy/docker/app.env.example`. Nothing secret is in the image.
+- **Each release:** on the Mac, `git archive` the commit and copy it to the server; on the server, `deploy/docker/release.sh <archive>` builds the image, starts it and waits for `/api/health`. It prints the command that rolls back to the previous image.
+- **Restarts:** the container restarts by itself (`restart: unless-stopped`), also after the server reboots.
+- **Notifications:** systemd timer `q1st-app-notify` every 15 minutes (`deploy/docker/notify.sh`).
+- **Backups:** systemd timer `q1st-app-backup` daily, `pg_dump` into `/opt/q1st-app/backups`, kept `BACKUP_KEEP_DAYS` days.
+- **Logs:** `docker compose -f /opt/q1st-app/release/compose.yml logs -f`.
+
 ## Hosting on cPanel (dashboard.fakhernco.com)
 
 > The single-client copy on cPanel. The hosted, many-client app moves to Docker on Quantum1st's server (P1e); this section is kept until then. With Postgres, `DATABASE_URL` points to a Postgres the host provides.

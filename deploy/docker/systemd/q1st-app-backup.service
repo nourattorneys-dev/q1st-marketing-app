@@ -1,0 +1,6 @@
+[Unit]
+Description=Q1st app: database backup
+[Service]
+Type=oneshot
+User=nour
+ExecStart=/opt/q1st-app/bin/backup.sh

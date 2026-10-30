@@ -1,0 +1,6 @@
+[Unit]
+Description=Q1st app: send due notification emails
+[Service]
+Type=oneshot
+User=nour
+ExecStart=/opt/q1st-app/bin/notify.sh
