@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import type { ClientLogo } from "@/lib/accounts/store";
 
 /** Image kinds a logo may be. An SVG is only ever shown through <img>, and served with a policy that runs nothing. */
@@ -27,6 +28,20 @@ export function logoFetcher(limits: LogoLimits, fetchImpl: typeof fetch = fetch)
     const data = Buffer.from(await response.arrayBuffer());
     if (data.length === 0) return { problem: "The logo address sent an empty file." };
     if (data.length > limits.maxBytes) return { problem: `The logo is larger than ${Math.round(limits.maxBytes / 1024)} KB.` };
-    return { contentType, data, updatedAt: new Date() };
+    return { contentType, data: await trimmed(data, contentType), updatedAt: new Date() };
   };
+}
+
+/**
+ * A logo file often has wide empty edges, which would shrink the logo in its slot: they are cut off (raster images
+ * only; an SVG keeps its own frame). An image that can't be read this way is kept as it came.
+ */
+async function trimmed(data: Buffer, contentType: string): Promise<Buffer> {
+  if (contentType === "image/svg+xml") return data;
+  try {
+    const format = contentType === "image/jpeg" ? "jpeg" : contentType === "image/webp" ? "webp" : "png";
+    return await sharp(data).trim().toFormat(format).toBuffer();
+  } catch {
+    return data;
+  }
 }

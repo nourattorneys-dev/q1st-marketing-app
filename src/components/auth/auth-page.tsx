@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { ProductMark } from "@/components/brand/qalam-mark";
+import { Splash } from "@/components/brand/splash";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 
@@ -9,6 +10,7 @@ export async function AuthPage({ children }: { children: ReactNode }) {
   const t = await getTranslations("Shell");
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center gap-6 p-6">
+      <Splash />
       <div className="absolute end-4 top-4 flex gap-2">
         <ThemeToggle />
         <LocaleSwitch />

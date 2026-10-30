@@ -23,8 +23,11 @@ const plexArabic = localFont({
 });
 const FONT_VARIABLES = [GeistSans.variable, GeistMono.variable, plexArabic.variable].join(" ");
 
-/** Runs before first paint: applies the saved theme so dark mode never flashes light. */
-const THEME_SCRIPT = `(function(){var d=document.documentElement;try{d.setAttribute("data-theme",localStorage.getItem("theme")==="dark"?"dark":"light")}catch(e){d.setAttribute("data-theme","light")}try{if(sessionStorage.getItem("qalam-splash"))d.setAttribute("data-splash","seen")}catch(e){d.setAttribute("data-splash","seen")}})();`;
+/**
+ * Runs before first paint: applies the saved theme so dark mode never flashes light, and times the Qalam splash (once per
+ * visit, fade, then gone) through a style element of its own, which the page's later renders never touch.
+ */
+const THEME_SCRIPT = `(function(){var d=document.documentElement;try{d.setAttribute("data-theme",localStorage.getItem("theme")==="dark"?"dark":"light")}catch(e){d.setAttribute("data-theme","light")}var q=document.createElement("style");document.head.appendChild(q);var hide=".qalam-splash{display:none!important}";try{if(sessionStorage.getItem("qalam-splash")){q.textContent=hide}else{sessionStorage.setItem("qalam-splash","1");setTimeout(function(){q.textContent=".qalam-splash{opacity:0}"},2150);setTimeout(function(){q.textContent=hide},2650)}}catch(e){q.textContent=hide}})();`;
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

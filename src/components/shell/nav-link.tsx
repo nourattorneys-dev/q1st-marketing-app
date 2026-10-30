@@ -13,8 +13,8 @@ export function NavLink({ href, match, testId, children }: { href: string; match
       data-testid={testId}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "block rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent",
-        active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+        "flex items-center gap-3 rounded-[10px] px-3 py-2 text-sm text-foreground/85 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        active && "bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
       )}
     >
       {children}

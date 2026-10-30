@@ -14,13 +14,16 @@ export async function ClientBrand() {
   if (!client?.logoAt) return <ProductMark name={t("brand")} />;
   return (
     <div className="flex min-w-0 flex-col gap-1.5" dir="ltr">
-      {/* eslint-disable-next-line @next/next/no-img-element -- the app's own copy; its size is the client's */}
-      <img
-        src={`/api/brand/logo?v=${client.logoAt.getTime()}`}
-        alt={client.name}
-        data-testid="client-logo"
-        className="max-h-10 max-w-44 object-contain object-left"
-      />
+      {/* Dark mode: the logo sits on a light plate, so a dark logo stays readable. The app trims its empty edges. */}
+      <span className="w-fit rounded-xl transition-colors duration-200 dark:bg-[#f4f3ee] dark:px-3 dark:py-2">
+        {/* eslint-disable-next-line @next/next/no-img-element -- the app's own copy; its size is the client's */}
+        <img
+          src={`/api/brand/logo?v=${client.logoAt.getTime()}`}
+          alt={client.name}
+          data-testid="client-logo"
+          className="max-h-11 max-w-48 object-contain object-left"
+        />
+      </span>
       <span className="flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground">
         <QalamMark size={14} className="text-foreground" />
         {t("brand")} <ByQuantum1st />

@@ -27,7 +27,7 @@ export function SidebarFrame({ brand, menu, close, children }: { brand: ReactNod
       <div
         id="app-nav"
         className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-300 ease-out md:grid-rows-[1fr] md:opacity-100",
+          "grid transition-[grid-template-rows,opacity] duration-300 ease-out md:min-h-0 md:flex-1 md:grid-rows-[1fr] md:opacity-100",
           open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
         )}
       >

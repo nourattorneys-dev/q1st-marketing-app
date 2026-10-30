@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { ClientBrandStyle } from "@/components/brand/client-brand";
 import { Splash } from "@/components/brand/splash";
+import { Footer } from "@/components/shell/footer";
 import { ServiceBanner } from "@/components/shell/service-banner";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
@@ -11,7 +12,7 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[loc
   const locale = asAppLocale((await params).locale);
   setRequestLocale(locale);
   return (
-    <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[15rem_minmax(0,1fr)]">
+    <div className="grid min-h-dvh grid-cols-1 md:grid-cols-[16.5rem_minmax(0,1fr)]">
       <Suspense fallback={null}>
         <ClientBrandStyle />
       </Suspense>
@@ -22,7 +23,8 @@ export default async function AppLayout({ children, params }: LayoutProps<"/[loc
         <Suspense fallback={null}>
           <ServiceBanner />
         </Suspense>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-10 md:py-8">{children}</main>
+        <Footer />
       </div>
     </div>
   );

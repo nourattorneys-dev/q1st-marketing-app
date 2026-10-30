@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, visibleNavItems, type NavItem } from "@/components/shell/nav";
 
 const items: NavItem[] = [
-  { key: "dashboard", href: "/", permission: "content.work" },
-  { key: "settings", href: "/settings", permission: "settings.manage" },
-  { key: "users", href: "/users", permission: "users.manage" },
+  { key: "dashboard", href: "/", permission: "content.work", group: "work" },
+  { key: "settings", href: "/settings", permission: "settings.manage", group: "team" },
+  { key: "users", href: "/users", permission: "users.manage", group: "team" },
 ];
 
 describe("visibleNavItems", () => {
@@ -19,22 +19,22 @@ describe("visibleNavItems", () => {
   it("gives reviewers every content screen, and admins the settings too (design §5)", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("settings");
     expect(visibleNavItems("admin")).toEqual(NAV_ITEMS);
-    expect(NAV_ITEMS.find((item) => item.key === "settings")).toEqual({ key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage" });
+    expect(NAV_ITEMS.find((item) => item.key === "settings")).toEqual({ key: "settings", href: "/settings/seo", match: "/settings", permission: "settings.manage", group: "team" });
   });
 
   it("shows Site health to both roles", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).toContain("siteHealth");
-    expect(NAV_ITEMS.find((item) => item.key === "siteHealth")).toEqual({ key: "siteHealth", href: "/site-health", permission: "siteHealth.view" });
+    expect(NAV_ITEMS.find((item) => item.key === "siteHealth")).toEqual({ key: "siteHealth", href: "/site-health", permission: "siteHealth.view", group: "website" });
   });
 
   it("shows Plan & usage to admins only", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("plan");
-    expect(NAV_ITEMS.find((item) => item.key === "plan")).toEqual({ key: "plan", href: "/plan", permission: "plan.manage" });
+    expect(NAV_ITEMS.find((item) => item.key === "plan")).toEqual({ key: "plan", href: "/plan", permission: "plan.manage", group: "website" });
   });
 
   it("shows Users to admins only, before Settings (design §7 /users)", () => {
     expect(visibleNavItems("reviewer").map((item) => item.key)).not.toContain("users");
-    expect(NAV_ITEMS.find((item) => item.key === "users")).toEqual({ key: "users", href: "/users", permission: "users.manage" });
+    expect(NAV_ITEMS.find((item) => item.key === "users")).toEqual({ key: "users", href: "/users", permission: "users.manage", group: "team" });
     const keys = NAV_ITEMS.map((item) => item.key);
     expect(keys.indexOf("users")).toBe(keys.indexOf("settings") - 1);
   });

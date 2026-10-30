@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { brandCss, textOn } from "@/lib/brand/theme";
+import sharp from "sharp";
 import { logoFetcher } from "@/lib/tenancy/logo";
 
 describe("a client's colour (P2)", () => {
@@ -32,5 +33,21 @@ describe("a client's logo is fetched once, within limits (P2)", () => {
     expect(await logoFetcher(limits, answer("X".repeat(11), "image/png"))("https://x.example/l.png")).toMatchObject({ problem: expect.stringContaining("larger") });
     const down = async () => Promise.reject(new Error("down"));
     expect(await logoFetcher(limits, down)("https://x.example/l.png")).toMatchObject({ problem: expect.stringContaining("didn't answer") });
+  });
+
+  it("cuts a logo's empty edges, so it fills its slot; an SVG keeps its own frame", async () => {
+    const mark = await sharp({ create: { width: 10, height: 4, channels: 4, background: "#000000" } }).png().toBuffer();
+    const padded = await sharp({ create: { width: 60, height: 40, channels: 4, background: "#ffffff" } })
+      .composite([{ input: mark, left: 25, top: 18 }])
+      .png()
+      .toBuffer();
+    const fetchImpl = async () => new Response(new Uint8Array(padded), { headers: { "content-type": "image/png" } });
+    const logo = await logoFetcher({ maxBytes: 100_000, timeoutMs: 1000 }, fetchImpl)("https://x.example/l.png");
+    expect("data" in logo).toBe(true);
+    const meta = await sharp((logo as { data: Buffer }).data).metadata();
+    expect([meta.width, meta.height]).toEqual([10, 4]);
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='60' height='40'/>";
+    const kept = await logoFetcher({ maxBytes: 100_000, timeoutMs: 1000 }, async () => new Response(svg, { headers: { "content-type": "image/svg+xml" } }))("https://x.example/l.svg");
+    expect("data" in kept && kept.data.toString()).toBe(svg);
   });
 });

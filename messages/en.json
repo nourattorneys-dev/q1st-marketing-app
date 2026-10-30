@@ -15,7 +15,12 @@
       "settings": "Settings",
       "siteHealth": "Site health",
       "plan": "Plan & usage",
-      "users": "Users"
+      "users": "Users",
+      "group": {
+        "work": "Work",
+        "website": "Website",
+        "team": "Team"
+      }
     },
     "role": {
       "admin": "Admin",
