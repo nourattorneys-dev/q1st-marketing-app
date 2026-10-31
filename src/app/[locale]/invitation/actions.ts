@@ -20,6 +20,6 @@ export async function acceptInvitationAction(_previous: AcceptState, form: FormD
   if (password !== formText(form, "confirm")) return { problem: "mismatch", name };
   const result = await acceptInvitation(getAccountStore(), { token: formText(form, "token", 200), name, password, now: new Date() });
   if (!result.ok) return { problem: result.problem, name };
-  (await cookies()).set(sessionCookieName(env.appUrl), result.token, sessionCookieOptions(env.appUrl, result.expiresAt));
+  (await cookies()).set(sessionCookieName(env), result.token, sessionCookieOptions(env, result.expiresAt));
   redirect(`/${locale}`);
 }

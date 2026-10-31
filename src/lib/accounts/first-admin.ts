@@ -46,11 +46,11 @@ export async function ensureFirstAdmin(deps: {
     }
     const existing = await store.accountByEmail(adminEmail);
     if (existing) {
-      await store.setRole(existing.id, "admin");
+      if (!(await store.setRole(existing.id, clientId, "admin"))) await store.addMember(existing.id, clientId, "admin", null, now);
       console.info(`First Admin: ${adminEmail} already had an account, now Admin`);
       return { state: "ready" };
     }
-    const pending = await store.invitationByEmail(adminEmail);
+    const pending = await store.invitationByEmail(adminEmail, clientId);
     if (pending && pending.role === "admin" && pending.expiresAt.getTime() > now.getTime()) return invited;
     if ((await store.hit(`setup:${adminEmail}`, now, SETUP_WINDOW_MS)) > SETUP_ATTEMPTS) return { state: "failed" };
     if (pending) await store.deleteInvitation(pending.id);

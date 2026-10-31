@@ -51,7 +51,7 @@ test("removing someone's role takes effect on their next page (Review Focus 1)",
   const reviewer = await seedAccount({ email: "reviewer@example.com", role: "reviewer" });
   await signInWithPassword(page, "reviewer@example.com");
   await expect(page).toHaveURL(/\/en$/);
-  await withAccounts((store) => store.setRole(reviewer.id, null));
+  await withAccounts((store) => store.setRole(reviewer.id, reviewer.clientId!, null));
   await page.goto("/en/keywords");
   await expect(page).toHaveURL(/\/en\/no-access\?why=role$/);
 });

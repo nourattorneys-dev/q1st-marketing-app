@@ -23,7 +23,7 @@ export async function changePasswordAction(_previous: ChangeState, form: FormDat
   const store = getAccountStore();
   const account = await store.account(session.userId);
   if (!account) redirect(`/${locale}/sign-in`);
-  const keepToken = (await cookies()).get(sessionCookieName(env.appUrl))?.value ?? "";
+  const keepToken = (await cookies()).get(sessionCookieName(env))?.value ?? "";
   const result = await changePassword(store, { account, current: formText(form, "current"), next, keepToken, now: new Date() });
   return result.ok ? { changed: true } : { problem: result.problem };
 }

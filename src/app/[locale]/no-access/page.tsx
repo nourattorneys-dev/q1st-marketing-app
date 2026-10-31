@@ -5,8 +5,11 @@ import { SignOutControl } from "@/components/shell/sign-out-control";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { asAppLocale } from "@/i18n/locales";
 
-/** Why this person can't work: no role yet, no website to open, or their client is paused or closed (P1c). */
-const REASONS = ["role", "site", "suspended", "closed"] as const;
+/**
+ * Why this person can't work: no role yet, no website to open, their client is paused or closed (P1c), or this
+ * address is a client they don't work for.
+ */
+const REASONS = ["role", "site", "suspended", "closed", "client"] as const;
 type Reason = (typeof REASONS)[number];
 
 async function Notice({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

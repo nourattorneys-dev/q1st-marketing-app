@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   NODE_ENV: z.string().optional(),
   ALLOW_TEST_LOGINS: z.string().optional(),
   TWO_FACTOR: z.enum(["required", "off"]).optional(),
+  CLIENT_DOMAIN: z.string().optional(),
+  CLIENT_RESERVED_NAMES: z.string().optional(),
 });
 
 export type ServerEnv = {
@@ -30,7 +32,15 @@ export type ServerEnv = {
   adminEmail: string | null;
   /** A development build, or a production build with ALLOW_TEST_LOGINS=1: test logins, the in-memory store and the dev outbox may run. */
   testServer: boolean;
+  /**
+   * Each client at its own address, <name>.<clientDomain> (e.g. q1st.io), signed in once for all of them; null = every
+   * client at APP_URL. `reserved`: names no client may take (APP_URL's own among them).
+   */
+  clientDomain: { domain: string; reserved: string[] } | null;
 };
+
+/** Names a client's address may not use unless CLIENT_RESERVED_NAMES says otherwise. */
+const DEFAULT_RESERVED = ["www", "api", "mail", "smtp", "staff", "admin", "portal", "static", "cdn", "status", "help", "support"];
 
 const THIS_MACHINE = new Set(["localhost", "127.0.0.1"]);
 const OneEmail = z.email().max(254);
@@ -76,7 +86,18 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
     }
   }
 
-  const auth = { authMode: env.AUTH_MODE, twoFactor, appUrl, adminEmail, testServer };
+  let clientDomain: ServerEnv["clientDomain"] = null;
+  if (env.CLIENT_DOMAIN) {
+    const domain = env.CLIENT_DOMAIN.trim().toLowerCase().replace(/^\.+/, "");
+    const host = appUrl ? new URL(appUrl).hostname : null;
+    if (!host || !host.endsWith(`.${domain}`) || host.slice(0, -domain.length - 1).includes(".")) {
+      throw new Error(`CLIENT_DOMAIN needs AUTH_MODE=password and APP_URL at one name under it, for example https://app.${domain}.`);
+    }
+    const listed = env.CLIENT_RESERVED_NAMES?.split(",").map((name) => name.trim().toLowerCase()).filter(Boolean) ?? DEFAULT_RESERVED;
+    clientDomain = { domain, reserved: [...new Set([host.slice(0, -domain.length - 1), ...listed])] };
+  }
+
+  const auth = { authMode: env.AUTH_MODE, twoFactor, appUrl, adminEmail, testServer, clientDomain };
   if (env.ENGINE_MODE === "live") {
     // P1b: each site's engine key is kept (encrypted) with the site; ENGINE_API_KEY only makes the first client.
     if (!env.ENGINE_BASE_URL) {

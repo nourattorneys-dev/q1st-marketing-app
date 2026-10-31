@@ -28,7 +28,7 @@ const mailer: Mailer = {
     sent.push(email);
   },
 };
-const directory = () => createAccountsDirectory({ store, mailer, appUrl: APP_URL, clientId: CLIENT, sites: [{ id: "site_a", name: "A" }], now: () => now });
+const directory = () => createAccountsDirectory({ store, mailer, appUrl: APP_URL, clientId: CLIENT, clientName: "Acme", sites: [{ id: "site_a", name: "A" }], now: () => now });
 /** The token in an email's link to `path`, English half. */
 const tokenIn = (email: Email | undefined, path: string) => new RegExp(`${APP_URL}/en/${path}\\?token=([A-Za-z0-9_-]+)`).exec(email?.text ?? "")?.[1] ?? "";
 const sara = (): Account => ({ id: "usr_sara", email: "sara@example.com", name: "Sara", role: "admin", clientId: "cli_test", passwordHash, createdAt: at(0), passwordChangedAt: at(0), lastSignInAt: at(1) });
@@ -217,7 +217,7 @@ describe("the first Admin", () => {
     ensureFirstAdmin({ store, clientId: CLIENT, exclusive: appStore.exclusive, mailer, appUrl: APP_URL, adminEmail, now });
 
   beforeEach(async () => {
-    await store.setRole("usr_sara", "reviewer");
+    await store.setRole("usr_sara", CLIENT, "reviewer");
   });
 
   it("with no Admin, invites ADMIN_EMAIL once, and again only after that link expired", async () => {
@@ -233,7 +233,7 @@ describe("the first Admin", () => {
 
   it("does nothing once an Admin exists, and makes an existing account at ADMIN_EMAIL the Admin", async () => {
     expect(await ensure("sara@example.com")).toEqual({ state: "ready" });
-    expect(await store.account("usr_sara")).toMatchObject({ role: "admin" });
+    expect(await store.member("usr_sara", CLIENT)).toMatchObject({ role: "admin" });
     expect(await ensure()).toEqual({ state: "ready" });
     expect(sent).toEqual([]);
   });

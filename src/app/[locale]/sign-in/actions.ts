@@ -22,6 +22,6 @@ export async function signInAction(_previous: SignInState, form: FormData): Prom
   const address = clientAddress((await headers()).get("x-forwarded-for"));
   const result = await signIn(getAccountStore(), { email, password, address, now: new Date() });
   if (!result.ok) return { error: result.reason, email };
-  (await cookies()).set(sessionCookieName(env.appUrl), result.token, sessionCookieOptions(env.appUrl, result.expiresAt));
+  (await cookies()).set(sessionCookieName(env), result.token, sessionCookieOptions(env, result.expiresAt));
   redirect(`/${locale}`);
 }

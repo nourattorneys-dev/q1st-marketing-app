@@ -1,4 +1,5 @@
 import { MailError } from "@/lib/notifications/mail-error";
+import { renderAccountEmail } from "@/lib/notifications/render";
 import type { Mailer } from "@/lib/notifications/mailer";
 import { validInviteEmail } from "@/lib/users/rules";
 import { DirectoryError, type DirectoryInvite, type DirectoryUser, type UserDirectory } from "@/lib/users/types";
@@ -17,16 +18,17 @@ const toUser = (account: Account, granted: string[]): DirectoryUser => ({
   lastSignInAt: account.lastSignInAt?.toISOString() ?? null,
 });
 
-const toInvite = (invitation: Invitation): DirectoryInvite => ({
+const toInvite = (invitation: Invitation, added = false): DirectoryInvite => ({
   id: invitation.id,
   email: invitation.email,
   role: invitation.role,
   siteIds: invitation.siteIds,
   createdAt: invitation.createdAt.toISOString(),
   expiresAt: invitation.expiresAt.toISOString(),
+  ...(added ? { added: true } : {}),
 });
 
-const CONFLICT = "This person already has an account or an invitation.";
+const CONFLICT = "This person already works for this client, or has an invitation from it.";
 
 const GONE_PERSON = "This person no longer exists.";
 const GONE_INVITATION = "This invitation no longer exists.";
@@ -38,8 +40,11 @@ const GONE_INVITATION = "This invitation no longer exists.";
 export function createAccountsDirectory(deps: {
   store: AccountStore;
   mailer: Mailer;
+  /** This client's own address (its emails link there). */
   appUrl: string;
   clientId: string;
+  /** For the email to someone who already has an account. */
+  clientName: string;
   sites: SiteRef[];
   now?: () => Date;
 }): UserDirectory {
@@ -47,8 +52,8 @@ export function createAccountsDirectory(deps: {
   const now = deps.now ?? (() => new Date());
 
   const ours = async (userId: string) => {
-    const account = await store.account(userId);
-    if (!account || account.clientId !== clientId) throw new DirectoryError("not_found", GONE_PERSON);
+    const account = await store.member(userId, clientId);
+    if (!account) throw new DirectoryError("not_found", GONE_PERSON);
     return account;
   };
   const ourInvitation = async (id: string) => {
@@ -56,7 +61,7 @@ export function createAccountsDirectory(deps: {
     if (!invitation || invitation.clientId !== clientId) throw new DirectoryError("not_found", GONE_INVITATION);
     return invitation;
   };
-  const userOf = async (account: Account) => toUser(account, await store.userSites(account.id));
+  const userOf = async (account: Account) => toUser(account, await store.userSites(account.id, clientId));
 
   /** A failed send becomes the page's mail_failed answer, with the kind and the server's reply. */
   async function send(invitation: Invitation, token: string): Promise<void> {
@@ -71,20 +76,39 @@ export function createAccountsDirectory(deps: {
   return {
     async list() {
       const users = await Promise.all((await store.accounts(clientId)).map(userOf));
-      return { users, invites: (await store.invitations(clientId)).map(toInvite) };
+      return { users, invites: (await store.invitations(clientId)).map((invitation) => toInvite(invitation)) };
     },
 
     async invite(email, role, invitedBy, siteIds) {
       const tidy = validInviteEmail(email);
-      if ((await store.accountByEmail(tidy)) || (await store.invitationByEmail(tidy))) throw new DirectoryError("conflict", CONFLICT);
+      if (await store.invitationByEmail(tidy, clientId)) throw new DirectoryError("conflict", CONFLICT);
       const at = now();
+      const sites = role === "admin" ? null : grantedSites(siteIds, deps.sites);
+      // Someone with an account (for another client) joins at once and signs in with the password they have.
+      const person = await store.accountByEmail(tidy);
+      if (person) {
+        if (!(await store.addMember(person.id, clientId, role, sites, at))) throw new DirectoryError("conflict", CONFLICT);
+        try {
+          await deps.mailer.send({
+            ...renderAccountEmail("added", { appUrl: deps.appUrl, role, client: deps.clientName }),
+            to: tidy,
+            idempotencyKey: `added-${person.id}-${clientId}`,
+          });
+        } catch (error) {
+          // They have their place either way; the Admin is told the email didn't go.
+          console.error(`Added ${tidy} to client ${clientId}; the email failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        console.info(`Added ${tidy} to client ${clientId} (${role})`);
+        const kept: Invitation = { id: person.id, email: tidy, role, clientId, siteIds: sites, tokenHash: "", invitedBy, createdAt: at, expiresAt: at };
+        return toInvite(kept, true);
+      }
       const token = newToken();
       const invitation: Invitation = {
         id: newId("inv"),
         email: tidy,
         role,
         clientId,
-        siteIds: role === "admin" ? null : grantedSites(siteIds, deps.sites),
+        siteIds: sites,
         tokenHash: hashToken(token),
         invitedBy,
         createdAt: at,
@@ -122,14 +146,14 @@ export function createAccountsDirectory(deps: {
 
     async setRole(userId, role) {
       await ours(userId);
-      const account = await store.setRole(userId, role);
+      const account = await store.setRole(userId, clientId, role);
       if (!account) throw new DirectoryError("not_found", GONE_PERSON);
       return userOf(account);
     },
 
     async setSites(userId, siteIds) {
       const account = await ours(userId);
-      await store.setUserSites(userId, grantedSites(siteIds, deps.sites) ?? []);
+      await store.setUserSites(userId, clientId, grantedSites(siteIds, deps.sites) ?? []);
       return userOf(account);
     },
   };

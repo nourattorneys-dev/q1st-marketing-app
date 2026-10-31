@@ -38,7 +38,8 @@
     "site": {
       "label": "Website",
       "failed": "That website couldn't be opened.",
-      "client": "Client"
+      "client": "Client",
+      "clientFailed": "Couldn't open that client. Try again."
     },
     "menu": "Menu",
     "closeMenu": "Close",
@@ -83,6 +84,10 @@
     "closed": {
       "title": "Account closed",
       "body": "This account is closed. Contact Quantum1st if you think this is a mistake."
+    },
+    "client": {
+      "title": "Not one of your clients",
+      "body": "Your account doesn't work for the client at this address. Ask its admin to add you, or open one of your own clients."
     }
   },
   "Dashboard": {
@@ -851,7 +856,8 @@
       "role": "Role",
       "submit": "Send invitation",
       "sent": "Invitation sent to {email}.",
-      "notSent": "Invitation saved, but not sent: this server doesn't send emails yet."
+      "notSent": "Invitation saved, but not sent: this server doesn't send emails yet.",
+      "added": "{email} already has a Qalam account, so they were added right away. They sign in with the password they already use."
     },
     "invites": {
       "title": "Pending invitations",
@@ -927,6 +933,12 @@
       "heading": "Someone asked to reset the password of your Qalam account.",
       "link": "Choose a new password",
       "footer": "The link works once and expires in 1 hour. If you didn't ask for this, ignore this email: your password stays as it is."
+    },
+    "added": {
+      "subject": "You've been added to {client} on Qalam",
+      "heading": "You now work for {client} on Qalam, as {role}.",
+      "link": "Open {client}",
+      "footer": "Sign in with the email and password you already use for Qalam."
     }
   },
   "Notifications": {

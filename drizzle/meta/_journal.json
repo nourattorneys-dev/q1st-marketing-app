@@ -43,6 +43,13 @@
       "when": 1793399997747,
       "tag": "0005_client_dark_colour",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793410976759,
+      "tag": "0006_multi_client",
+      "breakpoints": true
     }
   ]
 }

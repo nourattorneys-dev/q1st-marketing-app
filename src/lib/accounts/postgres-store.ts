@@ -1,7 +1,8 @@
 import { and, asc, DrizzleQueryError, eq, gt, inArray, isNull, lte, ne, sql, TransactionRollbackError, type SQL } from "drizzle-orm";
 import type { PostgresConnection } from "@/lib/db/postgres";
-import { clientLogos, clients, invitations, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
-import type { Account, AccountStore, Client, Invitation, Site } from "./store";
+import type { Role } from "@/lib/auth/roles";
+import { clientLogos, clients, invitations, memberships, passwordResets, sessions, signInLimits, sites, userSites, users } from "@/lib/db/schema";
+import type { Account, AccountStore, Client, Invitation, Membership, Site } from "./store";
 
 /** Postgres's unique_violation (23505); Drizzle wraps query errors with the original as `cause`. */
 function isDuplicate(error: unknown): boolean {
@@ -9,12 +10,13 @@ function isDuplicate(error: unknown): boolean {
   return typeof original === "object" && original !== null && (original as { code?: unknown }).code === "23505";
 }
 
-const toAccount = (row: typeof users.$inferSelect): Account => ({
+/** The person alone, or (with their membership) the person in that client. */
+const toAccount = (row: typeof users.$inferSelect, place?: { clientId: string; role: Role | null }): Account => ({
   id: row.id,
-  clientId: row.clientId ?? null,
+  clientId: place?.clientId ?? null,
   email: row.email,
   name: row.name,
-  role: row.role ?? null,
+  role: place?.role ?? null,
   passwordHash: row.passwordHash,
   createdAt: row.createdAt,
   passwordChangedAt: row.passwordChangedAt,
@@ -43,6 +45,17 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
     return row ? toAccount(row) : null;
   }
 
+  async function member(userId: string, clientId: string): Promise<Account | null> {
+    await connection.ready();
+    const [row] = await db
+      .select({ user: users, role: memberships.role })
+      .from(memberships)
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(and(eq(memberships.userId, userId), eq(memberships.clientId, clientId)))
+      .limit(1);
+    return row ? toAccount(row.user, { clientId, role: row.role ?? null }) : null;
+  }
+
   async function oneInvitation(where: SQL): Promise<Invitation | null> {
     await connection.ready();
     const [row] = await db.select().from(invitations).where(where).limit(1);
@@ -56,29 +69,63 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       const [row] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       return row ? toAccount(row) : null;
     },
+    member,
     async accounts(clientId) {
       await connection.ready();
-      return (await db.select().from(users).where(eq(users.clientId, clientId)).orderBy(asc(users.createdAt), asc(users.id))).map(toAccount);
+      const rows = await db
+        .select({ user: users, role: memberships.role })
+        .from(memberships)
+        .innerJoin(users, eq(users.id, memberships.userId))
+        .where(eq(memberships.clientId, clientId))
+        .orderBy(asc(memberships.createdAt), asc(users.id));
+      return rows.map((row) => toAccount(row.user, { clientId, role: row.role ?? null }));
     },
-    async hasAdmin(clientId) {
+    async memberships(userId) {
       await connection.ready();
-      const [row] = await db.select({ id: users.id }).from(users).where(and(eq(users.clientId, clientId), eq(users.role, "admin"))).limit(1);
-      return Boolean(row);
+      const rows = await db.select().from(memberships).where(eq(memberships.userId, userId)).orderBy(asc(memberships.createdAt), asc(memberships.clientId));
+      return rows.map((row): Membership => ({ clientId: row.clientId, role: row.role ?? null, createdAt: row.createdAt }));
     },
-    async createAccount(created) {
+    async addMember(userId, clientId, role, siteIds, at) {
       await connection.ready();
       try {
-        await db.insert(users).values(created);
+        await db.transaction(async (tx) => {
+          await tx.insert(memberships).values({ userId, clientId, role, createdAt: at });
+          const unique = [...new Set(siteIds ?? [])];
+          if (unique.length) await tx.insert(userSites).values(unique.map((siteId) => ({ userId, clientId, siteId })));
+        });
         return true;
       } catch (error) {
         if (isDuplicate(error)) return false;
         throw error;
       }
     },
-    async setRole(id, role) {
+    async createAccount(created) {
       await connection.ready();
-      await db.update(users).set({ role }).where(eq(users.id, id));
-      return account(id);
+      const { clientId, role, ...person } = created;
+      try {
+        await db.transaction(async (tx) => {
+          await tx.insert(users).values(person);
+          if (clientId) await tx.insert(memberships).values({ userId: created.id, clientId, role, createdAt: created.createdAt });
+        });
+        return true;
+      } catch (error) {
+        if (isDuplicate(error)) return false;
+        throw error;
+      }
+    },
+    async hasAdmin(clientId) {
+      await connection.ready();
+      const [row] = await db
+        .select({ id: memberships.userId })
+        .from(memberships)
+        .where(and(eq(memberships.clientId, clientId), eq(memberships.role, "admin")))
+        .limit(1);
+      return Boolean(row);
+    },
+    async setRole(userId, clientId, role) {
+      await connection.ready();
+      await db.update(memberships).set({ role }).where(and(eq(memberships.userId, userId), eq(memberships.clientId, clientId)));
+      return member(userId, clientId);
     },
     async setPassword(id, passwordHash, at) {
       await connection.ready();
@@ -102,6 +149,15 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
         .where(and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, now)))
         .limit(1);
       return row ? toAccount(row.user) : null;
+    },
+    async sessionClient(tokenHash) {
+      await connection.ready();
+      const [row] = await db.select({ clientId: sessions.clientId }).from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
+      return row?.clientId ?? null;
+    },
+    async setSessionClient(tokenHash, clientId) {
+      await connection.ready();
+      await db.update(sessions).set({ clientId }).where(eq(sessions.tokenHash, tokenHash));
     },
     async deleteSession(tokenHash) {
       await connection.ready();
@@ -129,7 +185,8 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       ).map(toInvitation);
     },
     invitation: (id) => oneInvitation(eq(invitations.id, id)),
-    invitationByEmail: (email) => oneInvitation(eq(invitations.email, email)),
+    invitationByEmail: (email, clientId) =>
+      oneInvitation(and(eq(invitations.email, email), clientId === null ? isNull(invitations.clientId) : eq(invitations.clientId, clientId))!),
     invitationByToken: (tokenHash) => oneInvitation(eq(invitations.tokenHash, tokenHash)),
     async addInvitation(invitation) {
       await connection.ready();
@@ -156,10 +213,17 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       try {
         // One transaction: the invitation is used up exactly when the account appears.
         await db.transaction(async (tx) => {
-          const [used] = await tx.delete(invitations).where(eq(invitations.id, id)).returning({ siteIds: invitations.siteIds });
+          const [used] = await tx
+            .delete(invitations)
+            .where(eq(invitations.id, id))
+            .returning({ siteIds: invitations.siteIds, clientId: invitations.clientId, role: invitations.role });
           if (!used) tx.rollback();
-          await tx.insert(users).values(created);
-          if (used.siteIds?.length) await tx.insert(userSites).values(used.siteIds.map((siteId) => ({ userId: created.id, siteId })));
+          const { clientId: _client, role: _role, ...person } = created;
+          await tx.insert(users).values(person);
+          if (used.clientId) {
+            await tx.insert(memberships).values({ userId: created.id, clientId: used.clientId, role: used.role, createdAt: created.createdAt });
+            if (used.siteIds?.length) await tx.insert(userSites).values(used.siteIds.map((siteId) => ({ userId: created.id, clientId: used.clientId, siteId })));
+          }
         });
         return true;
       } catch (error) {
@@ -168,18 +232,21 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       }
     },
 
-    async userSites(userId) {
+    async userSites(userId, clientId) {
       await connection.ready();
-      return (await db.select({ siteId: userSites.siteId }).from(userSites).where(eq(userSites.userId, userId)).orderBy(asc(userSites.siteId))).map(
-        (row) => row.siteId,
-      );
+      const rows = await db
+        .select({ siteId: userSites.siteId })
+        .from(userSites)
+        .where(and(eq(userSites.userId, userId), eq(userSites.clientId, clientId)))
+        .orderBy(asc(userSites.siteId));
+      return rows.map((row) => row.siteId);
     },
-    async setUserSites(userId, siteIds) {
+    async setUserSites(userId, clientId, siteIds) {
       await connection.ready();
       await db.transaction(async (tx) => {
-        await tx.delete(userSites).where(eq(userSites.userId, userId));
+        await tx.delete(userSites).where(and(eq(userSites.userId, userId), eq(userSites.clientId, clientId)));
         const unique = [...new Set(siteIds)];
-        if (unique.length) await tx.insert(userSites).values(unique.map((siteId) => ({ userId, siteId })));
+        if (unique.length) await tx.insert(userSites).values(unique.map((siteId) => ({ userId, clientId, siteId })));
       });
     },
     async clients() {
@@ -214,9 +281,21 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       const [row] = await db.select().from(clients).where(eq(clients.engineAccountId, engineAccountId)).limit(1);
       return row ?? null;
     },
+    async clientBySlug(slug) {
+      await connection.ready();
+      const [row] = await db.select().from(clients).where(eq(clients.slug, slug)).limit(1);
+      return row ?? null;
+    },
     async updateClient(id, change) {
       await connection.ready();
-      if (Object.keys(change).length) await db.update(clients).set(change).where(eq(clients.id, id));
+      if (!Object.keys(change).length) return true;
+      try {
+        await db.update(clients).set(change).where(eq(clients.id, id));
+        return true;
+      } catch (error) {
+        if (isDuplicate(error)) return false;
+        throw error;
+      }
     },
     async setClientLogo(id, logo) {
       await connection.ready();
@@ -239,11 +318,17 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
       await connection.ready();
       await db.transaction(async (tx) => {
         await tx.delete(clientLogos).where(eq(clientLogos.clientId, id));
-        const people = tx.select({ id: users.id }).from(users).where(eq(users.clientId, id));
-        await tx.delete(sessions).where(inArray(sessions.userId, people));
-        await tx.delete(passwordResets).where(inArray(passwordResets.userId, people));
-        await tx.delete(userSites).where(inArray(userSites.userId, people));
-        await tx.delete(users).where(eq(users.clientId, id));
+        await tx.delete(userSites).where(eq(userSites.clientId, id));
+        await tx.delete(memberships).where(eq(memberships.clientId, id));
+        await tx.update(sessions).set({ clientId: null }).where(eq(sessions.clientId, id));
+        // People who now work for no client are removed with their sessions and reset links.
+        const alone = tx
+          .select({ id: users.id })
+          .from(users)
+          .where(sql`NOT EXISTS (SELECT 1 FROM ${memberships} WHERE ${memberships.userId} = ${users.id})`);
+        await tx.delete(sessions).where(inArray(sessions.userId, alone));
+        await tx.delete(passwordResets).where(inArray(passwordResets.userId, alone));
+        await tx.delete(users).where(sql`NOT EXISTS (SELECT 1 FROM ${memberships} WHERE ${memberships.userId} = ${users.id})`);
         await tx.delete(invitations).where(eq(invitations.clientId, id));
         await tx.delete(sites).where(eq(sites.clientId, id));
         await tx.delete(clients).where(eq(clients.id, id));
@@ -260,7 +345,10 @@ export function createPostgresAccountStore(connection: Pick<PostgresConnection, 
     async adoptUnassigned(clientId) {
       await connection.ready();
       await db.transaction(async (tx) => {
-        await tx.update(users).set({ clientId }).where(isNull(users.clientId));
+        await tx.execute(
+          sql`INSERT INTO ${memberships} (user_id, client_id, role, created_at) SELECT u.id, ${clientId}, NULL, u.created_at FROM ${users} u
+              WHERE NOT EXISTS (SELECT 1 FROM ${memberships} m WHERE m.user_id = u.id)`,
+        );
         await tx.update(invitations).set({ clientId }).where(isNull(invitations.clientId));
       });
     },

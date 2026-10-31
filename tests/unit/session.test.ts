@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { cookieJar } = vi.hoisted(() => ({ cookieJar: new Map<string, string>() }));
 
 vi.mock("next/headers", () => ({
+  headers: async () => {
+    const test = globalThis as { testHost?: string; testPath?: string };
+    return new Headers({ host: test.testHost ?? "localhost:3300", "x-request-path": test.testPath ?? "/" });
+  },
   cookies: async () => ({
     get: (name: string) => (cookieJar.has(name) ? { name, value: cookieJar.get(name) } : undefined),
   }),
@@ -125,7 +129,7 @@ describe("password sessions (AUTH_MODE=password, spec M5c)", () => {
   it("reads the person from the session cookie, with the role from their account on each request (Review Focus 1)", async () => {
     const id = await signedIn("reviewer");
     await expect(requireSession("en")).resolves.toMatchObject({ userId: id, role: "reviewer", twoFactor: false });
-    await getAccountStore().setRole(id, null);
+    await getAccountStore().setRole(id, "cli_test", null);
     await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=role");
     await expect(getRole()).resolves.toBeNull();
   });
@@ -144,5 +148,65 @@ describe("password sessions (AUTH_MODE=password, spec M5c)", () => {
     cookieJar.set("mock_scenario", "twofactor_off");
     await expect(getTwoFactorPolicy()).resolves.toBe("off");
     await expect(requireSession("en")).resolves.toMatchObject({ role: "admin" });
+  });
+});
+
+describe("one sign-in, each client at its own address (CLIENT_DOMAIN)", () => {
+  const test = globalThis as { testHost?: string; testPath?: string };
+  beforeEach(() => {
+    cookieJar.clear();
+    vi.stubEnv("AUTH_MODE", "password");
+    vi.stubEnv("APP_URL", "https://app.q1st.io");
+    vi.stubEnv("CLIENT_DOMAIN", "q1st.io");
+    vi.stubEnv("DB_MODE", "memory");
+    vi.stubEnv("ENGINE_MODE", "mock");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    test.testHost = undefined;
+    test.testPath = undefined;
+  });
+
+  async function twoClientPerson(): Promise<string> {
+    const store = getAccountStore();
+    const now = new Date();
+    for (const [id, slug] of [["cli_acme", "acme"], ["cli_beta", "beta"], ["cli_gamma", "gamma"]]) {
+      if (await store.client(id)) continue;
+      await store.createClient({ id, name: slug, slug, createdAt: now });
+      await store.createSite({ id: `site_${slug}`, clientId: id, name: slug, keyCipher: "v1:x", createdAt: now });
+    }
+    const id = newId("usr");
+    await store.createAccount({ id, email: `${id}@example.com`.toLowerCase(), name: "Omar", role: "admin", clientId: "cli_acme", passwordHash: "scrypt$x", createdAt: now, passwordChangedAt: now, lastSignInAt: null });
+    await store.addMember(id, "cli_beta", "reviewer", null, now);
+    cookieJar.set("__Secure-session", (await startSession(store, id, now)).token);
+    return id;
+  }
+
+  it("each address opens that client, with the person's role there", async () => {
+    const id = await twoClientPerson();
+    test.testHost = "acme.q1st.io";
+    await expect(getSession()).resolves.toMatchObject({ userId: id, clientId: "cli_acme", role: "admin" });
+  });
+
+  it("the same browser on the other client's address: the other role, no new sign-in", async () => {
+    const id = await twoClientPerson();
+    test.testHost = "beta.q1st.io";
+    await expect(getSession()).resolves.toMatchObject({ userId: id, clientId: "cli_beta", role: "reviewer" });
+  });
+
+  it("a client they don't work for, or an unknown name: no client, so no access", async () => {
+    await twoClientPerson();
+    test.testHost = "gamma.q1st.io";
+    await expect(getSession()).resolves.toMatchObject({ clientId: null, role: null });
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=client");
+    test.testHost = "nobody.q1st.io";
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:/en/no-access?why=client");
+  });
+
+  it("at APP_URL, a page moves to the client's own address unchanged", async () => {
+    await twoClientPerson();
+    test.testHost = "app.q1st.io";
+    test.testPath = "/en/review?tab=x";
+    await expect(requireSession("en")).rejects.toThrow("REDIRECT:https://acme.q1st.io/en/review?tab=x");
   });
 });

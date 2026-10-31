@@ -85,7 +85,9 @@ describe("accepting an invitation (spec M5c)", () => {
     await getAccountStore().addInvitation({ id: `inv_actions${sequence}`, email, role: "reviewer", clientId: "cli_test", siteIds: null, tokenHash: hashToken(token), invitedBy: null, createdAt: now, expiresAt: new Date(now.getTime() + 86_400_000) });
     await expect(acceptInvitationAction(null, form({ locale: "ar", token, name: "Omar", password: PASSWORD, confirm: PASSWORD }))).rejects.toThrow("REDIRECT:/ar");
     expect(state.set).toEqual(["session"]);
-    expect(await getAccountStore().accountByEmail(email)).toMatchObject({ name: "Omar", role: "reviewer" });
+    const made = (await getAccountStore().accountByEmail(email))!;
+    expect(made).toMatchObject({ name: "Omar" });
+    expect(await getAccountStore().member(made.id, "cli_test")).toMatchObject({ role: "reviewer" });
   });
 });
 

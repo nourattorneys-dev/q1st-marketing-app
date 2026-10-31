@@ -8,6 +8,7 @@ import { serverEnv } from "@/lib/env";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { servicesEnv } from "@/lib/services-env";
 import { getCurrentSite } from "@/lib/tenancy";
+import { clientOrigin } from "@/lib/tenancy/address";
 import { createMockDirectory } from "./mock-directory";
 import { DirectoryError, type UserDirectory } from "./types";
 
@@ -28,8 +29,9 @@ export async function getDirectory(): Promise<UserDirectory> {
   return createAccountsDirectory({
     store: getAccountStore(),
     mailer: mailerFor(servicesEnv()),
-    appUrl: env.appUrl ?? "",
+    appUrl: clientOrigin(current.client, env) ?? "",
     clientId: current.client.id,
+    clientName: current.client.name,
     sites: current.sites,
   });
 }

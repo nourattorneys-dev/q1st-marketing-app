@@ -29,7 +29,7 @@ let storeFor: (siteId: string) => AppStore;
 let sent: Email[];
 let mailer: Mailer;
 let fetchLogo: FetchLogo;
-const run = (request: ProvisionRequest) => provision({ accounts, storeFor, mailer, appUrl: APP, key: KEY, now: () => at, fetchLogo }, request);
+const run = (request: ProvisionRequest) => provision({ accounts, storeFor, mailer, appUrl: APP, clientDomain: null, key: KEY, now: () => at, fetchLogo }, request);
 const upsert = (extra: Partial<Extract<ProvisionRequest, { action: "site.upsert" }>> = {}): ProvisionRequest => ({
   action: "site.upsert",
   accountId: "acc_1",
@@ -82,7 +82,7 @@ const BACKENDS: [string, () => Promise<void>][] = [
     "on Postgres",
     async () => {
       await pgc.ready();
-      await pgc.pool.query("TRUNCATE clients, sites, users, invitations, user_sites, webhook_configs");
+      await pgc.pool.query("TRUNCATE clients, sites, users, memberships, invitations, user_sites, webhook_configs");
       accounts = createPostgresAccountStore(pgc);
       storeFor = (siteId) => createPostgresStore(pgc, siteId);
     },
@@ -153,13 +153,16 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     expect((await accounts.site("site_1"))!.name).toBe("Acme blog");
   });
 
-  it("another client's site or person is refused, and stays as it was", async () => {
+  it("another client's site is refused; someone who works for another client becomes this one's Admin too", async () => {
     await run(upsert());
     expect(await run(upsert({ accountId: "acc_2", accountName: "Other" }))).toMatchObject({ ok: false, status: 409 });
     expect((await accounts.site("site_1"))!.name).toBe("Acme blog");
     const acme = (await accounts.clients())[0];
-    await accounts.createAccount(person("boss@other.com", "cli_other"));
-    expect(await run(upsert({ admin: { email: "boss@other.com" } }))).toMatchObject({ ok: false, status: 409 });
+    const boss = person("boss@other.com", "cli_other");
+    await accounts.createAccount(boss);
+    expect(await run(upsert({ admin: { email: "boss@other.com" } }))).toMatchObject({ ok: true, data: { admin: "added" } });
+    expect((await accounts.memberships(boss.id)).map((place) => [place.clientId, place.role]).sort()).toEqual([[acme.id, "admin"], ["cli_other", "admin"]].sort());
+    expect(sent.at(-1)?.subject).toContain("Acme");
     await accounts.createAccount(person("me@acme.com", acme.id));
     expect(await run(upsert({ admin: { email: "me@acme.com" } }))).toMatchObject({ ok: true, data: { admin: "member" } });
   });
@@ -195,7 +198,7 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     expect(await run({ action: "client.remove", accountId: "acc_1" })).toMatchObject({ ok: true, data: { removed: true } });
     expect(await accounts.client(acme.id)).toBeNull();
     expect(await accounts.accountByEmail("me@acme.com")).toBeNull();
-    expect(await accounts.invitationByEmail("owner@acme.com")).toBeNull();
+    expect(await accounts.invitationByEmail("owner@acme.com", acme.id)).toBeNull();
     expect(await accounts.site("site_1")).toBeNull();
     expect(await storeFor("site_1").webhook()).toBeNull();
     expect(await accounts.site("site_9")).toMatchObject({ name: "Other site" });
@@ -225,11 +228,11 @@ describe.each(BACKENDS)("provision (P1c: clients and sites from the staff portal
     const acme = (await accounts.clients())[0];
     const reviewer = { ...person("rev@acme.com", acme.id), role: "reviewer" as const };
     await accounts.createAccount(reviewer);
-    await accounts.setUserSites(reviewer.id, ["site_2"]);
+    await accounts.setUserSites(reviewer.id, acme.id, ["site_2"]);
     expect(await run({ action: "site.remove", accountId: "acc_1", siteId: "site_2" })).toMatchObject({ ok: true, data: { removed: true } });
     expect(await accounts.site("site_2")).toBeNull();
     expect(await storeFor("site_2").webhook()).toBeNull();
-    expect(sitesFor("reviewer", await accounts.sites(acme.id), await accounts.userSites(reviewer.id))).toEqual([]);
+    expect(sitesFor("reviewer", await accounts.sites(acme.id), await accounts.userSites(reviewer.id, acme.id))).toEqual([]);
     expect(await run({ action: "site.remove", accountId: "acc_1", siteId: "site_2" })).toMatchObject({ ok: false, status: 404 });
     expect(await run({ action: "site.remove", accountId: "acc_2", siteId: "site_1" })).toMatchObject({ ok: false, status: 409 });
   });

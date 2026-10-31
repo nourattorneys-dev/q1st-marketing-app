@@ -12,7 +12,16 @@ export type DirectoryUser = {
   siteIds: string[] | null;
   lastSignInAt: string | null;
 };
-export type DirectoryInvite = { id: string; email: string; role: Role | null; siteIds: string[] | null; createdAt: string; expiresAt: string | null };
+/** `added`: the person already had an account, so they joined at once (no invitation is kept). */
+export type DirectoryInvite = {
+  id: string;
+  email: string;
+  role: Role | null;
+  siteIds: string[] | null;
+  createdAt: string;
+  expiresAt: string | null;
+  added?: boolean;
+};
 
 export interface UserDirectory {
   list(): Promise<{ users: DirectoryUser[]; invites: DirectoryInvite[] }>;

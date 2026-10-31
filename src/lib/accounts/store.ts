@@ -1,9 +1,12 @@
 import type { Role } from "@/lib/auth/roles";
 
-/** Someone who can sign in (spec M5c). The email is stored trimmed and lowercased, at most 254 characters. */
+/**
+ * Someone who can sign in (spec M5c), seen in one client: one email and password whichever clients they work for, and
+ * the role they have in this one. The email is stored trimmed and lowercased, at most 254 characters.
+ */
 export type Account = {
   id: string;
-  /** The client this person belongs to (P1b); null only for an account made before clients existed, until the app adopts it. */
+  /** The client this view is of; null for the person alone (no client chosen, e.g. at sign-in). */
   clientId: string | null;
   email: string;
   name: string;
@@ -27,6 +30,8 @@ export type Invitation = {
 };
 export type PasswordReset = { tokenHash: string; userId: string; createdAt: Date; expiresAt: Date };
 export type SessionRecord = { tokenHash: string; userId: string; createdAt: Date; expiresAt: Date };
+/** A person's place in a client; role null = No access there. */
+export type Membership = { clientId: string; role: Role | null; createdAt: Date };
 
 /** P1b: a client company, and one of its websites (the engine's site id; its engine key stays encrypted). */
 export const CLIENT_STATUSES = ["active", "suspended", "closed"] as const;
@@ -39,28 +44,45 @@ export type Client = {
   brandColor: string | null;
   brandColorDark: string | null;
   logoAt: Date | null;
+  /** Its own address: <slug>.<the app's domain>; null until one is given. */
+  slug: string | null;
   createdAt: Date;
 };
 export type ClientLogo = { contentType: string; data: Buffer; updatedAt: Date };
-export type NewClient = Omit<Client, "engineAccountId" | "status" | "brandColor" | "brandColorDark" | "logoAt"> & { engineAccountId?: string | null; status?: ClientStatus };
+export type NewClient = Omit<Client, "engineAccountId" | "status" | "brandColor" | "brandColorDark" | "logoAt" | "slug"> & {
+  engineAccountId?: string | null;
+  status?: ClientStatus;
+  slug?: string | null;
+};
 export type Site = { id: string; clientId: string; name: string; keyCipher: string; createdAt: Date };
 
 /** The accounts behind this dashboard and their sign-in state: in memory locally and in tests, in the dashboard's Postgres on a server. */
 export interface AccountStore {
+  /** The person alone (clientId and role null). */
   account(id: string): Promise<Account | null>;
+  /** The person alone (clientId and role null). */
   accountByEmail(email: string): Promise<Account | null>;
-  /** A client's accounts, oldest first. */
+  /** The person in this client, with their role there; null when they aren't one of its people. */
+  member(userId: string, clientId: string): Promise<Account | null>;
+  /** A client's people, oldest member first. */
   accounts(clientId: string): Promise<Account[]>;
+  /** The clients a person works for, oldest first. */
+  memberships(userId: string): Promise<Membership[]>;
+  /** Adds an existing person to a client with a role (and, when limited, the sites they open). False when already one of its people. */
+  addMember(userId: string, clientId: string, role: Role | null, siteIds: string[] | null, at: Date): Promise<boolean>;
   hasAdmin(clientId: string): Promise<boolean>;
-  /** False when the email already has an account. */
+  /** The person, with (when clientId is set) their place there with `role`; false when the email already has an account. */
   createAccount(account: Account): Promise<boolean>;
-  setRole(id: string, role: Role | null): Promise<Account | null>;
+  setRole(userId: string, clientId: string, role: Role | null): Promise<Account | null>;
   setPassword(id: string, passwordHash: string, at: Date): Promise<void>;
   recordSignIn(id: string, at: Date): Promise<void>;
 
   createSession(session: SessionRecord): Promise<void>;
-  /** The account behind a live session; null when the session is unknown or has expired. */
+  /** The person behind a live session (clientId and role null); null when the session is unknown or has expired. */
   sessionAccount(tokenHash: string, now: Date): Promise<Account | null>;
+  /** The client a browser last worked on, where the address names none. */
+  sessionClient(tokenHash: string): Promise<string | null>;
+  setSessionClient(tokenHash: string, clientId: string): Promise<void>;
   deleteSession(tokenHash: string): Promise<void>;
   /** Ends someone's sessions: all of them, or all but `except`. */
   deleteSessionsOf(userId: string, except?: string): Promise<void>;
@@ -71,22 +93,22 @@ export interface AccountStore {
   /** A client's invitations, oldest first. */
   invitations(clientId: string): Promise<Invitation[]>;
   invitation(id: string): Promise<Invitation | null>;
-  invitationByEmail(email: string): Promise<Invitation | null>;
+  invitationByEmail(email: string, clientId: string | null): Promise<Invitation | null>;
   invitationByToken(tokenHash: string): Promise<Invitation | null>;
-  /** False when the email already has an invitation. */
+  /** False when the email already has an invitation from this client. */
   addInvitation(invitation: Invitation): Promise<boolean>;
   /** A resend: a new link and expiry for the same invitation. False when it no longer exists. */
   renewInvitation(id: string, renewal: { tokenHash: string; createdAt: Date; expiresAt: Date }): Promise<boolean>;
   deleteInvitation(id: string): Promise<boolean>;
   /**
-   * Creates the account (with the invitation's sites, if limited) and deletes the invitation together. False when the
-   * invitation is gone or the email already has an account.
+   * Creates the person, their membership with the invited role (and the invitation's sites, if limited) and deletes the
+   * invitation together. False when the invitation is gone or the email already has an account.
    */
   acceptInvitation(id: string, account: Account): Promise<boolean>;
 
-  /** The sites a person may open when limited; empty = every site of their client. */
-  userSites(userId: string): Promise<string[]>;
-  setUserSites(userId: string, siteIds: string[]): Promise<void>;
+  /** The sites a person may open in this client when limited; empty = every site of the client. */
+  userSites(userId: string, clientId: string): Promise<string[]>;
+  setUserSites(userId: string, clientId: string, siteIds: string[]): Promise<void>;
 
   clients(): Promise<Client[]>;
   client(id: string): Promise<Client | null>;
@@ -97,11 +119,20 @@ export interface AccountStore {
   createSite(site: Site): Promise<void>;
   /** P1c: the client that is this engine account, or null. */
   clientByEngineAccount(engineAccountId: string): Promise<Client | null>;
-  updateClient(id: string, change: { name?: string; engineAccountId?: string; status?: ClientStatus; brandColor?: string | null; brandColorDark?: string | null }): Promise<void>;
+  /** The client whose address this is. */
+  clientBySlug(slug: string): Promise<Client | null>;
+  /** False when another client already has this slug. */
+  updateClient(
+    id: string,
+    change: { name?: string; engineAccountId?: string; status?: ClientStatus; brandColor?: string | null; brandColorDark?: string | null; slug?: string | null },
+  ): Promise<boolean>;
   /** P2: the client's logo; null removes it. */
   setClientLogo(id: string, logo: ClientLogo | null): Promise<void>;
   clientLogo(id: string): Promise<ClientLogo | null>;
-  /** Deletes a client with its people (and their sessions and site access), invitations and sites; each site's webhook is the AppStore's. */
+  /**
+   * Deletes a client with its memberships, its people's access to its sites, its invitations and sites; a person who
+   * then works for no client is deleted with their sessions and resets. Each site's webhook is the AppStore's.
+   */
   deleteClient(id: string): Promise<void>;
   updateSite(id: string, change: { name?: string; keyCipher?: string }): Promise<void>;
   /**
@@ -109,7 +140,7 @@ export interface AccountStore {
    * opens nothing (no rows would mean every site). False when unknown.
    */
   deleteSite(id: string): Promise<boolean>;
-  /** Accounts and invitations made before clients existed join this client. */
+  /** People who work for no client yet (made before clients existed) and invitations without a client join this client. */
   adoptUnassigned(clientId: string): Promise<void>;
 
   createReset(reset: PasswordReset): Promise<void>;

@@ -1,18 +1,24 @@
 import { getTranslations } from "next-intl/server";
-import { getCurrentSite } from "@/lib/tenancy";
+import { getCurrentSite, getMyClients } from "@/lib/tenancy";
+import { ClientSelect } from "./client-select";
 import { SiteSelect } from "./site-select";
 
 /** P1b: the site being worked on. A choice for anyone who may open more than one site; just its name otherwise. */
 export async function SiteSwitcher({ locale }: { locale: string }) {
   const current = await getCurrentSite();
   if (!current) return null;
+  const clients = await getMyClients();
   const t = await getTranslations("Shell.site");
   // The client first, then the site being worked on: someone who works for several clients always sees which one this is.
   return (
     <div className="me-auto flex min-w-0 basis-full items-center gap-2 text-sm md:basis-auto">
-      <span data-testid="client-name" className="truncate text-muted-foreground" title={t("client")}>
-        {current.client.name}
-      </span>
+      {clients.length < 2 ? (
+        <span data-testid="client-name" className="truncate text-muted-foreground" title={t("client")}>
+          {current.client.name}
+        </span>
+      ) : (
+        <ClientSelect locale={locale} label={t("client")} failed={t("clientFailed")} current={current.client.id} clients={clients} />
+      )}
       <span aria-hidden="true" className="text-muted-foreground/60">/</span>
       {current.sites.length < 2 ? (
         <span data-testid="site-name" className="truncate font-medium" title={t("label")}>

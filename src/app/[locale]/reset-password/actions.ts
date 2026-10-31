@@ -19,6 +19,6 @@ export async function resetPasswordAction(_previous: ResetState, form: FormData)
   if (password !== formText(form, "confirm")) return { problem: "mismatch" };
   const result = await completeReset(getAccountStore(), { token: formText(form, "token", 200), password, now: new Date() });
   if (!result.ok) return { problem: result.problem };
-  (await cookies()).set(sessionCookieName(env.appUrl), result.token, sessionCookieOptions(env.appUrl, result.expiresAt));
+  (await cookies()).set(sessionCookieName(env), result.token, sessionCookieOptions(env, result.expiresAt));
   redirect(`/${locale}`);
 }

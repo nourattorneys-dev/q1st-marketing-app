@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getAccountStore } from "@/lib/db";
+import { getHostClient } from "@/lib/tenancy";
 
 /**
  * GET /api/brand/logo (P2): the signed-in person's client logo, kept by the app. The address carries ?v=<when it
@@ -9,7 +10,9 @@ import { getAccountStore } from "@/lib/db";
 export async function GET() {
   await connection();
   const session = await getSession();
-  const logo = session?.clientId ? await getAccountStore().clientLogo(session.clientId) : null;
+  // Signed out on a client's own address: that client's logo, for its sign-in page.
+  const clientId = session?.clientId ?? (await getHostClient())?.id ?? null;
+  const logo = clientId ? await getAccountStore().clientLogo(clientId) : null;
   if (!logo) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
   return new Response(new Uint8Array(logo.data), {
     headers: {

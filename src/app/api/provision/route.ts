@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   // The settings-file client first, so the portal's first request links it instead of making a second one.
   await ensureTenancy();
   const outcome = await getExclusive()("articles_ai_provision", () =>
-    provision({ accounts: getAccountStore(), storeFor: getStore, mailer: mailerFor(env), appUrl, key, now: () => new Date(), fetchLogo: logoFetcher(env.logoLimits) }, parsed.data),
+    provision({ accounts: getAccountStore(), storeFor: getStore, mailer: mailerFor(env), appUrl, clientDomain: serverEnv().clientDomain, key, now: () => new Date(), fetchLogo: logoFetcher(env.logoLimits) }, parsed.data),
   );
   if (!outcome.ran) return answer(409, "busy", "Another provisioning request is running. Try again.");
   const result = outcome.value;

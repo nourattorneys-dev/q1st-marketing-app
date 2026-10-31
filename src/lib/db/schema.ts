@@ -25,9 +25,11 @@ export const clients = pgTable(
     /** Its main colour in dark mode; null = a lighter mix of the light-mode colour. */
     brandColorDark: varchar("brand_color_dark", { length: 7 }),
     logoAt: at("logo_at"),
+    /** Its own address, <slug>.<the app's domain> (lowercase letters, digits, hyphens); null until one is given. */
+    slug: varchar("slug", { length: 63 }),
     createdAt: at("created_at").notNull(),
   },
-  (table) => [uniqueIndex("clients_engine_account_id").on(table.engineAccountId)],
+  (table) => [uniqueIndex("clients_engine_account_id").on(table.engineAccountId), uniqueIndex("clients_slug").on(table.slug)],
 );
 
 /** P2: a client's logo, kept here (fetched once from the address staff gave), so pages never load it from another site. */
@@ -51,10 +53,15 @@ export const sites = pgTable(
   (table) => [index("sites_client_id").on(table.clientId)],
 );
 
-/** The sites a person may open, when not every site of their client (no rows = every site). Admins open every site. */
-export const userSites = pgTable("user_sites", { userId: key("user_id").notNull(), siteId: key("site_id").notNull() }, (table) => [
-  primaryKey({ columns: [table.userId, table.siteId] }),
-]);
+/**
+ * The sites a person may open in a client, when not every one (no rows for that client = every site). Admins open
+ * every site. The client is kept on the row, so a limit to a site that was removed still limits (to nothing).
+ */
+export const userSites = pgTable(
+  "user_sites",
+  { userId: key("user_id").notNull(), clientId: key("client_id"), siteId: key("site_id").notNull() },
+  (table) => [primaryKey({ columns: [table.userId, table.siteId] }), index("user_sites_user_client").on(table.userId, table.clientId)],
+);
 
 /** Webhook deliveries already handled, by X-Event-Id (kept 30 days), with the site they came for. */
 export const webhookEvents = pgTable("webhook_events", {
@@ -114,18 +121,28 @@ export const notificationPrefs = pgTable("notification_prefs", {
 // M5c: the dashboard's own sign-in. Emails are stored trimmed and lowercased (at most 254 characters, as everywhere);
 // tokens only as their sha256 (64 hex characters), so a copy of the database holds no working link or session.
 
-/** Someone who can sign in. role null = No access (the account stays). */
+/** Someone who can sign in: one email and password, whichever clients they work for (see memberships). */
 export const users = pgTable("users", {
   id: key("id").primaryKey(),
-  clientId: key("client_id"),
   email: varchar("email", { length: 255 }).notNull().unique("users_email"),
   name: varchar("name", { length: 200 }).notNull(),
-  role: varchar("role", { length: 16 }).$type<Role>(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   createdAt: at("created_at").notNull(),
   passwordChangedAt: at("password_changed_at").notNull(),
   lastSignInAt: at("last_sign_in_at"),
 });
+
+/** A person's place in one client, with their role there. role null = No access (the membership stays). */
+export const memberships = pgTable(
+  "memberships",
+  {
+    userId: key("user_id").notNull(),
+    clientId: key("client_id").notNull(),
+    role: varchar("role", { length: 16 }).$type<Role>(),
+    createdAt: at("created_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.clientId] }), index("memberships_client_id").on(table.clientId)],
+);
 
 /** A signed-in browser: the session cookie's hash (30 days). */
 export const sessions = pgTable(
@@ -133,6 +150,8 @@ export const sessions = pgTable(
   {
     tokenHash: char("token_hash", { length: 64 }).primaryKey(),
     userId: key("user_id").notNull(),
+    /** The client this browser last worked on, where the address doesn't name one. */
+    clientId: key("client_id"),
     siteId: key("site_id"),
     createdAt: at("created_at").notNull(),
     expiresAt: at("expires_at").notNull(),
@@ -140,19 +159,23 @@ export const sessions = pgTable(
   (table) => [index("sessions_user_id").on(table.userId)],
 );
 
-/** At most one pending invitation per email (7 days); deleted when accepted or revoked. */
-export const invitations = pgTable("invitations", {
-  id: key("id").primaryKey(),
-  clientId: key("client_id"),
-  /** The sites a Reviewer may open; null = every site of the client. */
-  siteIds: jsonb("site_ids").$type<string[]>(),
-  email: varchar("email", { length: 255 }).notNull().unique("invitations_email"),
-  role: varchar("role", { length: 16 }).$type<Role>().notNull(),
-  tokenHash: char("token_hash", { length: 64 }).notNull().unique("invitations_token_hash"),
-  invitedBy: key("invited_by"),
-  createdAt: at("created_at").notNull(),
-  expiresAt: at("expires_at").notNull(),
-});
+/** At most one pending invitation per email and client (7 days); deleted when accepted or revoked. */
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: key("id").primaryKey(),
+    clientId: key("client_id"),
+    /** The sites a Reviewer may open; null = every site of the client. */
+    siteIds: jsonb("site_ids").$type<string[]>(),
+    email: varchar("email", { length: 255 }).notNull(),
+    role: varchar("role", { length: 16 }).$type<Role>().notNull(),
+    tokenHash: char("token_hash", { length: 64 }).notNull().unique("invitations_token_hash"),
+    invitedBy: key("invited_by"),
+    createdAt: at("created_at").notNull(),
+    expiresAt: at("expires_at").notNull(),
+  },
+  (table) => [uniqueIndex("invitations_email_client").on(table.email, table.clientId)],
+);
 
 /** A "Forgot password" link (1 hour); all of someone's are deleted when one is used. */
 export const passwordResets = pgTable(

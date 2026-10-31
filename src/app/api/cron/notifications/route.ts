@@ -4,7 +4,7 @@ import { getAccountStore, getExclusive, getStore } from "@/lib/db";
 import { flushNotifications, KEEP_DAYS } from "@/lib/notifications/flush";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { servicesEnv } from "@/lib/services-env";
-import { allSiteIds, siteAudience } from "@/lib/tenancy";
+import { allSiteIds, siteAudience, siteOrigin } from "@/lib/tenancy";
 import { getDirectory } from "@/lib/users/directory";
 import { DirectoryError } from "@/lib/users/types";
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
           store,
           mailer: mailerFor(env),
           users: () => siteAudience(siteId, async () => (await (await getDirectory()).list()).users),
-          origin: config ? new URL(config.url).origin : null,
+          origin: (await siteOrigin(siteId)) ?? (config ? new URL(config.url).origin : null),
           now: new Date(),
           quietMs: env.notifyQuietMs,
         });

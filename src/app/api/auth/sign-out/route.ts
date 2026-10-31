@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { asAppLocale } from "@/i18n/locales";
 import { clearedSessionCookie, sessionCookieName } from "@/lib/accounts/cookie";
+import { isOurOrigin } from "@/lib/tenancy/address";
 import { endSession } from "@/lib/accounts/sign-in";
 import { MOCK_SESSION_COOKIE } from "@/lib/auth/mock-session";
 import { getAccountStore } from "@/lib/db";
@@ -16,12 +17,14 @@ export async function POST(request: NextRequest) {
   const form = await request.formData();
   const locale = asAppLocale(String(form.get("locale") ?? ""));
   if (env.authMode === "password" && env.appUrl) {
-    if (request.headers.get("origin") !== env.appUrl) return new NextResponse(null, { status: 403 });
-    const name = sessionCookieName(env.appUrl);
+    const origin = request.headers.get("origin");
+    if (!isOurOrigin(origin, env)) return new NextResponse(null, { status: 403 });
+    const name = sessionCookieName(env);
     const token = request.cookies.get(name)?.value;
     if (token) await endSession(getAccountStore(), token);
-    const response = NextResponse.redirect(new URL(`/${locale}/sign-in`, env.appUrl), 303);
-    response.cookies.set(name, "", clearedSessionCookie(env.appUrl));
+    // Back to the sign-in page of the address it came from (one of ours, checked above).
+    const response = NextResponse.redirect(new URL(`/${locale}/sign-in`, origin ?? env.appUrl), 303);
+    response.cookies.set(name, "", clearedSessionCookie(env));
     return response;
   }
   const response = NextResponse.redirect(new URL(`/${locale}/sign-in`, request.url), 303);

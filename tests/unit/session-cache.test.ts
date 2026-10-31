@@ -16,6 +16,7 @@ vi.mock("react", async (importOriginal) => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: (globalThis as { testHost?: string }).testHost ?? "localhost:3300" }),
   cookies: async () => ({ get: (name: string) => (name === "session" && state.cookie ? { name, value: state.cookie } : undefined) }),
 }));
 // getSession waits for the request (connection()) before reading the clock; here every call is a request.

@@ -14,6 +14,7 @@ describe("parseServerEnv", () => {
       appUrl: null,
       adminEmail: null,
       testServer: true,
+      clientDomain: null,
     });
   });
 

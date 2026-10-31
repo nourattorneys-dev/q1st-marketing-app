@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 const { cookieJar } = vi.hoisted(() => ({ cookieJar: new Map<string, string>() }));
 
 vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: (globalThis as { testHost?: string }).testHost ?? "localhost:3300" }),
   cookies: async () => ({
     get: (name: string) => (cookieJar.has(name) ? { name, value: cookieJar.get(name) } : undefined),
   }),
@@ -101,7 +102,7 @@ describe("the first client from the settings file (P1b)", () => {
     expect(site).toMatchObject({ clientId: client.id, name: "Fakher & Co" });
     expect(site?.keyCipher).not.toContain(ENGINE_KEY);
     expect(decryptSiteKey(site?.keyCipher ?? "", KEY)).toBe(ENGINE_KEY);
-    expect(await accounts.account("usr_old")).toMatchObject({ clientId: client.id });
+    expect(await accounts.member("usr_old", client.id)).toMatchObject({ clientId: client.id });
 
     // Once only: a second run finds the client and asks the engine nothing.
     expect(await ensureFirstClient(deps)).toBe("ready");
@@ -158,7 +159,7 @@ describe("on Postgres: the first client takes over the records made before sites
     expect((await site.pendingNotifications()).map((item) => item.eventId)).toEqual(["evt_old"]);
     expect(await storeFor("site_other").pendingNotifications()).toEqual([]);
     const [client] = await accounts.clients();
-    expect(await accounts.account("usr_pg")).toMatchObject({ clientId: client.id });
+    expect(await accounts.member("usr_pg", client.id)).toMatchObject({ clientId: client.id });
     expect(await accounts.invitation("inv_pg")).toMatchObject({ clientId: client.id });
   });
 });
@@ -186,7 +187,7 @@ describe("one client never sees another's (P1b isolation)", () => {
     await store.createAccount(person("usr_theirs", "cli_2"));
     await store.addInvitation({ id: "inv_theirs", email: "x@example.com", role: "reviewer", clientId: "cli_2", siteIds: null, tokenHash: "b".repeat(64), invitedBy: null, createdAt: at, expiresAt: at });
     vi.spyOn(console, "info").mockImplementation(() => {});
-    const directory = createAccountsDirectory({ store, mailer: createLogMailer(), appUrl: "https://app.example", clientId: "cli_1", sites: [A, B] });
+    const directory = createAccountsDirectory({ store, mailer: createLogMailer(), appUrl: "https://app.example", clientId: "cli_1", clientName: "One", sites: [A, B] });
 
     const listed = await directory.list();
     expect(listed.users.map((user) => user.id)).toEqual(["usr_mine"]);
@@ -195,7 +196,7 @@ describe("one client never sees another's (P1b isolation)", () => {
     await expect(directory.setSites("usr_theirs", ["site_a"])).rejects.toMatchObject({ code: "not_found" });
     await expect(directory.revokeInvite("inv_theirs")).rejects.toMatchObject({ code: "not_found" });
     await expect(directory.resendInvite("inv_theirs")).rejects.toMatchObject({ code: "not_found" });
-    expect(await store.account("usr_theirs")).toMatchObject({ role: "reviewer" });
+    expect(await store.member("usr_theirs", "cli_2")).toMatchObject({ role: "reviewer" });
     expect(await store.invitation("inv_theirs")).not.toBeNull();
 
     // A Reviewer's sites: another client's site is dropped; the invitation carries the choice to the new account.
@@ -223,7 +224,7 @@ describe("the current site and the switcher (AUTH_MODE=password)", () => {
     if (!(await store.client("cli_1"))) await twoClients(store);
     const id = `usr_switch${++sequence}`;
     await store.createAccount(person(id, clientId, role));
-    if (granted.length) await store.setUserSites(id, granted);
+    if (granted.length) await store.setUserSites(id, clientId, granted);
     cookieJar.set("session", (await startSession(store, id, at)).token);
     return id;
   }
@@ -231,7 +232,7 @@ describe("the current site and the switcher (AUTH_MODE=password)", () => {
   it("shows the client's sites by name, never an engine key, and switches between them", async () => {
     await signedIn("admin", "cli_1");
     const current = await getCurrentSite();
-    expect(current).toEqual({ client: { id: "cli_1", name: "One", brandColor: null, brandColorDark: null, logoAt: null }, site: A, sites: [A, B] });
+    expect(current).toEqual({ client: { id: "cli_1", name: "One", brandColor: null, brandColorDark: null, logoAt: null, slug: null }, site: A, sites: [A, B] });
     expect(JSON.stringify(current)).not.toContain("cipher");
     expect(await selectSite("site_b")).toBe(true);
     expect((await getCurrentSite())?.site).toEqual(B);
@@ -270,7 +271,7 @@ describe("the current site and the switcher (AUTH_MODE=password)", () => {
     if (!(await store.client("cli_1"))) await twoClients(store);
     await store.createAccount(person("usr_aud_admin", "cli_1", "admin"));
     await store.createAccount(person("usr_aud_a", "cli_1", "reviewer"));
-    await store.setUserSites("usr_aud_a", ["site_a"]);
+    await store.setUserSites("usr_aud_a", "cli_1", ["site_a"]);
     await store.createAccount(person("usr_aud_other", "cli_2", "admin"));
     const audience = (await siteAudience("site_b", async () => [])).map((user) => user.id);
     expect(audience).toContain("usr_aud_admin");

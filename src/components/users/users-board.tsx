@@ -251,7 +251,7 @@ function InviteForm({ locale, sites }: { locale: string; sites: SiteOption[] }) 
   const [inviteRole, setInviteRole] = useState<Role>("reviewer");
   const [inviteSites, setInviteSites] = useState<string[]>(() => sites.map((site) => site.id));
   const choosingSites = inviteRole === "reviewer" && sites.length > 1;
-  const [sent, setSent] = useState<{ email: string; notSent: boolean } | null>(null);
+  const [sent, setSent] = useState<{ email: string; notSent: boolean; added: boolean } | null>(null);
   const [error, setError] = useState<EngineFailure | null>(null);
   const fieldError = error?.fields?.email ? t("errors.invalidEmail") : null;
 
@@ -260,7 +260,7 @@ function InviteForm({ locale, sites }: { locale: string; sites: SiteOption[] }) 
     setSent(null);
     const result = await invite.run({ locale, email, role: inviteRole, siteIds: choosingSites ? toChoice(inviteSites, sites) : null });
     if (result.ok) {
-      setSent({ email: result.data.email, notSent: result.data.notSent });
+      setSent({ email: result.data.email, notSent: result.data.notSent, added: result.data.added === true });
       setEmail("");
     } else {
       setError(result.error);
@@ -330,7 +330,11 @@ function InviteForm({ locale, sites }: { locale: string; sites: SiteOption[] }) 
           </p>
         )}
         {sent &&
-          (sent.notSent ? (
+          (sent.added ? (
+            <p role="status" data-testid="invite-added" className="text-sm text-ok-fg">
+              {t("invite.added", { email: sent.email })}
+            </p>
+          ) : sent.notSent ? (
             <p role="status" data-testid="invite-not-sent" className="text-sm text-muted-foreground">
               {t("invite.notSent")}
             </p>

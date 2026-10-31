@@ -44,7 +44,7 @@ describe("the Postgres store on a real database", () => {
     const { rows } = await connection.pool.query<{ n: string }>(
       "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = 'public'",
     );
-    expect(Number(rows[0]?.n)).toBe(15);
+    expect(Number(rows[0]?.n)).toBe(16);
   });
 
   it("returns Arabic text and emoji unchanged, and times as the same instant", async () => {

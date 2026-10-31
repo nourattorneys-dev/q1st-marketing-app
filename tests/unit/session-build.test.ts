@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // While Next builds or prerenders a page, the first request-only call stops it there; these stand in for that stop.
 const state = vi.hoisted(() => ({ cookie: null as string | null }));
 vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: (globalThis as { testHost?: string }).testHost ?? "localhost:3300" }),
   cookies: async () => {
     if (state.cookie === null) throw new Error("DYNAMIC_REQUEST");
     return { get: (name: string) => (name === "session" && state.cookie ? { name, value: state.cookie } : undefined) };

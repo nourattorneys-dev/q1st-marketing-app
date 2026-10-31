@@ -136,14 +136,22 @@ export function renderTestEmail(): { subject: string; html: string; text: string
  * M5c: an invitation or a password-reset email, in the notification format. Each language's half links to that
  * language's page; the links come from APP_URL only, never from a request.
  */
-export function renderAccountEmail(kind: "invitation" | "reset", input: { appUrl: string; token: string; role?: Role }): { subject: string; html: string; text: string } {
-  const path = kind === "invitation" ? "invitation" : "reset-password";
+/**
+ * `added`: someone who already has an account was given a place in another client; the link opens that client (no
+ * token: they sign in with the password they have).
+ */
+export function renderAccountEmail(
+  kind: "invitation" | "reset" | "added",
+  input: { appUrl: string; token?: string; role?: Role; client?: string },
+): { subject: string; html: string; text: string } {
+  const path = kind === "invitation" ? "invitation" : kind === "reset" ? "reset-password" : "";
   return compose(
     LOCALES.map((locale) => {
       const t = translator(locale, `Email.${kind}`);
       const role = input.role ? translator(locale, "Shell.role")(input.role) : "";
-      const href = `${input.appUrl}/${locale}/${path}?token=${encodeURIComponent(input.token)}`;
-      return { locale, subject: t("subject"), heading: t("heading", { role }), lines: [{ text: t("link"), href }], footer: t("footer"), settings: null };
+      const href = input.token ? `${input.appUrl}/${locale}/${path}?token=${encodeURIComponent(input.token)}` : `${input.appUrl}/${locale}`;
+      const values = { role, client: input.client ?? "" };
+      return { locale, subject: t("subject", values), heading: t("heading", values), lines: [{ text: t("link", values), href }], footer: t("footer"), settings: null };
     }),
   );
 }

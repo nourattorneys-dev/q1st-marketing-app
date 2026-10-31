@@ -8,11 +8,14 @@ import { DirectoryError } from "@/lib/users/types";
 import { encryptSecret } from "@/lib/webhooks/secret";
 import { hookUrlFor } from "@/lib/webhooks/status";
 import type { FetchLogo } from "./logo";
+import { clientNameProblem, clientOrigin } from "./address";
 import { encryptSiteKey } from "./site-key";
 
 const Id = z.string().regex(/^[A-Za-z0-9_-]{1,191}$/);
 const Name = z.string().trim().min(1).max(200);
 const Secret = z.string().min(16).max(500);
+/** The client's own address name (<slug>.<client domain>); null clears it. Checked against the rules in `provision`. */
+const Slug = z.string().trim().toLowerCase().max(63).nullable();
 /** P2: a client's own look: its main colour and the https address of its logo; null clears either. */
 const Brand = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
@@ -35,19 +38,27 @@ export const ProvisionRequest = z.discriminatedUnion("action", [
     webhookSecret: Secret.optional(),
     admin: z.object({ email: z.string().trim().min(3).max(254) }).optional(),
     brand: Brand.optional(),
+    slug: Slug.optional(),
   }),
   z.object({ action: z.literal("site.remove"), accountId: Id, siteId: Id }),
-  z.object({ action: z.literal("client.rename"), accountId: Id, accountName: Name }),
+  z.object({ action: z.literal("client.rename"), accountId: Id, accountName: Name, slug: Slug.optional() }),
   z.object({ action: z.literal("client.status"), accountId: Id, status: z.enum(CLIENT_STATUSES) }),
   z.object({ action: z.literal("client.remove"), accountId: Id }),
   z.object({ action: z.literal("client.brand"), accountId: Id, brand: Brand }),
 ]);
 export type ProvisionRequest = z.infer<typeof ProvisionRequest>;
 
-/** `member`: already has an account in this client; `invited`: a new invitation; `reinvited`: a pending one sent again. */
-export type AdminInvite = "member" | "invited" | "reinvited";
+/**
+ * `member`: already works for this client; `added`: had an account (for another client) and joined at once; `invited`:
+ * a new invitation; `reinvited`: a pending one sent again.
+ */
+export type AdminInvite = "member" | "added" | "invited" | "reinvited";
 export type ProvisionResult =
-  | { ok: true; data: { clientId: string; siteId?: string; hookUrl?: string; admin?: AdminInvite; removed?: boolean; status?: string } }
+  | {
+      ok: true;
+      /** url: where the client's people work (its own address when it has one). */
+      data: { clientId: string; siteId?: string; hookUrl?: string; admin?: AdminInvite; removed?: boolean; status?: string; url?: string | null };
+    }
   | { ok: false; status: number; code: string; message: string };
 
 const fail = (status: number, code: string, message: string): ProvisionResult => ({ ok: false, status, code, message });
@@ -58,6 +69,8 @@ export async function provision(
     storeFor: (siteId: string) => AppStore;
     mailer: Mailer;
     appUrl: string;
+    /** Each client at its own address under this domain (null: all at appUrl). */
+    clientDomain: { domain: string; reserved: string[] } | null;
     key: Buffer;
     now: () => Date;
     fetchLogo: FetchLogo;
@@ -72,7 +85,13 @@ export async function provision(
       const problem = await applyBrand(deps, client.id, request.brand);
       return problem ?? { ok: true, data: { clientId: client.id } };
     }
-    if (request.action === "client.rename") await accounts.updateClient(client.id, { name: request.accountName });
+    if (request.action === "client.rename") {
+      await accounts.updateClient(client.id, { name: request.accountName });
+      const problem = request.slug === undefined ? null : await applySlug(deps, client.id, request.slug);
+      if (problem) return problem;
+      const renamed = await accounts.client(client.id);
+      return { ok: true, data: { clientId: client.id, url: clientOrigin(renamed, { appUrl: deps.appUrl, clientDomain: deps.clientDomain }) } };
+    }
     if (request.action === "client.status") {
       await accounts.updateClient(client.id, { status: request.status });
       // Closed: everyone is signed out now. Suspended keeps sessions; every page shows the paused notice until it is active again.
@@ -123,6 +142,7 @@ export async function provision(
       brandColor: null,
       brandColorDark: null,
       logoAt: null,
+      slug: null,
       createdAt: at,
     };
     await accounts.createClient(made);
@@ -138,6 +158,10 @@ export async function provision(
     const problem = await applyBrand(deps, client.id, request.brand);
     if (problem) return problem;
   }
+  if (request.slug !== undefined) {
+    const problem = await applySlug(deps, client.id, request.slug);
+    if (problem) return problem;
+  }
   const hookUrl = hookUrlFor(deps.appUrl);
   if (request.webhookSecret) {
     await deps.storeFor(request.siteId).saveWebhook({ url: hookUrl, secretCipher: encryptSecret(request.webhookSecret, deps.key), updatedAt: at });
@@ -150,7 +174,21 @@ export async function provision(
     admin = outcome;
   }
   console.info(`Site ${site ? "updated" : "added"} in the app: ${request.siteId} (client ${client.id})`);
-  return { ok: true, data: { clientId: client.id, siteId: request.siteId, hookUrl, ...(admin ? { admin } : {}) } };
+  const url = clientOrigin(await accounts.client(client.id), { appUrl: deps.appUrl, clientDomain: deps.clientDomain });
+  return { ok: true, data: { clientId: client.id, siteId: request.siteId, hookUrl, url, ...(admin ? { admin } : {}) } };
+}
+
+/** The client's own address name: one DNS label, not reserved, not another client's. Null clears it. */
+async function applySlug(deps: Parameters<typeof provision>[0], clientId: string, slug: string | null): Promise<ProvisionResult | null> {
+  const name = slug || null;
+  if (name) {
+    if (!deps.clientDomain) return fail(400, "invalid_input", "Client addresses are off on the app (CLIENT_DOMAIN isn't set).");
+    const problem = clientNameProblem(name, { appUrl: deps.appUrl, clientDomain: deps.clientDomain });
+    if (problem === "format") return fail(400, "invalid_input", "Use lowercase letters, digits and hyphens (1–63), starting and ending with a letter or digit.");
+    if (problem === "reserved") return fail(400, "invalid_input", `"${name}" is kept for the app itself. Choose another name.`);
+  }
+  if (!(await deps.accounts.updateClient(clientId, { slug: name }))) return fail(409, "slug_taken", `Another client already uses "${name}".`);
+  return null;
 }
 
 /** The client's colour and logo. The logo is fetched first: if it can't be, nothing changes and the answer says why. */
@@ -178,19 +216,24 @@ async function inviteAdmin(
   const { accounts } = deps;
   const tidy = email.trim().toLowerCase();
   const account = await accounts.accountByEmail(tidy);
-  if (account) {
-    return account.clientId === clientId ? "member" : fail(409, "conflict", "This email already has an account with another client.");
-  }
-  const pending = await accounts.invitationByEmail(tidy);
-  if (pending && pending.clientId !== clientId) return fail(409, "conflict", "This email already has an invitation from another client.");
-  const directory = createAccountsDirectory({ store: accounts, mailer: deps.mailer, appUrl: deps.appUrl, clientId, sites: [], now: deps.now });
+  if (account && (await accounts.member(account.id, clientId))) return "member";
+  const pending = await accounts.invitationByEmail(tidy, clientId);
+  const client = await accounts.client(clientId);
+  const directory = createAccountsDirectory({
+    store: accounts,
+    mailer: deps.mailer,
+    appUrl: clientOrigin(client, { appUrl: deps.appUrl, clientDomain: deps.clientDomain }) ?? deps.appUrl,
+    clientId,
+    clientName: client?.name ?? "",
+    sites: [],
+    now: deps.now,
+  });
   try {
     if (pending) {
       await directory.resendInvite(pending.id);
       return "reinvited";
     }
-    await directory.invite(tidy, "admin", null, null);
-    return "invited";
+    return (await directory.invite(tidy, "admin", null, null)).added ? "added" : "invited";
   } catch (error) {
     if (error instanceof DirectoryError) {
       return fail(error.code === "mail_failed" ? 502 : 400, error.code === "mail_failed" ? "mail_failed" : "invalid_input", error.message);

@@ -1,8 +1,8 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { sessionCookieName } from "@/lib/accounts/cookie";
-import type { ClientStatus, Site } from "@/lib/accounts/store";
+import type { Client, ClientStatus, Site } from "@/lib/accounts/store";
 import { hashToken } from "@/lib/accounts/tokens";
 import { getSession } from "@/lib/auth/session";
 import { getAccountStore, getExclusive, getStore } from "@/lib/db";
@@ -16,17 +16,26 @@ import { servicesEnv } from "@/lib/services-env";
 import { MOCK_CLIENT_ID } from "@/lib/auth/mock-session";
 import type { DirectoryUser } from "@/lib/users/types";
 import { chooseSite, sitesFor, type SiteRef } from "./access";
+import { clientNameOfHost, clientOrigin } from "./address";
 import { ensureFirstClient, type EngineSite } from "./bootstrap";
 import { decryptSiteKey, siteKeyFor } from "./site-key";
 
 export type { SiteRef } from "./access";
 
 /** Test logins (AUTH_MODE=mock) keep one built-in client and site. */
-export const MOCK_CLIENT: CurrentClient = { id: MOCK_CLIENT_ID, name: "Fakher & Co", brandColor: null, brandColorDark: null, logoAt: null };
+export const MOCK_CLIENT: CurrentClient = { id: MOCK_CLIENT_ID, name: "Fakher & Co", brandColor: null, brandColorDark: null, logoAt: null, slug: null };
 const MOCK_SITE: SiteRef = { id: MOCK_SITE_ID, name: "Fakher & Co" };
 
 /** The client as its people see it (P2: with its own colour, and when its logo last changed; null = none). */
-export type CurrentClient = { id: string; name: string; brandColor: string | null; brandColorDark: string | null; logoAt: Date | null };
+export type CurrentClient = {
+  id: string;
+  name: string;
+  brandColor: string | null;
+  brandColorDark: string | null;
+  logoAt: Date | null;
+  /** Its own address name (<slug>.<client domain>); null = it works at APP_URL. */
+  slug: string | null;
+};
 export type CurrentSite = { client: CurrentClient; site: SiteRef; sites: SiteRef[] };
 
 const ref = (site: SiteRef): SiteRef => ({ id: site.id, name: site.name });
@@ -81,17 +90,18 @@ const currentSiteRecord = cache(async (): Promise<{ client: CurrentClient; site:
   const accounts = getAccountStore();
   const client = await accounts.client(session.clientId);
   if (!client || client.status !== "active") return null;
-  const granted = session.role === "admin" ? [] : await accounts.userSites(session.userId);
+  const granted = session.role === "admin" ? [] : await accounts.userSites(session.userId, client.id);
   const allowed = sitesFor(session.role, await accounts.sites(client.id), granted);
   const env = serverEnv();
-  const token = env.appUrl ? (await cookies()).get(sessionCookieName(env.appUrl))?.value : undefined;
+  const token = env.appUrl ? (await cookies()).get(sessionCookieName(env))?.value : undefined;
   const tokenHash = token ? hashToken(token) : null;
   const saved = tokenHash ? await accounts.sessionSite(tokenHash) : null;
   const site = chooseSite(allowed, saved);
   if (!site) return null;
   // Removed, or access taken away: the first site they may open is used and saved.
   if (tokenHash && site.id !== saved) await accounts.setSessionSite(tokenHash, site.id);
-  return { client: { id: client.id, name: client.name, brandColor: client.brandColor, brandColorDark: client.brandColorDark, logoAt: client.logoAt }, site, sites: allowed };
+  const shown = { id: client.id, name: client.name, brandColor: client.brandColor, brandColorDark: client.brandColorDark, logoAt: client.logoAt, slug: client.slug };
+  return { client: shown, site, sites: allowed };
 });
 
 /** The signed-in person's client state (P1c): a paused or closed client's people see a notice instead of the app. */
@@ -131,7 +141,7 @@ export async function selectSite(siteId: string): Promise<boolean> {
   if (!current?.sites.some((site) => site.id === siteId)) return false;
   if (serverEnv().authMode === "mock") return true;
   const env = serverEnv();
-  const token = env.appUrl ? (await cookies()).get(sessionCookieName(env.appUrl))?.value : undefined;
+  const token = env.appUrl ? (await cookies()).get(sessionCookieName(env))?.value : undefined;
   if (!token) return false;
   await getAccountStore().setSessionSite(hashToken(token), siteId);
   return true;
@@ -142,6 +152,47 @@ export async function allSiteIds(): Promise<string[]> {
   if (serverEnv().authMode === "mock") return [MOCK_SITE.id];
   await ensureTenancy();
   return (await getAccountStore().sites()).map((site) => site.id);
+}
+
+/** The clients the signed-in person works for (with a role, not closed), oldest first; the current one among them. */
+export const getMyClients = cache(async (): Promise<{ id: string; name: string }[]> => {
+  const session = await getSession();
+  if (!session || serverEnv().authMode === "mock") return [];
+  const accounts = getAccountStore();
+  const mine: { id: string; name: string }[] = [];
+  for (const place of await accounts.memberships(session.userId)) {
+    const client = place.role ? await accounts.client(place.clientId) : null;
+    if (client && client.status !== "closed") mine.push({ id: client.id, name: client.name });
+  }
+  return mine;
+});
+
+/** Makes another of the person's clients the one this browser works on; its address, or null when it isn't theirs. */
+export async function switchClient(clientId: string, locale: string): Promise<string | null> {
+  const session = await getSession();
+  if (!session || !(await getMyClients()).some((client) => client.id === clientId)) return null;
+  const env = serverEnv();
+  const token = env.appUrl ? (await cookies()).get(sessionCookieName(env))?.value : undefined;
+  if (token) await getAccountStore().setSessionClient(hashToken(token), clientId);
+  return `${clientOrigin(await getAccountStore().client(clientId), env) ?? ""}/${locale}`;
+}
+
+/** The client whose own address this request came to (for its sign-in page and logo), or null. */
+export const getHostClient = cache(async (): Promise<Client | null> => {
+  const env = serverEnv();
+  const name = clientNameOfHost((await headers()).get("host"), env);
+  if (!name || env.authMode === "mock") return null;
+  const client = await getAccountStore().clientBySlug(name);
+  return client && client.status !== "closed" ? client : null;
+});
+
+/** Where a site's people work (its client's own address, else APP_URL), for links in its emails; null in test logins. */
+export async function siteOrigin(siteId: string): Promise<string | null> {
+  const env = serverEnv();
+  if (env.authMode === "mock") return null;
+  const accounts = getAccountStore();
+  const site = await accounts.site(siteId);
+  return clientOrigin(site ? await accounts.client(site.clientId) : null, env);
 }
 
 /** Whether the app serves this site (an engine site id from an untrusted delivery). */
@@ -157,7 +208,7 @@ export async function siteAudience(siteId: string, everyone: () => Promise<Direc
   if (!site) return [];
   const people: DirectoryUser[] = [];
   for (const account of await accounts.accounts(site.clientId)) {
-    const granted = account.role === "admin" ? [] : await accounts.userSites(account.id);
+    const granted = account.role === "admin" ? [] : await accounts.userSites(account.id, site.clientId);
     if (sitesFor(account.role, [site], granted).length === 0) continue;
     people.push({ id: account.id, name: account.name, email: account.email, role: account.role, twoFactor: false, siteIds: granted.length ? granted : null, lastSignInAt: null });
   }
