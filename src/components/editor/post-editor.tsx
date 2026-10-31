@@ -212,8 +212,13 @@ export function PostEditor({ locale, post, twin, limits, photoLimits, categories
         )}
         {current.published && (
           <a href={current.published.url} target="_blank" rel="noopener noreferrer" dir="ltr" data-testid="published-link" className="text-sm text-primary underline">
-            {t("viewLive")}
+            {current.published.status && current.published.status !== "publish" ? t("viewOnSite") : t("viewLive")}
           </a>
+        )}
+        {current.published?.status && current.published.status !== "publish" && (
+          <span data-testid="published-not-live" className="rounded-md bg-warn-bg px-2 py-1 text-sm text-warn-fg">
+            {t("notLive")}
+          </span>
         )}
       </div>
 

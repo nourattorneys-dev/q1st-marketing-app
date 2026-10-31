@@ -18,8 +18,9 @@ export const typeOf = (types: TargetType[], type: string) => types.find((candida
 
 export const textOf = (value: unknown) => (typeof value === "string" ? value : value === null || value === undefined ? "" : String(value));
 
-/** The fields a person types for the connection itself (everything but the secret). */
-const connectionKeys = (type: TargetType | undefined) => (type?.fields ?? []).filter((field) => field.kind !== "secret").map((field) => field.key);
+/** The fields a person types for the connection itself (not the secret, and not a choice of how articles are kept, which needs no test). */
+const connectionKeys = (type: TargetType | undefined) =>
+  (type?.fields ?? []).filter((field) => field.kind !== "secret" && field.kind !== "choice").map((field) => field.key);
 
 /** The target without settings whose field is a secret (or named "secret"), so no password or token reaches the browser even if the engine sends one. */
 export function withoutSecrets(target: PublishTarget, types: TargetType[]): PublishTarget {
@@ -89,6 +90,7 @@ export function toWebsiteTarget(form: WebsiteForm, types: TargetType[]): Website
   const settings: Record<string, unknown> = { ...form.settings };
   for (const field of typeOf(types, form.type)?.fields ?? []) {
     if (field.kind === "secret") delete settings[field.key];
+    else if (field.kind === "choice") settings[field.key] = textOf(form.settings[field.key]).trim() || (field.options?.[0]?.value ?? "");
     else settings[field.key] = textOf(form.settings[field.key]).trim();
   }
   return {

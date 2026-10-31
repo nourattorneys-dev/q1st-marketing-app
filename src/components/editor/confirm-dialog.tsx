@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ActionError } from "@/components/actions/action-error";
@@ -31,9 +32,11 @@ type Props = {
   onConfirm: (note: string) => Promise<EngineFailure | null>;
   /** A not_connected refusal links an admin to Settings (design §9). */
   canManageSettings?: boolean;
+  /** Shown on the confirm button while the action runs (a spinner always shows); default "Working…". */
+  pendingLabel?: string;
 };
 
-export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm, canManageSettings }: Props) {
+export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm, canManageSettings, pendingLabel }: Props) {
   const t = useTranslations("Editor");
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -78,8 +81,9 @@ export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline"
           <DialogClose asChild>
             <Button variant="outline">{t("cancel")}</Button>
           </DialogClose>
-          <Button data-testid={`${testId}-confirm`} disabled={missingNote || pending} onClick={() => void confirm()}>
-            {confirmLabel}
+          <Button data-testid={`${testId}-confirm`} disabled={missingNote || pending} aria-busy={pending} onClick={() => void confirm()}>
+            {pending && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
+            {pending ? (pendingLabel ?? t("working")) : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

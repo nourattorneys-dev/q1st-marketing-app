@@ -28,6 +28,7 @@ export type QueueItem = {
 export function ScheduleBoard({ locale, items, canManageSettings }: { locale: string; items: QueueItem[]; canManageSettings: boolean }) {
   const t = useTranslations("Scheduled");
   const tReview = useTranslations("Review");
+  const tEditor = useTranslations("Editor");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [failures, setFailures] = useState<{ id: string; title: string; message: string }[]>([]);
   const [error, setError] = useState<EngineFailure | null>(null);
@@ -156,6 +157,7 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
                 description={t("publishBody")}
                 confirmLabel={t("publishNow")}
                 pending={publish.pending}
+                pendingLabel={tEditor("publishing")}
                 onConfirm={publishOne(item.id)}
                 canManageSettings={canManageSettings}
               />

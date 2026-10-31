@@ -203,7 +203,7 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
 
   /** The connection a test proved: the type, its connection fields and the secret it used. */
   const fingerprintOf = (resolved: Resolved) =>
-    JSON.stringify([resolved.type.type, resolved.type.fields.filter((field) => field.kind !== "secret").map((field) => text(resolved.settings[field.key])), resolved.secret]);
+    JSON.stringify([resolved.type.type, resolved.type.fields.filter((field) => field.kind !== "secret" && field.kind !== "choice").map((field) => text(resolved.settings[field.key])), resolved.secret]);
 
   /** POST …/settings/website/test with unsaved values. A secret containing "wrong" is refused, as a website would (mock rule). */
   function testWebsite(input: Record<string, unknown>): MockOutcome<Record<string, unknown>> {
@@ -227,7 +227,7 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     if (input.version !== website.version) return conflict("website connection");
     const resolved = resolve(input);
     if ("ok" in resolved) return resolved;
-    const connectionKeys = resolved.type.fields.filter((field) => field.kind !== "secret").map((field) => field.key);
+    const connectionKeys = resolved.type.fields.filter((field) => field.kind !== "secret" && field.kind !== "choice").map((field) => field.key);
     const changed =
       website.status === "missing" ||
       resolved.type.type !== website.type ||
@@ -322,6 +322,7 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     testWebsite,
     saveWebsite,
     websiteType: () => website.type,
+    websitePublishAs: () => (website.settings.publishAs === "draft" ? "draft" : "publish"),
     connections,
     connectionStatus,
     socialList,

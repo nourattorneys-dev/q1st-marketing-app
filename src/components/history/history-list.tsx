@@ -67,6 +67,7 @@ export async function HistoryList({ locale, searchParams }: Props) {
     platform: post.platform,
     target: post.published?.target ?? null,
     url: post.published?.url ?? null,
+    siteStatus: post.published?.status ?? null,
     publishedAt: post.published ? formatDateTime(post.published.at, { timeZone, locale }) : null,
     overrideReason: post.overrideReason ?? null,
     error: post.status === "failed" ? (post.error ?? null) : null,

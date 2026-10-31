@@ -221,6 +221,8 @@
     "noneHere": "Nothing here with this filter."
   },
   "Editor": {
+    "working": "Working…",
+    "publishing": "Publishing…",
     "back": "← Review",
     "status": {
       "drafting": "Drafting",
@@ -351,7 +353,9 @@
       "title": "Search preview",
       "noTitle": "Add a title",
       "noDescription": "Add a meta description: it is the text people read under the title."
-    }
+    },
+    "viewOnSite": "Open on the website",
+    "notLive": "Not live on the website yet"
   },
   "Scheduled": {
     "title": "Scheduled",
@@ -390,6 +394,12 @@
       "strapi": "Strapi",
       "linkedin": "LinkedIn",
       "instagram": "Instagram"
+    },
+    "notLive": {
+      "draft": "Saved on the website as a draft: not live yet. Publish it in WordPress, or set Settings → Website connection → \"Articles appear on the site as\" to Published.",
+      "pending": "Saved on the website waiting for approval: not live yet. Approve it in WordPress.",
+      "future": "Saved on the website as scheduled there: it goes live at the website's own time.",
+      "other": "Saved on the website as \"{status}\": not live yet."
     }
   },
   "ErrorPage": {
@@ -659,7 +669,12 @@
         "username": "Publishing user",
         "secret": "Password or token",
         "postType": "Post type",
-        "collection": "Collection"
+        "collection": "Collection",
+        "publishAs": "Articles appear on the site as"
+      },
+      "fieldOptions": {
+        "publish": "Published (live at once)",
+        "draft": "Draft (someone publishes it in WordPress)"
       },
       "formKeys": {
         "type": "Website type",

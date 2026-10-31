@@ -19,6 +19,8 @@ export type HistoryEntry = {
   platform: string;
   target: string | null;
   url: string | null;
+  /** How the website keeps it; anything but "publish" means it is not live there. */
+  siteStatus: string | null;
   publishedAt: string | null;
   overrideReason: string | null;
   error: string | null;
@@ -72,6 +74,11 @@ export function HistoryBoard({ locale, entries, canManageSettings }: { locale: s
               </Badge>
             )}
           </div>
+          {entry.siteStatus && entry.siteStatus !== "publish" && (
+            <p data-testid={`history-site-status-${entry.id}`} className="rounded-md bg-warn-bg px-3 py-2 text-sm text-warn-fg">
+              {t.has(`notLive.${entry.siteStatus}`) ? t(`notLive.${entry.siteStatus}`) : t("notLive.other", { status: entry.siteStatus })}
+            </p>
+          )}
           {entry.url && (
             <a href={entry.url} target="_blank" rel="noopener noreferrer" dir="ltr" data-testid={`history-url-${entry.id}`} className="text-sm text-primary underline">
               {entry.url}

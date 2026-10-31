@@ -130,6 +130,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             description={post.status === "pending" ? t("publishBodyPending") : t("publishBody")}
             confirmLabel={t("publishNow")}
             pending={publish.pending}
+            pendingLabel={t("publishing")}
             onConfirm={publishPost}
             canManageSettings={canManageSettings}
           />

@@ -85,3 +85,28 @@ test("an approved Arabic twin that stops matching its English version can't be p
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("scheduled-row-p_202")).toBeVisible();
 });
+
+test("when the website keeps articles as drafts, the post and History say it isn't live yet", async ({ page }) => {
+  await signInWithCookie(page.context(), "dev_admin");
+  await page.goto("/en/settings/website");
+  await page.getByTestId("website-field-publishAs").selectOption("draft");
+  await page.getByTestId("website-test").click();
+  await expect(page.getByTestId("website-test-result")).toHaveAttribute("data-ok", "true");
+  await page.getByTestId("settings-save").click();
+  await expect(page.getByTestId("settings-saved")).toBeVisible();
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("publish").click();
+  await page.getByTestId("publish-confirm").click();
+  await expect(page.getByTestId("published-not-live")).toBeVisible();
+  await page.goto("/en/history");
+  await expect(page.locator("[data-testid^=history-site-status-]").first()).toContainText("draft");
+});
+
+test("the publish button shows it is working while the post goes out", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("publish").click();
+  await page.route("**/*", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  await page.getByTestId("publish-confirm").click();
+  await expect(page.getByTestId("publish-confirm")).toHaveText("Publishing…");
+  await expect(page.getByTestId("post-status")).toHaveText("Published");
+});

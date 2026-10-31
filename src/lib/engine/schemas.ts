@@ -41,7 +41,14 @@ export const EnvelopeSchema = z.discriminatedUnion("ok", [
 ]);
 
 // ── Meta (spec §4 "Meta") ────────────────────────────────────────────────────
-const TargetFieldSchema = z.object({ key: z.string(), label: z.string(), kind: z.string(), required: z.boolean() });
+const TargetFieldSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  kind: z.string(),
+  required: z.boolean(),
+  // kind "choice": the values offered, the first one is the default.
+  options: z.array(z.object({ value: z.string(), label: z.string() })).nullish(),
+});
 
 export const TargetTypeSchema = z.object({
   type: z.string(),
@@ -241,7 +248,8 @@ export const PostSchema = z.object({
     .object({ hold: z.boolean(), scheduledAt: isoDateTime.nullish(), position: z.number().int().nullish() })
     .nullish(),
   published: z
-    .object({ target: z.string(), url: z.string(), externalId: z.string().nullish(), at: isoDateTime })
+    // status: how the website keeps it ("publish" = live; "draft" etc. = saved there but not live).
+    .object({ target: z.string(), url: z.string(), externalId: z.string().nullish(), at: isoDateTime, status: z.string().nullish() })
     .nullish(),
   lock: LockSchema.nullish(),
   requestedBy: z.string().nullish(),

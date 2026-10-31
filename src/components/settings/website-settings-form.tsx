@@ -155,6 +155,24 @@ export function WebsiteSettingsForm({ locale, saved, types, lastChecked }: Props
                   {fieldLabel(field)}
                   {field.required ? " *" : ""}
                 </Label>
+                {field.kind === "choice" && field.options?.length ? (
+                  <select
+                    id={id}
+                    data-testid={id}
+                    className={SELECT}
+                    value={textOf(form.settings[field.key]) || field.options[0].value}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      change((current) => ({ ...current, settings: { ...current.settings, [field.key]: value } }));
+                    }}
+                  >
+                    {field.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {locale !== "en" && t.has(`fieldOptions.${option.value}`) ? t(`fieldOptions.${option.value}`) : option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
                 <Input
                   id={id}
                   data-testid={id}
@@ -167,6 +185,7 @@ export function WebsiteSettingsForm({ locale, saved, types, lastChecked }: Props
                     change((current) => (isSecret ? { ...current, secret: value } : { ...current, settings: { ...current.settings, [field.key]: value } }));
                   }}
                 />
+                )}
                 {isSecret && secretKept && (
                   <p data-testid="website-secret-kept" className="text-xs text-muted-foreground">
                     {t("secretKept")}

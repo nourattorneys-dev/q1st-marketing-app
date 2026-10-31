@@ -30,6 +30,16 @@ export function mockMeta(): Meta {
           { key: "username", label: "Publishing user", kind: "text", required: true },
           { key: "secret", label: "Application password", kind: "secret", required: true },
           { key: "postType", label: "Post type", kind: "text", required: false },
+          {
+            key: "publishAs",
+            label: "Articles appear on the site as",
+            kind: "choice",
+            required: false,
+            options: [
+              { value: "publish", label: "Published (live at once)" },
+              { value: "draft", label: "Draft (someone publishes it in WordPress)" },
+            ],
+          },
         ],
         bodyFormats: ["html", "boldbuilder"],
         arabicModes: ["translatepress", "separate"],

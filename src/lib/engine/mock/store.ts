@@ -305,7 +305,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const at = iso(now());
     if (post.platform === "website") {
       const path = `${post.language === "ar" ? "/ar" : ""}/${post.slug ?? post.id}/`;
-      return { target: settings.websiteType() ?? "wordpress", url: `https://fakhernco.com${path}`, externalId: String(9000 + n), at };
+      const status = settings.websitePublishAs();
+      return { target: settings.websiteType() ?? "wordpress", url: `https://fakhernco.com${path}`, externalId: String(9000 + n), at, status };
     }
     const share = `urn:li:share:${7000 + n}`;
     return { target: post.platform, url: `https://www.linkedin.com/feed/update/${share}`, externalId: share, at };

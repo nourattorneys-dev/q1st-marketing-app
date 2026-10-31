@@ -35,7 +35,7 @@ describe("the website form (spec v1.1 §4 PublishTarget, §6, §10)", () => {
     expect(form).toMatchObject({ type: "wordpress", secret: "", bodyFormat: "html", arabicMode: "translatepress" });
     expect(toWebsiteTarget(form, TYPES)).toEqual({
       type: "wordpress",
-      settings: { url: "https://fakhernco.com", username: "articles-ai", postType: "post", ctaText: "Book a consultation" },
+      settings: { url: "https://fakhernco.com", username: "articles-ai", postType: "post", publishAs: "publish", ctaText: "Book a consultation" },
       fieldMap: { title: "title", subtitle: "excerpt" },
       body: { format: "html" },
       arabic: { mode: "translatepress" },
@@ -117,5 +117,13 @@ describe("withoutSecrets (Review Focus 4)", () => {
     expect(cleaned.settings).not.toHaveProperty("secret");
     expect(cleaned.settings).toMatchObject({ url: "https://fakhernco.com", username: "articles-ai" });
     expect(withoutSecrets({ ...SAVED, type: "unknown", settings: { secret: "x", url: "u" } }, TYPES).settings).toEqual({ url: "u" });
+  });
+});
+
+describe("how the website keeps articles (a choice field)", () => {
+  it("changing it needs no new connection test", () => {
+    const saved = { ...SAVED, settings: { ...SAVED.settings, publishAs: "draft" } };
+    const form = toWebsiteForm(saved, TYPES);
+    expect(needsTest({ ...form, settings: { ...form.settings, publishAs: "publish" } }, saved, TYPES)).toBe(false);
   });
 });
