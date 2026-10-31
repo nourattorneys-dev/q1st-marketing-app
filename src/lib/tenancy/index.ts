@@ -179,8 +179,10 @@ export async function switchClient(clientId: string, locale: string): Promise<st
 
 /** The client whose own address this request came to (for its sign-in page and logo), or null. */
 export const getHostClient = cache(async (): Promise<Client | null> => {
+  // The request first: while Next builds a page, headers() stops it before the settings are read (read at request time only).
+  const host = (await headers()).get("host");
   const env = serverEnv();
-  const name = clientNameOfHost((await headers()).get("host"), env);
+  const name = clientNameOfHost(host, env);
   if (!name || env.authMode === "mock") return null;
   const client = await getAccountStore().clientBySlug(name);
   return client && client.status !== "closed" ? client : null;
