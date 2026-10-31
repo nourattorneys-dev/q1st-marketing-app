@@ -185,8 +185,9 @@ export const PostSummarySchema = z.object({
     .object({ hold: z.boolean(), scheduledAt: isoDateTime.nullish(), position: z.number().int().nullish() })
     .nullish(),
   updatedAt: isoDateTime,
-  waitsForSource: z.boolean().nullish(),
-  canPublishTwin: z.boolean().nullish(),
+  waitsFor: z.object({ id: z.string(), language: z.string() }).nullish(),
+  /** /scheduled: why it has no time yet (e.g. source_not_published: it goes out with its article). */
+  waiting: z.string().nullish(),
   actions: list(z.string()),
 }).transform(viaApp);
 export type PostSummary = z.output<typeof PostSummarySchema>;
@@ -249,9 +250,8 @@ export const PostSchema = z.object({
   // How many critical findings it was approved with (0: none); whether this client asks for a reason to do that.
   approvedWithCritical: z.number().int().nullish(),
   reasonRequired: z.boolean().nullish(),
-  // A translation kept on its source's page waits until the source is live; the source can take its approved translation along.
-  waitsForSource: z.boolean().nullish(),
-  canPublishTwin: z.boolean().nullish(),
+  // An article and its translation are published together: the other one, while it still needs approving.
+  waitsFor: z.object({ id: z.string(), language: z.string() }).nullish(),
   schedule: z
     .object({ hold: z.boolean(), scheduledAt: isoDateTime.nullish(), position: z.number().int().nullish() })
     .nullish(),
@@ -405,6 +405,8 @@ export const PublishingSettingsSchema = z.object({
   gapMinutes: z.number().int(),
   // Approving with critical findings needs a written reason (default off: the count is recorded either way).
   overrideReasonRequired: z.boolean().nullish(),
+  /** The most articles the account may publish a day (set by Quantum1st; a pair counts once); null = no limit. */
+  maxPerDay: z.number().int().nullish(),
   version: z.number().int(),
 });
 export type PublishingSettings = z.infer<typeof PublishingSettingsSchema>;

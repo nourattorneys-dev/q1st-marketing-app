@@ -36,12 +36,13 @@ test("the nav links to the review queue", async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/review$/);
 });
 
-test("bulk publish publishes the selected posts, a post with critical findings too (a reason is optional)", async ({ page }) => {
+test("bulk publish: a post with critical findings goes (a reason is optional); an article whose translation isn't approved is named", async ({ page }) => {
   await page.goto("/en/review");
   await page.getByTestId("card-select-p_201").check();
   await page.getByTestId("card-select-p_203").check();
   await page.getByTestId("publish-selected").click();
   await page.getByTestId("publish-selected-confirm").click();
   await expect(page.getByTestId("card-p_203")).toHaveCount(0);
-  await expect(page.getByTestId("card-p_201")).toHaveCount(0);
+  await expect(page.getByTestId("bulk-failures")).toBeVisible();
+  await expect(page.getByTestId("card-p_201")).toBeVisible();
 });

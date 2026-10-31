@@ -27,6 +27,8 @@ type Props = {
   description: string;
   confirmLabel: string;
   languages: string[];
+  /** The kind being drafted: an article ("blog") is always every site language. Unknown (a mix): every choice. */
+  kind?: string;
   pending: boolean;
   locale: string;
   canRequestUpgrade: boolean;
@@ -38,7 +40,7 @@ export function DraftLanguageDialog(props: Props) {
   const { testId, triggerLabel, triggerVariant = "default", triggerSize = "default", disabled, title, description, confirmLabel } = props;
   const t = useTranslations("Drafting");
   const tLanguages = useTranslations("Review.languages");
-  const options = draftLanguageOptions(props.languages);
+  const options = draftLanguageOptions(props.languages, props.kind);
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState(options[0] ?? "");
   const [error, setError] = useState<EngineFailure | null>(null);
@@ -68,6 +70,11 @@ export function DraftLanguageDialog(props: Props) {
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {options.length === 1 ? (
+          <p data-testid={`${testId}-language-fixed`} className="text-sm text-muted-foreground">
+            {t("languageFixed", { languages: options[0] === "both" ? props.languages.map(label).join(" + ") : label(options[0]) })}
+          </p>
+        ) : (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">{t("language")}</legend>
           {options.map((code) => (
@@ -85,6 +92,7 @@ export function DraftLanguageDialog(props: Props) {
             </label>
           ))}
         </fieldset>
+        )}
         {error && <ActionFailure error={error} locale={props.locale} canRequestUpgrade={props.canRequestUpgrade} />}
         <DialogFooter>
           <DialogClose asChild>

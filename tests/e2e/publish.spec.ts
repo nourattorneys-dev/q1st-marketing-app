@@ -7,17 +7,34 @@ test.beforeEach(async ({ context }) => {
   await signInWithCookie(context, "dev_reviewer");
 });
 
-test("publish now from the editor publishes the post and links to it live", async ({ page }) => {
+/** Its Arabic version approved first: an article and its translation go out together. */
+async function approveArabic(page: import("@playwright/test").Page) {
+  await page.goto("/en/review/p_202");
+  await page.getByTestId("approve").click();
+  await expect(page.getByTestId("post-status")).toHaveText("Approved");
+}
+
+test("publish now from the editor publishes the article with its translation and links to it live", async ({ page }) => {
+  await approveArabic(page);
   await page.goto("/en/review/p_201");
   await page.getByTestId("publish").click();
   await page.getByTestId("publish-confirm").click();
   await expect(page.getByTestId("post-status")).toHaveText("Published");
   await expect(page.getByTestId("published-link")).toHaveAttribute("href", "https://fakhernco.com/commission-payable-uae-labour-law/");
+  await page.goto("/en/review/p_202");
+  await expect(page.getByTestId("post-status")).toHaveText("Published");
+});
+
+test("an article whose translation isn't approved can't be published: it says so and links to it", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("publish").click();
+  await page.getByTestId("publish-confirm").click();
+  await expect(page.getByRole("dialog").getByTestId("action-error")).toContainText("Approve the AR version too");
 });
 
 test("an Arabic twin whose structure doesn't match can't be published (spec v1.1 §10)", async ({ page }) => {
   await page.goto("/en/review/p_205");
-  await expect(page.getByTestId("publish")).toHaveCount(0);
+  await expect(page.getByTestId("publish")).toBeDisabled();
   await expect(page.getByTestId("approve-blocked")).toBeVisible();
 });
 
@@ -76,7 +93,7 @@ test("an approved Arabic twin that stops matching its English version can't be p
 
   await page.goto("/en/review/p_202");
   await expect(page.getByTestId("publish")).toHaveCount(0);
-  await expect(page.getByTestId("waits-for-source")).toBeVisible();
+  await expect(page.getByTestId("waits-for-pair")).toBeVisible();
 
   await page.goto("/en/scheduled");
   await expect(page.getByTestId("publish-p_202")).toHaveCount(0);
@@ -91,6 +108,7 @@ test("when the website keeps articles as drafts, the post and History say it isn
   await expect(page.getByTestId("website-test-result")).toHaveAttribute("data-ok", "true");
   await page.getByTestId("settings-save").click();
   await expect(page.getByTestId("settings-saved")).toBeVisible();
+  await approveArabic(page);
   await page.goto("/en/review/p_201");
   await page.getByTestId("publish").click();
   await page.getByTestId("publish-confirm").click();
@@ -100,6 +118,7 @@ test("when the website keeps articles as drafts, the post and History say it isn
 });
 
 test("the publish button shows it is working while the post goes out", async ({ page }) => {
+  await approveArabic(page);
   await page.goto("/en/review/p_201");
   await page.getByTestId("publish").click();
   await page.route("**/*", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
@@ -108,10 +127,12 @@ test("the publish button shows it is working while the post goes out", async ({ 
   await expect(page.getByTestId("post-status")).toHaveText("Published");
 });
 
-test("an Arabic translation kept on its English page waits for it, and links to it", async ({ page }) => {
-  await page.goto("/en/review/p_202");
+test("an approved article waits for its translation's approval, and links to it", async ({ page }) => {
+  await page.goto("/en/review/p_201");
+  await page.getByTestId("approve").click();
+  await expect(page.getByTestId("post-status")).toHaveText("Approved");
   await expect(page.getByTestId("publish")).toHaveCount(0);
-  await expect(page.getByTestId("waits-for-source")).toBeVisible();
-  await page.getByTestId("waits-for-source").getByRole("link").click();
-  await expect(page).toHaveURL(/\/en\/review\/p_201$/);
+  await expect(page.getByTestId("waits-for-pair")).toContainText("Arabic");
+  await page.getByTestId("waits-for-pair").getByRole("link").click();
+  await expect(page).toHaveURL(/\/en\/review\/p_202$/);
 });

@@ -33,6 +33,7 @@ type Props = {
 /** Buttons come from post.actions (spec v1.1 §5); approval and publishing follow the findings. Nothing runs while someone else holds the lock. */
 export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked, canManageSettings }: Props) {
   const t = useTranslations("Editor");
+  const tLanguages = useTranslations("Review.languages");
   const router = useRouter();
   const approve = useEngineAction(approvePostAction);
   const changes = useEngineAction(requestChangesAction);
@@ -86,8 +87,8 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
     router.push("/review");
     return null;
   };
-  const publishPost = async (_note: string, withTwin: boolean) => {
-    const result = await publish.run({ locale, postId: post.id, withTwin: post.canPublishTwin === true && withTwin });
+  const publishPost = async () => {
+    const result = await publish.run({ locale, postId: post.id });
     return result.ok ? null : refusal(result.error);
   };
 
@@ -131,7 +132,6 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             confirmLabel={t("publishNow")}
             pending={publish.pending}
             pendingLabel={t("publishing")}
-            option={post.canPublishTwin && post.twin ? { label: t("publishWithTwin"), defaultChecked: true } : undefined}
             onConfirm={publishPost}
             canManageSettings={canManageSettings}
           />
@@ -176,11 +176,11 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           />
         )}
       </div>
-      {post.waitsForSource && post.twin && (
-        <p data-testid="waits-for-source" className="text-sm text-muted-foreground">
-          {t("waitsForSource")}{" "}
-          <Link href={`/review/${post.twin.id}`} className="text-primary underline">
-            {t("openSource")}
+      {post.waitsFor && (
+        <p data-testid="waits-for-pair" className="text-sm text-muted-foreground">
+          {t("waitsForPair", { language: tLanguages.has(post.waitsFor.language) ? tLanguages(post.waitsFor.language) : post.waitsFor.language })}{" "}
+          <Link href={`/review/${post.waitsFor.id}`} className="text-primary underline">
+            {t("openPair")}
           </Link>
         </p>
       )}

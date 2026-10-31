@@ -1,6 +1,11 @@
-/** Drafting language choices (spec v1.1 §6: en, ar or both): the site's languages from /meta, plus "both" when there are several. */
-export function draftLanguageOptions(languages: string[]): string[] {
-  return languages.length > 1 ? [...languages, "both"] : [...languages];
+/**
+ * Drafting language choices (spec v1.1 §6: en, ar or both): the site's languages from /meta, plus "both" when there are
+ * several. An article (kind "blog") is always written in every language of the site, as one linked pair that is
+ * published together, so it has the one choice "both".
+ */
+export function draftLanguageOptions(languages: string[], kind?: string): string[] {
+  if (languages.length < 2) return [...languages];
+  return kind === "blog" ? ["both"] : [...languages, "both"];
 }
 
 /** Where a new draft can go: an article to the website, a social post to the social platforms (from /meta.platforms). */

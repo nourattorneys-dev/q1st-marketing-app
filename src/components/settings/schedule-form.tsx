@@ -33,6 +33,8 @@ export function ScheduleSettingsForm({ locale, settings }: { locale: string; set
     load: () => loadPublishingAction({ locale }),
   });
   const form = draft.form;
+  // Set by Quantum1st for the whole account (an article with its translation counts once).
+  const cap = settings.maxPerDay ?? null;
   const conflict = draft.conflict;
   const errors = settingsFieldErrors(draft.error, FIELDS);
   const set = <K extends keyof ScheduleForm>(key: K, value: ScheduleForm[K]) => draft.update((current) => ({ ...current, [key]: value }));
@@ -41,7 +43,23 @@ export function ScheduleSettingsForm({ locale, settings }: { locale: string; set
   const numberField = (key: "perDay" | "gapMinutes", testId: string, min: number) => (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={testId}>{t(key)}</Label>
-      <Input id={testId} data-testid={testId} type="number" inputMode="numeric" min={min} step={1} dir="ltr" value={form[key]} onChange={(event) => set(key, event.target.value)} />
+      <Input
+        id={testId}
+        data-testid={testId}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={key === "perDay" && cap !== null ? cap : undefined}
+        step={1}
+        dir="ltr"
+        value={form[key]}
+        onChange={(event) => set(key, event.target.value)}
+      />
+      {key === "perDay" && cap !== null && (
+        <p data-testid="schedule-max-per-day" className="text-xs text-muted-foreground">
+          {t("maxPerDay", { count: cap })}
+        </p>
+      )}
       <FieldMessage field={key} message={errors.byField[key]} />
     </div>
   );

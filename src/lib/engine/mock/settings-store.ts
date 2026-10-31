@@ -321,7 +321,6 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     slotPlan,
     autoPublish: () => publishing.autoPublish,
     reasonRequired: () => publishing.overrideReasonRequired === true,
-    translationOnSourcePage: () => website.arabic?.mode === "translatepress",
     website: websiteView,
     testWebsite,
     saveWebsite,

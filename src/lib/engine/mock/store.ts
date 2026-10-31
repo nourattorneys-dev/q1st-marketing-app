@@ -44,6 +44,9 @@ function actionsFor(post: Post): string[] {
   }
 }
 
+/** A partner that lets its pair go out: approved, already out, or failed while publishing (Retry). */
+const PAIR_READY = new Set(["approved", "published", "failed"]);
+
 type QueueEntry = { hold: boolean; scheduledAt: string | null; position: number };
 
 /** Lowercase letters (any script), digits and single hyphens, as WordPress and Strapi slugs allow. */
@@ -85,16 +88,15 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
 
   function view(post: Post): Post {
     const twin = twinOf(post);
-    const paired = Boolean(twin) && settings.translationOnSourcePage();
-    const waitsForSource = paired && post.language === "ar" && twin?.status !== "published";
+    // An article and its translation are published together: until the other is approved, neither goes out.
+    const waits = twin && !PAIR_READY.has(twin.status) && (post.status === "approved" || post.status === "failed") ? twin : null;
     return structuredClone({
       ...post,
       twin: twin ? { id: twin.id, language: twin.language, status: twin.status } : null,
       schedule: post.status === "approved" ? (queueSchedule(true).get(post.id) ?? null) : null,
-      actions: actionsFor(post).filter((action) => !(waitsForSource && (action === "publishNow" || action === "retry"))),
+      actions: actionsFor(post).filter((action) => !(waits && (action === "publishNow" || action === "retry"))),
       reasonRequired: settings.reasonRequired(),
-      waitsForSource,
-      canPublishTwin: paired && post.language !== "ar" && twin?.status === "approved",
+      waitsFor: waits ? { id: waits.id, language: waits.language } : null,
     });
   }
 
@@ -319,7 +321,40 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return { target: post.platform, url: `https://www.linkedin.com/feed/update/${share}`, externalId: share, at };
   }
 
-  function publish(id: string, actor: string, withTwin = false): MockOutcome<Post> {
+  /** Publishes the article with its translation (the non-Arabic one first); the other must be approved, or already out. */
+  function publish(id: string, actor: string): MockOutcome<Post> {
+    const first = posts.get(id);
+    const mate = first ? twinOf(first) : undefined;
+    // The post's own checks come first; then its pair.
+    const own = publishRefusal(id, actor);
+    if (own) return own;
+    if (first && mate && mate.status !== "published") {
+      if (!PAIR_READY.has(mate.status)) {
+        return fail(409, "pair_not_ready", `Approve the ${mate.language.toUpperCase()} version too: an article and its translation are published together.`);
+      }
+      const [lead, follow] = first.language === "ar" ? [mate, first] : [first, mate];
+      const led = publishOne(lead.id, actor);
+      if (!led.ok) return led;
+      const followed = publishOne(follow.id, actor);
+      if (!followed.ok) return followed;
+      return ok(view(posts.get(id)!));
+    }
+    return publishOne(id, actor);
+  }
+
+  /** Why this one post can't go out now (status, rules, photo, connection), or null. */
+  function publishRefusal(id: string, actor: string): MockFail | null {
+    const guarded = guard(id, actor);
+    if (!guarded.ok) return guarded;
+    const post = guarded.data;
+    if (!actionsFor(post).includes("publishNow") && !actionsFor(post).includes("retry")) {
+      return fail(422, "invalid_input", "This post can't be published in its current status.");
+    }
+    const blocked = approvalMode(post.findings) === "blocked";
+    return post.status === "pending" || blocked ? approvalRefusal(post, undefined) : missingPhoto(post);
+  }
+
+  function publishOne(id: string, actor: string): MockOutcome<Post> {
     const guarded = guard(id, actor);
     if (!guarded.ok) return guarded;
     const post = guarded.data;
@@ -351,8 +386,6 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     post.published = publication(post);
     dequeue(id);
     touch(post);
-    const twin = twinOf(post);
-    if (withTwin && twin?.status === "approved") publish(twin.id, actor);
     return ok(view(post));
   }
 
@@ -372,9 +405,14 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     const on = autoPublish && settings.autoPublish();
     const plan = queueSchedule(on);
     const items = [...plan].map(([id, schedule]) => {
-      const item = view(posts.get(id) as Post);
+      const post = posts.get(id) as Post;
+      const item = view(post);
       delete item.content;
-      return { ...item, schedule };
+      // A translation goes out with its article; an article waits for its translation's approval.
+      const mate = twinOf(post);
+      const waiting =
+        mate && mate.status !== "published" ? (post.language === "ar" ? "source_not_published" : PAIR_READY.has(mate.status) ? null : "translation_not_approved") : null;
+      return { ...item, schedule, waiting };
     });
     const next = [...plan.values()].find((entry) => entry.scheduledAt)?.scheduledAt ?? null;
     return ok({
@@ -576,7 +614,9 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   function startDrafts(inputs: DraftInput[], actor: string, onDone: () => void = () => {}) {
     const created: Post[] = [];
     for (const input of inputs) {
-      const group = (input.language === "both" ? siteLanguages : [input.language]).map((language) => draftPost({ ...input, language }, actor));
+      // An article is always written in every site language, as one pair (as the engine does).
+      const all = input.language === "both" || (input.kind === "blog" && siteLanguages.length > 1);
+      const group = (all ? siteLanguages : [input.language]).map((language) => draftPost({ ...input, language }, actor));
       if (group.length === 2) {
         group[0].pairId = group[1].id;
         group[1].pairId = group[0].id;

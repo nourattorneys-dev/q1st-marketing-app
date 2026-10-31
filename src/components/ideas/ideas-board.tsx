@@ -24,6 +24,9 @@ export function IdeasBoard({ locale, ideas, languages, pollSeconds, canRequestUp
   const [failures, setFailures] = useState<{ id: string; title: string; message: string }[]>([]);
   const [error, setError] = useState<EngineFailure | null>(null);
   const chosen = [...selected].filter((id) => ideas.some((idea) => idea.id === id && idea.status === "new"));
+  // All chosen ideas articles: they are drafted in every site language; a mix keeps every choice (the engine decides per idea).
+  const kinds = new Set(ideas.filter((idea) => chosen.includes(idea.id)).map((idea) => idea.kind));
+  const commonKind = kinds.size === 1 ? [...kinds][0] : undefined;
 
   function toggle(id: string, checked: boolean) {
     setSelected((current) => {
@@ -69,6 +72,7 @@ export function IdeasBoard({ locale, ideas, languages, pollSeconds, canRequestUp
           description={t("draftBody")}
           confirmLabel={t("draftConfirm")}
           languages={languages}
+          kind={commonKind}
           pending={bulk.pending}
           locale={locale}
           canRequestUpgrade={canRequestUpgrade}

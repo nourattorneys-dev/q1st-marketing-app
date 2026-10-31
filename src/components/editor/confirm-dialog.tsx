@@ -29,25 +29,22 @@ type Props = {
   confirmLabel: string;
   note?: { label: string; required: boolean };
   pending: boolean;
-  onConfirm: (note: string, option: boolean) => Promise<EngineFailure | null>;
+  onConfirm: (note: string) => Promise<EngineFailure | null>;
   /** A not_connected refusal links an admin to Settings (design §9). */
   canManageSettings?: boolean;
   /** Shown on the confirm button while the action runs (a spinner always shows); default "Working…". */
   pendingLabel?: string;
-  /** An extra yes/no the person can change before confirming (passed to onConfirm). */
-  option?: { label: string; defaultChecked: boolean };
 };
 
-export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm, canManageSettings, pendingLabel, option }: Props) {
+export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline", disabled, title, description, confirmLabel, note, pending, onConfirm, canManageSettings, pendingLabel }: Props) {
   const t = useTranslations("Editor");
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [checked, setChecked] = useState(option?.defaultChecked ?? false);
   const [error, setError] = useState<EngineFailure | null>(null);
   const missingNote = note?.required === true && !text.trim();
 
   async function confirm() {
-    const failure = await onConfirm(text.trim(), checked);
+    const failure = await onConfirm(text.trim());
     setError(failure);
     if (!failure) {
       setOpen(false);
@@ -78,12 +75,6 @@ export function ConfirmDialog({ testId, triggerLabel, triggerVariant = "outline"
             <Label htmlFor={`${testId}-note`}>{note.label}</Label>
             <Textarea id={`${testId}-note`} data-testid={`${testId}-note`} rows={3} value={text} onChange={(event) => setText(event.target.value)} />
           </div>
-        )}
-        {option && (
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" data-testid={`${testId}-option`} checked={checked} onChange={(event) => setChecked(event.target.checked)} />
-            {option.label}
-          </label>
         )}
         {error && <ActionError error={error} canManageSettings={canManageSettings} />}
         <DialogFooter>

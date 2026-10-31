@@ -54,11 +54,11 @@ test("proposing topics for selected keywords ends with a link to Topic ideas", a
   await expect(page.getByTestId("open-ideas")).toHaveAttribute("href", "/en/ideas");
 });
 
-test("drafting articles asks for the language first, then a linked pair arrives in Review (Review Focus 5)", async ({ page }) => {
+test("drafting articles is always both languages, and a linked pair arrives in Review (Review Focus 5)", async ({ page }) => {
   await page.goto("/en/keywords");
   await page.getByTestId("keyword-select-kw_3").check();
   await page.getByTestId("keywords-draft").click();
-  await page.getByTestId("keywords-draft-language-both").check();
+  await expect(page.getByTestId("keywords-draft-language-fixed")).toBeVisible();
   await page.getByTestId("keywords-draft-confirm").click();
   await expect(page.getByTestId("drafts-started")).toContainText("Drafting 2 articles");
   await expect(page.getByTestId("draft-job")).toHaveAttribute("data-state", "done", { timeout: 15_000 });

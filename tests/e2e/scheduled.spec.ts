@@ -32,13 +32,13 @@ test("holding the first post moves the next one up; resuming puts it back", asyn
   await expect(page.getByTestId("scheduled-time-p_101")).toContainText("10:00");
 });
 
-test("publish now sends one post out and, when asked not to, leaves its Arabic twin in the queue", async ({ page }) => {
+test("publish now sends the article and its translation out together", async ({ page }) => {
   await page.goto("/en/scheduled");
+  await expect(page.getByTestId("goes-with-article-p_102")).toBeVisible();
   await page.getByTestId("publish-p_101").click();
-  await page.getByTestId("publish-p_101-option").uncheck();
   await page.getByTestId("publish-p_101-confirm").click();
   await expect(page.getByTestId("scheduled-row-p_101")).toHaveCount(0);
-  await expect(page.getByTestId("scheduled-row-p_102")).toBeVisible();
+  await expect(page.getByTestId("scheduled-row-p_102")).toHaveCount(0);
 });
 
 test("bulk publish now publishes the selected posts", async ({ page }) => {
@@ -63,14 +63,4 @@ test("the nav links to Scheduled, and Arabic titles read right to left", async (
   await page.getByTestId("nav-scheduled").click();
   await expect(page).toHaveURL(/\/en\/scheduled$/);
   await expect(page.getByTestId("scheduled-title-p_102").filter({ visible: true })).toHaveAttribute("dir", "rtl");
-});
-
-test("publishing the English version takes its approved Arabic translation along by default", async ({ page }) => {
-  await page.goto("/en/scheduled");
-  await expect(page.getByTestId("waits-for-source-p_102")).toBeVisible();
-  await page.getByTestId("publish-p_101").click();
-  await expect(page.getByTestId("publish-p_101-option")).toBeChecked();
-  await page.getByTestId("publish-p_101-confirm").click();
-  await expect(page.getByTestId("scheduled-row-p_101")).toHaveCount(0);
-  await expect(page.getByTestId("scheduled-row-p_102")).toHaveCount(0);
 });

@@ -112,6 +112,7 @@ export function KeywordsBoard({ locale, tab, keywords, languages, pollSeconds, c
             description={t("draftBody")}
             confirmLabel={t("draftConfirm")}
             languages={languages}
+            kind="blog"
             pending={draft.pending}
             locale={locale}
             canRequestUpgrade={canRequestUpgrade}

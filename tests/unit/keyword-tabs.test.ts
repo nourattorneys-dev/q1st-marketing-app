@@ -28,6 +28,11 @@ describe("drafting languages (spec v1.1 §6: en, ar or both)", () => {
   it("adds both only when the site has more than one language", () => {
     expect([draftLanguageOptions(["en", "ar"]), draftLanguageOptions(["en"])]).toEqual([["en", "ar", "both"], ["en"]]);
   });
+  it("an article is always every site language (one pair, published together); a social post keeps the choice", () => {
+    expect(draftLanguageOptions(["en", "ar"], "blog")).toEqual(["both"]);
+    expect(draftLanguageOptions(["en", "ar"], "social")).toEqual(["en", "ar", "both"]);
+    expect(draftLanguageOptions(["en"], "blog")).toEqual(["en"]);
+  });
 });
 
 describe("new-request platforms (spec v1.1 §4 Post.platform)", () => {

@@ -114,6 +114,7 @@ export function SuggestionCard({ locale, idea, languages, pollSeconds, canReques
               description={t("draftBody")}
               confirmLabel={t("draftConfirm")}
               languages={languages}
+              kind={idea.kind}
               pending={draft.pending}
               locale={locale}
               canRequestUpgrade={canRequestUpgrade}

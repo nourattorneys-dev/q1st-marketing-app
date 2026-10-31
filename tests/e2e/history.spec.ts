@@ -35,7 +35,9 @@ test("a post published from Scheduled shows first in History", async ({ page }) 
   await page.getByTestId("publish-p_101-confirm").click();
   await expect(page.getByTestId("scheduled-row-p_101")).toHaveCount(0);
   await page.goto("/en/history");
-  await expect(page.locator('[data-testid^="history-item-"]').first()).toHaveAttribute("data-testid", "history-item-p_101");
+  // The article and its translation go out together: both are at the top.
+  const top = await page.locator('[data-testid^="history-item-"]').evaluateAll((items) => items.slice(0, 2).map((item) => item.getAttribute("data-testid")));
+  expect(top.sort()).toEqual(["history-item-p_101", "history-item-p_102"]);
 });
 
 test("a page past the end says so and links back to the first page", async ({ page }) => {

@@ -96,16 +96,11 @@ export async function takeoverPostAction(input: { locale: string; postId: string
 }
 
 /** Publish now (spec v1.1 §7 POST …/publish), also used for Retry in History. */
-export async function publishPostAction(input: {
-  locale: string;
-  postId: string;
-  idempotencyKey: string;
-  withTwin?: boolean;
-}): Promise<ActionResult<Post>> {
-  const parsed = Change.extend({ withTwin: z.boolean().optional() }).safeParse(input);
+export async function publishPostAction(input: { locale: string; postId: string; idempotencyKey: string }): Promise<ActionResult<Post>> {
+  const parsed = Change.safeParse(input);
   if (!parsed.success) return INVALID;
-  const { locale, postId, idempotencyKey, withTwin } = parsed.data;
-  return change(locale, idempotencyKey, ({ engine, ...ctx }) => engine.publishPost(postId, ctx, withTwin === true));
+  const { locale, postId, idempotencyKey } = parsed.data;
+  return change(locale, idempotencyKey, ({ engine, ...ctx }) => engine.publishPost(postId, ctx));
 }
 
 export async function holdPostAction(input: { locale: string; postId: string; hold: boolean; idempotencyKey: string }): Promise<ActionResult<Post>> {

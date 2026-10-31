@@ -17,10 +17,10 @@ test("cards show the title, type, keywords and why; Arabic reads right to left; 
   await expect(page.getByTestId("idea-card-sg_6")).toHaveCount(0);
 });
 
-test("drafting an idea in both languages makes a linked pair that arrives in Review (Review Focus 5)", async ({ page }) => {
+test("drafting an article idea always makes a linked English–Arabic pair that arrives in Review (Review Focus 5)", async ({ page }) => {
   await page.goto("/en/ideas");
   await page.getByTestId("idea-draft-sg_2").click();
-  await page.getByTestId("idea-draft-sg_2-language-both").check();
+  await expect(page.getByTestId("idea-draft-sg_2-language-fixed")).toContainText("English + Arabic");
   await page.getByTestId("idea-draft-sg_2-confirm").click();
   await expect(page.getByTestId("idea-job-sg_2")).toBeVisible();
   await expect(page.getByTestId("idea-drafted-sg_2")).toBeVisible({ timeout: 15_000 });
@@ -54,10 +54,11 @@ test("a new request starts a draft that arrives in Review", async ({ page }) => 
   await page.goto("/en/ideas");
   await page.getByTestId("request-topic").fill("Annual leave rules for part-time staff");
   await page.getByTestId("request-submit").click();
-  await expect(page.getByTestId("request-started")).toContainText("Drafting 1 post");
+  // An article: always both languages.
+  await expect(page.getByTestId("request-started")).toContainText("Drafting 2 posts");
   await expect(page.getByTestId("request-job")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
   await page.goto("/en/review");
-  await expect(page.getByText("Annual leave rules for part-time staff", { exact: true })).toBeVisible();
+  await expect(page.getByText("Annual leave rules for part-time staff", { exact: true }).first()).toBeVisible();
 });
 
 test("an article goes to the website and a social post to a social platform", async ({ page }) => {

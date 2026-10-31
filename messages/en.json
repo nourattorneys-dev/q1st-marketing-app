@@ -107,7 +107,8 @@
         "outside_hours": "outside publishing hours",
         "daily_limit": "today's limit is reached",
         "gap": "waiting for the gap between posts",
-        "queue_empty": "the queue is empty"
+        "queue_empty": "the queue is empty",
+        "daily_cap": "today's articles for this account are out"
       }
     },
     "connections": {
@@ -363,10 +364,10 @@
     "notLive": "Not live on the website yet",
     "overrideReasonOptional": "Reason (optional)",
     "overrideBodyOptional": "This post has critical findings. You can approve it anyway; History records how many it had, and your reason if you give one.",
-    "publishWithTwin": "Also publish its Arabic translation",
-    "waitsForSource": "This translation is stored on its English page, so the English version must be published first.",
-    "openSource": "Open the English version",
-    "waitsForSourceShort": "Waits for its English version"
+    "waitsForPair": "Approve the {language} version too: an article and its translation are published together.",
+    "openPair": "Open it",
+    "goesWithArticle": "Goes out with its article",
+    "waitsForTranslation": "Waits for its translation to be approved"
   },
   "Scheduled": {
     "title": "Scheduled",
@@ -437,7 +438,8 @@
   "Drafting": {
     "language": "Language",
     "both": "Both languages",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "languageFixed": "Articles are written in {languages} together, and published together."
   },
   "Keywords": {
     "title": "Keywords",
@@ -581,7 +583,8 @@
         "thu": "Thursday",
         "fri": "Friday",
         "sat": "Saturday"
-      }
+      },
+      "maxPerDay": "Up to {count, plural, one {# article} other {# articles}} a day on this account (an article with its translation counts once)."
     },
     "seo": {
       "title": "SEO profile",

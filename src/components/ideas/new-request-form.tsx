@@ -37,6 +37,9 @@ export function NewRequestForm({ locale, kinds, platforms, languages, pollSecond
   const refresh = useCallback(() => router.refresh(), [router]);
   const platformChoices = platformsFor(kind, platforms);
   const chosenPlatform = platformChoices.includes(platform) ? platform : (platformChoices[0] ?? "");
+  // An article is always every site language; a social post can be one.
+  const languageChoices = draftLanguageOptions(languages, kind);
+  const chosenLanguage = languageChoices.includes(language) ? language : (languageChoices[0] ?? "");
   const label = (group: "kinds" | "platforms" | "languages", code: string) => (tReview.has(`${group}.${code}`) ? tReview(`${group}.${code}`) : code);
 
   async function submit() {
@@ -46,7 +49,7 @@ export function NewRequestForm({ locale, kinds, platforms, languages, pollSecond
       topic: topic.trim(),
       kind,
       platform: chosenPlatform,
-      language,
+      language: chosenLanguage,
       ...(tone.trim() ? { tone: tone.trim() } : {}),
       ...(phrases.length > 0 ? { keywords: phrases } : {}),
     };
@@ -95,8 +98,8 @@ export function NewRequestForm({ locale, kinds, platforms, languages, pollSecond
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="request-language">{t("language")}</Label>
-            <select id="request-language" data-testid="request-language" className={SELECT} value={language} onChange={(event) => setLanguage(event.target.value)}>
-              {draftLanguageOptions(languages).map((code) => (
+            <select id="request-language" data-testid="request-language" className={SELECT} value={chosenLanguage} onChange={(event) => setLanguage(event.target.value)}>
+              {languageChoices.map((code) => (
                 <option key={code} value={code}>
                   {code === "both" ? tDrafting("both") : label("languages", code)}
                 </option>

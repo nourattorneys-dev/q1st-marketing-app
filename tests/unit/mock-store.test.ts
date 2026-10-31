@@ -120,7 +120,10 @@ describe("approval", () => {
     const post = data(store.approve("p_201", undefined, ME));
     expect(post.status).toBe("approved");
     expect(post.reviewedBy).toBe(ME);
-    expect(post.actions).toEqual(["hold", "publishNow", "delete"]);
+    // Its Arabic version still waits for review: an article and its translation go out together.
+    expect(post.actions).toEqual(["hold", "delete"]);
+    expect(post.waitsFor).toEqual({ id: "p_202", language: "ar" });
+    expect(data(store.approve("p_202", undefined, ME)).actions).toEqual(["hold", "publishNow", "delete"]);
   });
 
   it("needs a reason to override a critical finding", () => {
@@ -217,21 +220,24 @@ describe("the publishing queue (spec v1.1 §6 /scheduled)", () => {
 });
 
 describe("publishing (spec v1.1 §5: approved → published, publish error → failed)", () => {
-  it("publish now publishes an approved post, takes it out of the queue and leaves its twin alone", () => {
+  it("publish now publishes an approved article with its approved translation, and takes both out of the queue", () => {
     const published = data(store.publish("p_101", ME));
     expect(published).toMatchObject({
       status: "published",
       published: { target: "wordpress", url: "https://fakhernco.com/commission-payable-uae-labour-law-guide/" },
       actions: [],
     });
-    expect(data(store.scheduled(true, null)).posts.map((post) => post.id)).toEqual(["p_102", "p_103"]);
-    expect(data(store.getPost("p_102")).status).toBe("approved");
+    expect(data(store.scheduled(true, null)).posts.map((post) => post.id)).toEqual(["p_103"]);
+    expect(data(store.getPost("p_102")).status).toBe("published");
   });
 
   it("publishing straight from review needs what approval needs", () => {
     expect(store.publish("p_203", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
     expect(store.publish("p_205", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
+    expect(store.publish("p_201", ME)).toMatchObject({ ok: false, status: 409, code: "pair_not_ready" });
+    data(store.approve("p_202", undefined, ME));
     expect(data(store.publish("p_201", ME)).status).toBe("published");
+    expect(data(store.getPost("p_202")).status).toBe("published");
   });
 
   it("an Instagram post can't be approved or published without a photo", () => {
@@ -251,15 +257,16 @@ describe("publishing (spec v1.1 §5: approved → published, publish error → f
       done: ["p_101"],
       failed: [{ id: "p_203", code: "framework_blocked", message: expect.any(String) }],
     });
-    expect(data(store.bulk("hold", ["p_102"], undefined, ME)).done).toEqual(["p_102"]);
-    expect(data(store.bulk("resume", ["p_102"], undefined, ME)).done).toEqual(["p_102"]);
+    expect(data(store.bulk("hold", ["p_103"], undefined, ME)).done).toEqual(["p_103"]);
+    expect(data(store.bulk("resume", ["p_103"], undefined, ME)).done).toEqual(["p_103"]);
   });
 
   it("history lists published, failed and rejected posts, newest first", () => {
     const ids = () => data(store.listPosts(["published", "failed", "rejected"], 1, 25, "-updated_at")).items.map((post) => post.id);
     expect(ids()).toEqual(["p_303", "p_302", "p_301", "p_304"]);
+    data(store.approve("p_202", undefined, ME));
     data(store.publish("p_201", ME));
-    expect(ids()[0]).toBe("p_201");
+    expect(ids().slice(0, 2).sort()).toEqual(["p_201", "p_202"]);
   });
 });
 
@@ -330,5 +337,15 @@ describe("a twin that stopped matching after it was approved (final review)", ()
     expect(data(store.getPost("p_202")).findings.some((finding) => finding.code === "structure_mismatch")).toBe(true);
     expect(store.publish("p_202", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
     expect(data(store.bulk("publishNow", ["p_202"], undefined, ME)).failed).toMatchObject([{ id: "p_202", code: "framework_blocked" }]);
+  });
+});
+
+describe("an article is always every site language (as the engine)", () => {
+  it("a draft asked in Arabic only still comes as an English–Arabic pair", () => {
+    const started = data(store.createDrafts({ topic: "Free zone company formation", kind: "blog", platform: "website", language: "ar" }, ME));
+    expect(started.postIds).toHaveLength(2);
+    const [a, b] = started.postIds.map((id) => data(store.getPost(id)));
+    expect(new Set([a.language, b.language])).toEqual(new Set(["en", "ar"]));
+    expect(a.pairId).toBe(b.id);
   });
 });

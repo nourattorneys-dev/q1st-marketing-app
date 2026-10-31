@@ -39,8 +39,8 @@ export async function ScheduledQueue({ locale }: { locale: AppLocale }) {
     hold: post.schedule?.hold ?? false,
     time: post.schedule?.scheduledAt ? formatDateTime(post.schedule.scheduledAt, { timeZone, locale }) : null,
     actions: post.actions,
-    canPublishTwin: post.canPublishTwin === true,
-    waitsForSource: post.waitsForSource === true,
+    goesWithArticle: post.waiting === "source_not_published",
+    waitsForTranslation: post.waiting === "translation_not_approved",
   }));
 
   return (

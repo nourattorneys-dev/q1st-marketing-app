@@ -22,10 +22,10 @@ export type QueueItem = {
   hold: boolean;
   time: string | null;
   actions: string[];
-  /** Its approved translation can go live with it. */
-  canPublishTwin: boolean;
-  /** A translation that waits until its English version is live. */
-  waitsForSource: boolean;
+  /** A translation: it goes out with its article, never on its own. */
+  goesWithArticle: boolean;
+  /** An article whose translation still needs approving: the two go out together. */
+  waitsForTranslation: boolean;
 };
 
 /** Spec v1.1 §6 /scheduled: the queue in order; hold, resume and publish now, one by one or in bulk. */
@@ -57,8 +57,8 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
     if (!result.ok) setError(result.error);
   }
 
-  const publishOne = (id: string, canPublishTwin: boolean) => async (_note: string, withTwin: boolean) => {
-    const result = await publish.run({ locale, postId: id, withTwin: canPublishTwin && withTwin });
+  const publishOne = (id: string) => async () => {
+    const result = await publish.run({ locale, postId: id });
     return result.ok ? null : result.error;
   };
 
@@ -143,9 +143,14 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
             <span data-testid={`scheduled-time-${item.id}`} className="text-sm">
               {item.time ?? t("noTime")}
             </span>
-            {item.waitsForSource && (
-              <span data-testid={`waits-for-source-${item.id}`} className="text-xs text-muted-foreground">
-                {tEditor("waitsForSourceShort")}
+            {item.waitsForTranslation && (
+              <span data-testid={`waits-for-translation-${item.id}`} className="text-xs text-muted-foreground">
+                {tEditor("waitsForTranslation")}
+              </span>
+            )}
+            {item.goesWithArticle && (
+              <span data-testid={`goes-with-article-${item.id}`} className="text-xs text-muted-foreground">
+                {tEditor("goesWithArticle")}
               </span>
             )}
             {item.actions.includes("hold") && (
@@ -167,8 +172,7 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
                 confirmLabel={t("publishNow")}
                 pending={publish.pending}
                 pendingLabel={tEditor("publishing")}
-                option={item.canPublishTwin ? { label: tEditor("publishWithTwin"), defaultChecked: true } : undefined}
-                onConfirm={publishOne(item.id, item.canPublishTwin)}
+                onConfirm={publishOne(item.id)}
                 canManageSettings={canManageSettings}
               />
             )}
