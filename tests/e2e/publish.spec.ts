@@ -17,7 +17,7 @@ test("publish now from the editor publishes the post and links to it live", asyn
 
 test("an Arabic twin whose structure doesn't match can't be published (spec v1.1 §10)", async ({ page }) => {
   await page.goto("/en/review/p_205");
-  await expect(page.getByTestId("publish")).toBeDisabled();
+  await expect(page.getByTestId("publish")).toHaveCount(0);
   await expect(page.getByTestId("approve-blocked")).toBeVisible();
 });
 
@@ -75,14 +75,11 @@ test("an approved Arabic twin that stops matching its English version can't be p
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
 
   await page.goto("/en/review/p_202");
-  await expect(page.getByTestId("publish")).toBeDisabled();
-  await expect(page.getByTestId("approve-blocked")).toBeVisible();
+  await expect(page.getByTestId("publish")).toHaveCount(0);
+  await expect(page.getByTestId("waits-for-source")).toBeVisible();
 
   await page.goto("/en/scheduled");
-  await page.getByTestId("publish-p_202").click();
-  await page.getByTestId("publish-p_202-confirm").click();
-  await expect(page.getByRole("dialog").getByTestId("action-error")).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("publish-p_202")).toHaveCount(0);
   await expect(page.getByTestId("scheduled-row-p_202")).toBeVisible();
 });
 
@@ -109,4 +106,12 @@ test("the publish button shows it is working while the post goes out", async ({ 
   await page.getByTestId("publish-confirm").click();
   await expect(page.getByTestId("publish-confirm")).toHaveText("Publishing…");
   await expect(page.getByTestId("post-status")).toHaveText("Published");
+});
+
+test("an Arabic translation kept on its English page waits for it, and links to it", async ({ page }) => {
+  await page.goto("/en/review/p_202");
+  await expect(page.getByTestId("publish")).toHaveCount(0);
+  await expect(page.getByTestId("waits-for-source")).toBeVisible();
+  await page.getByTestId("waits-for-source").getByRole("link").click();
+  await expect(page).toHaveURL(/\/en\/review\/p_201$/);
 });

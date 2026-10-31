@@ -234,7 +234,7 @@ function route(
     if (action === "/lock" && method === "POST") return outcome(store.lock(id, actor));
     if (action === "/lock" && method === "DELETE") return outcome(store.unlock(id, actor));
     if (action === "/takeover" && method === "POST") return outcome(store.takeover(id, actor));
-    if (action === "/publish" && method === "POST") return outcome(store.publish(id, actor));
+    if (action === "/publish" && method === "POST") return outcome(store.publish(id, actor, body.withTwin === true));
     if (action === "/hold" && method === "POST") return outcome(store.hold(id, body.hold === true, actor));
     if (action === "/image/pick" && method === "POST") return outcome(store.pickPhoto(id, Number(body.pexelsId), optionalText(body.alt), actor));
     if (action === "/image" && method === "POST") {

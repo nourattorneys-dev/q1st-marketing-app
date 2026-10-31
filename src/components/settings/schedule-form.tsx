@@ -13,7 +13,7 @@ import { FieldMessage, OtherFieldErrors, SaveBar, SaveFailure } from "./form-par
 import { SettingsConflict } from "./settings-conflict";
 import { useSettingsDraft } from "./use-settings-draft";
 
-const FIELDS = ["autoPublish", "perDay", "days", "from", "to", "gapMinutes"] as const;
+const FIELDS = ["autoPublish", "overrideReasonRequired", "perDay", "days", "from", "to", "gapMinutes"] as const;
 
 /** Spec v1.1 §6 Publishing: on or off, posts a day, days, from and until, and the gap. The engine works out the slots. */
 export function ScheduleSettingsForm({ locale, settings }: { locale: string; settings: PublishingSettings }) {
@@ -87,6 +87,20 @@ export function ScheduleSettingsForm({ locale, settings }: { locale: string; set
           </span>
         </label>
         <FieldMessage field="autoPublish" message={errors.byField.autoPublish} />
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            data-testid="schedule-reason-required"
+            checked={form.reasonRequired}
+            onChange={(event) => set("reasonRequired", event.target.checked)}
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{t("reasonRequired")}</span>
+            <span className="text-xs text-muted-foreground">{t("reasonRequiredHint")}</span>
+          </span>
+        </label>
+        <FieldMessage field="overrideReasonRequired" message={errors.byField.overrideReasonRequired} />
         <div className="grid gap-4 sm:grid-cols-2">
           {numberField("perDay", "schedule-per-day", 1)}
           {numberField("gapMinutes", "schedule-gap", 0)}

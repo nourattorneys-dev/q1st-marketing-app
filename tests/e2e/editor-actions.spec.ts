@@ -14,7 +14,20 @@ test("approves a post with no critical findings", async ({ page }) => {
   await expect(page.getByTestId("card-p_201")).toHaveCount(0);
 });
 
-test("overriding a critical finding needs a reason", async ({ page }) => {
+test("approving with a critical finding: a reason is optional, and History shows how many it had", async ({ page }) => {
+  await page.goto("/en/review/p_203");
+  await page.getByTestId("approve").click();
+  await expect(page.getByTestId("approve-confirm")).toBeEnabled();
+  await page.getByTestId("approve-confirm").click();
+  await expect(page.getByTestId("post-status")).toHaveText("Approved");
+});
+
+test("when the client requires a reason, approving with a critical finding needs one", async ({ page }) => {
+  await signInWithCookie(page.context(), "dev_admin");
+  await page.goto("/en/settings/schedule");
+  await page.getByTestId("schedule-reason-required").check();
+  await page.getByTestId("settings-save").click();
+  await expect(page.getByTestId("settings-saved")).toBeVisible();
   await page.goto("/en/review/p_203");
   await page.getByTestId("approve").click();
   await expect(page.getByTestId("approve-confirm")).toBeDisabled();

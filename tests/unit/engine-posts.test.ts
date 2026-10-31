@@ -11,7 +11,7 @@ const BASE = "https://mock.engine.local/api/v1";
 let t = Date.parse("2026-10-22T08:00:00Z");
 
 function setup() {
-  const store = createMockStore({ now: () => t, jobDurationMs: 1000 });
+  const store = createMockStore({ now: () => t, jobDurationMs: 1000, reasonRequired: true });
   const client = createEngineClient({
     baseUrl: BASE,
     apiKey: "mock-key",
@@ -142,7 +142,7 @@ describe("mock store registry", () => {
 describe("ids in engine URLs (final review: path traversal)", () => {
   it("refuses an id that would address another endpoint, before any request", async () => {
     const requested: string[] = [];
-    const store = createMockStore({ now: () => t, jobDurationMs: 1000 });
+    const store = createMockStore({ now: () => t, jobDurationMs: 1000, reasonRequired: true });
     const mock = createMockFetch({ baseUrl: BASE, apiKey: "mock-key", store });
     const client = createEngineClient({
       baseUrl: BASE,

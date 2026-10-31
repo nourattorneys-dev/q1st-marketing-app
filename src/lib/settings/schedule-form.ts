@@ -4,7 +4,7 @@ import type { PublishingSettings } from "@/lib/engine/schemas";
 export const WEEK = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 /** The form keeps numbers as typed text until saving, so a half-typed number isn't rewritten under the cursor. */
-export type ScheduleForm = { autoPublish: boolean; perDay: string; days: string[]; from: string; to: string; gapMinutes: string };
+export type ScheduleForm = { autoPublish: boolean; reasonRequired: boolean; perDay: string; days: string[]; from: string; to: string; gapMinutes: string };
 
 const isWeekday = (day: string) => (WEEK as readonly string[]).includes(day);
 
@@ -16,6 +16,7 @@ export function orderedDays(days: string[]): string[] {
 export function toScheduleForm(settings: PublishingSettings): ScheduleForm {
   return {
     autoPublish: settings.autoPublish,
+    reasonRequired: settings.overrideReasonRequired === true,
     perDay: String(settings.perDay),
     days: orderedDays(settings.days),
     from: settings.from,
@@ -42,6 +43,7 @@ export function toPublishingUpdate(
     ok: true,
     update: {
       autoPublish: form.autoPublish,
+      overrideReasonRequired: form.reasonRequired,
       perDay: Number.parseInt(form.perDay, 10),
       days: form.days,
       from: form.from,

@@ -33,10 +33,10 @@ const stringMap = (value: unknown) =>
 type Resolved = { type: TargetType; settings: Record<string, unknown>; secret: string | null };
 
 /** The site's settings (spec v1.1 §4, §7): each model has a version, and a save from an older version is a conflict. */
-export function createSettingsStore(options: { now: () => number; firstRun?: boolean }) {
+export function createSettingsStore(options: { now: () => number; firstRun?: boolean; reasonRequired?: boolean }) {
   const meta = mockMeta();
   let seo = seedSeo();
-  let publishing = seedPublishing();
+  let publishing = { ...seedPublishing(), overrideReasonRequired: options.reasonRequired ?? false };
   let pictureSequence = 0;
   let website = seedWebsite(options.firstRun ?? false);
   const social = new Map(seedSocial(options.firstRun ?? false).map((account) => [account.platform, account]));
@@ -153,8 +153,10 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     if (Object.keys(fields).length === 0 && minutesOf(from) + (perDay - 1) * gapMinutes > minutesOf(to)) {
       fields.perDay = `${perDay} posts a day, ${gapMinutes} minutes apart, don't fit between ${from} and ${to}.`;
     }
+    if (input.overrideReasonRequired !== undefined && typeof input.overrideReasonRequired !== "boolean") fields.overrideReasonRequired = "Choose on or off.";
     if (Object.keys(fields).length > 0) return invalid(fields);
     publishing = {
+      overrideReasonRequired: (input.overrideReasonRequired as boolean | undefined) ?? publishing.overrideReasonRequired ?? false,
       autoPublish: input.autoPublish as boolean,
       perDay,
       days: DAY_CODES.filter((day) => days.includes(day)),
@@ -318,6 +320,8 @@ export function createSettingsStore(options: { now: () => number; firstRun?: boo
     savePublishing,
     slotPlan,
     autoPublish: () => publishing.autoPublish,
+    reasonRequired: () => publishing.overrideReasonRequired === true,
+    translationOnSourcePage: () => website.arabic?.mode === "translatepress",
     website: websiteView,
     testWebsite,
     saveWebsite,

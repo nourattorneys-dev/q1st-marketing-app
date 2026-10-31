@@ -23,6 +23,7 @@ export type HistoryEntry = {
   siteStatus: string | null;
   publishedAt: string | null;
   overrideReason: string | null;
+  approvedWithCritical: number;
   error: string | null;
   reviewNote: string | null;
   actions: string[];
@@ -87,6 +88,11 @@ export function HistoryBoard({ locale, entries, canManageSettings }: { locale: s
           {entry.publishedAt && (
             <p data-testid={`history-time-${entry.id}`} className="text-sm text-muted-foreground">
               {t("publishedAt", { time: entry.publishedAt })}
+            </p>
+          )}
+          {entry.approvedWithCritical > 0 && (
+            <p data-testid={`history-critical-${entry.id}`} className="text-sm text-warn-fg">
+              {t("approvedWithCritical", { count: entry.approvedWithCritical })}
             </p>
           )}
           {entry.overrideReason && (

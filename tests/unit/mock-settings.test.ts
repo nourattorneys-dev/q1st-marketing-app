@@ -95,7 +95,7 @@ describe("SEO profile (spec v1.1 §4 SeoSettings)", () => {
 
 describe("publishing schedule (spec v1.1 §4 PublishingSettings)", () => {
   it("starts at 2 a day, Sunday to Thursday, from 10:00, 3 hours apart", () => {
-    expect(schedule()).toEqual({ autoPublish: true, perDay: 2, days: ["sun", "mon", "tue", "wed", "thu"], from: "10:00", to: "17:00", gapMinutes: 180, version: 1 });
+    expect(schedule()).toEqual({ overrideReasonRequired: false, autoPublish: true, perDay: 2, days: ["sun", "mon", "tue", "wed", "thu"], from: "10:00", to: "17:00", gapMinutes: 180, version: 1 });
   });
 
   it("the queue follows a saved schedule: one a day at 09:00", () => {

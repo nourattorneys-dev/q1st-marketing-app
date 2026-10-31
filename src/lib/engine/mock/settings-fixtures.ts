@@ -25,7 +25,7 @@ export function seedSeo(): SeoSettings {
 
 /** 2 a day, Sunday to Thursday, from 10:00, 3 hours apart: the 10:00 and 13:00 Dubai slots the mock queue has used since M2b. */
 export function seedPublishing(): PublishingSettings {
-  return { autoPublish: true, perDay: 2, days: ["sun", "mon", "tue", "wed", "thu"], from: "10:00", to: "17:00", gapMinutes: 180, version: 1 };
+  return { overrideReasonRequired: false, autoPublish: true, perDay: 2, days: ["sun", "mon", "tue", "wed", "thu"], from: "10:00", to: "17:00", gapMinutes: 180, version: 1 };
 }
 
 /** The website categories (…/website/categories, and the connection test's `categories`). */

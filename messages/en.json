@@ -355,7 +355,13 @@
       "noDescription": "Add a meta description: it is the text people read under the title."
     },
     "viewOnSite": "Open on the website",
-    "notLive": "Not live on the website yet"
+    "notLive": "Not live on the website yet",
+    "overrideReasonOptional": "Reason (optional)",
+    "overrideBodyOptional": "This post has critical findings. You can approve it anyway; History records how many it had, and your reason if you give one.",
+    "publishWithTwin": "Also publish its Arabic translation",
+    "waitsForSource": "This translation is stored on its English page, so the English version must be published first.",
+    "openSource": "Open the English version",
+    "waitsForSourceShort": "Waits for its English version"
   },
   "Scheduled": {
     "title": "Scheduled",
@@ -400,7 +406,8 @@
       "pending": "Saved on the website waiting for approval: not live yet. Approve it in WordPress.",
       "future": "Saved on the website as scheduled there: it goes live at the website's own time.",
       "other": "Saved on the website as \"{status}\": not live yet."
-    }
+    },
+    "approvedWithCritical": "Approved with {count, plural, one {# critical finding} other {# critical findings}}"
   },
   "ErrorPage": {
     "title": "Something went wrong",
@@ -552,6 +559,8 @@
       "hint": "When approved posts go out. The content engine works out the exact times.",
       "autoPublish": "Publish automatically",
       "autoPublishHint": "When this is off, nothing goes out until someone presses Publish now.",
+      "reasonRequired": "Require a reason to approve with critical findings",
+      "reasonRequiredHint": "When this is on, approving an article that has critical findings needs a written reason. Either way, History shows how many it had.",
       "perDay": "Posts a day",
       "days": "Days",
       "from": "From",

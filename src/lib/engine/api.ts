@@ -183,9 +183,18 @@ export function createEngineApi(client: EngineClient) {
       })
     ).data;
 
-  const publishPost = async (id: string, ctx: ChangeContext) =>
-    (await client.request({ method: "POST", path: await postPath(id, "/publish"), schema: PostSchema, body: {}, timeoutMs: SLOW_CHANGE_MS, ...ctx }))
-      .data;
+  /** withTwin: its approved translation goes live right after it (a translation kept on its source's page). */
+  const publishPost = async (id: string, ctx: ChangeContext, withTwin = false) =>
+    (
+      await client.request({
+        method: "POST",
+        path: await postPath(id, "/publish"),
+        schema: PostSchema,
+        body: withTwin ? { withTwin: true } : {},
+        timeoutMs: SLOW_CHANGE_MS,
+        ...ctx,
+      })
+    ).data;
 
   const holdPost = async (id: string, hold: boolean, ctx: ChangeContext) =>
     (await client.request({ method: "POST", path: await postPath(id, "/hold"), schema: PostSchema, body: { hold }, ...ctx })).data;

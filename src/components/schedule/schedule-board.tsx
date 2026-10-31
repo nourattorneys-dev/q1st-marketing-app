@@ -22,6 +22,10 @@ export type QueueItem = {
   hold: boolean;
   time: string | null;
   actions: string[];
+  /** Its approved translation can go live with it. */
+  canPublishTwin: boolean;
+  /** A translation that waits until its English version is live. */
+  waitsForSource: boolean;
 };
 
 /** Spec v1.1 §6 /scheduled: the queue in order; hold, resume and publish now, one by one or in bulk. */
@@ -53,8 +57,8 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
     if (!result.ok) setError(result.error);
   }
 
-  const publishOne = (id: string) => async () => {
-    const result = await publish.run({ locale, postId: id });
+  const publishOne = (id: string, canPublishTwin: boolean) => async (_note: string, withTwin: boolean) => {
+    const result = await publish.run({ locale, postId: id, withTwin: canPublishTwin && withTwin });
     return result.ok ? null : result.error;
   };
 
@@ -139,6 +143,11 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
             <span data-testid={`scheduled-time-${item.id}`} className="text-sm">
               {item.time ?? t("noTime")}
             </span>
+            {item.waitsForSource && (
+              <span data-testid={`waits-for-source-${item.id}`} className="text-xs text-muted-foreground">
+                {tEditor("waitsForSourceShort")}
+              </span>
+            )}
             {item.actions.includes("hold") && (
               <Button variant="outline" size="sm" data-testid={`hold-${item.id}`} disabled={hold.pending} onClick={() => void setHold(item.id, true)}>
                 {t("hold")}
@@ -158,7 +167,8 @@ export function ScheduleBoard({ locale, items, canManageSettings }: { locale: st
                 confirmLabel={t("publishNow")}
                 pending={publish.pending}
                 pendingLabel={tEditor("publishing")}
-                onConfirm={publishOne(item.id)}
+                option={item.canPublishTwin ? { label: tEditor("publishWithTwin"), defaultChecked: true } : undefined}
+                onConfirm={publishOne(item.id, item.canPublishTwin)}
                 canManageSettings={canManageSettings}
               />
             )}

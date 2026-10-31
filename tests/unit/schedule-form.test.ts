@@ -5,7 +5,7 @@ const SETTINGS = { autoPublish: true, perDay: 2, days: ["sun", "mon", "tue", "we
 
 describe("the schedule form (spec v1.1 §4 PublishingSettings)", () => {
   it("turns the settings into a form and back", () => {
-    expect(toPublishingUpdate(toScheduleForm(SETTINGS), 4)).toEqual({ ok: true, update: SETTINGS });
+    expect(toPublishingUpdate(toScheduleForm(SETTINGS), 4)).toEqual({ ok: true, update: { ...SETTINGS, overrideReasonRequired: false } });
   });
 
   it("keeps days in week order, and keeps a code it doesn't know", () => {

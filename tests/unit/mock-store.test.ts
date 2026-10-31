@@ -19,7 +19,8 @@ function update(id: string, changes: Record<string, unknown>) {
 
 beforeEach(() => {
   t = START;
-  store = createMockStore({ now: () => t, jobDurationMs: 1000 });
+  // These tests cover the stricter setting: a reason is required to approve with critical findings.
+  store = createMockStore({ now: () => t, jobDurationMs: 1000, reasonRequired: true });
 });
 
 describe("section signature", () => {
@@ -126,6 +127,14 @@ describe("approval", () => {
     expect(store.approve("p_203", "  ", ME)).toMatchObject({ ok: false, status: 422, code: "framework_blocked" });
     const post = data(store.approve("p_203", "Checked by the partner", ME));
     expect(post.overrideReason).toBe("Checked by the partner");
+  });
+
+  it("by default a reason is optional, and the number of critical findings is kept", () => {
+    const relaxed = createMockStore({ now: () => t, jobDurationMs: 1000 });
+    const post = data(relaxed.approve("p_203", undefined, ME));
+    expect(post.status).toBe("approved");
+    expect(post.overrideReason).toBeNull();
+    expect(post.approvedWithCritical).toBeGreaterThan(0);
   });
 
   it("never approves a structure mismatch, even with a reason (Review Focus 5)", () => {

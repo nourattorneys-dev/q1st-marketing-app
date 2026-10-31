@@ -54,7 +54,8 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
 
-export function createMockStore(options: { now?: () => number; jobDurationMs?: number; firstRun?: boolean } = {}) {
+/** reasonRequired: start with "a reason is required to approve with critical findings" on (default off, as the engine). */
+export function createMockStore(options: { now?: () => number; jobDurationMs?: number; firstRun?: boolean; reasonRequired?: boolean } = {}) {
   const now = options.now ?? Date.now;
   const jobDurationMs = options.jobDurationMs ?? 2500;
   const limits = mockMeta().limits;
@@ -72,7 +73,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
   let suggestionSequence = 100;
   let postSequence = 600;
   const iso = (ms: number) => new Date(ms).toISOString();
-  const settings = createSettingsStore({ now, firstRun: options.firstRun });
+  const settings = createSettingsStore({ now, firstRun: options.firstRun, reasonRequired: options.reasonRequired });
   const siteHealth = createSiteHealthStore();
 
   const twinOf = (post: Post) => (post.pairId ? posts.get(post.pairId) : undefined);
@@ -84,11 +85,16 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
 
   function view(post: Post): Post {
     const twin = twinOf(post);
+    const paired = Boolean(twin) && settings.translationOnSourcePage();
+    const waitsForSource = paired && post.language === "ar" && twin?.status !== "published";
     return structuredClone({
       ...post,
       twin: twin ? { id: twin.id, language: twin.language, status: twin.status } : null,
       schedule: post.status === "approved" ? (queueSchedule(true).get(post.id) ?? null) : null,
-      actions: actionsFor(post),
+      actions: actionsFor(post).filter((action) => !(waitsForSource && (action === "publishNow" || action === "retry"))),
+      reasonRequired: settings.reasonRequired(),
+      waitsForSource,
+      canPublishTwin: paired && post.language !== "ar" && twin?.status === "approved",
     });
   }
 
@@ -125,7 +131,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
       const locked = critical.filter((f) => f.overridable === false);
       return fail(422, "framework_blocked", `Not approved — ${locked.length} rule(s) can't be overridden.`, { details: { findings: locked } });
     }
-    if (mode === "override" && !overrideReason?.trim()) {
+    if (mode === "override" && settings.reasonRequired() && !overrideReason?.trim()) {
       return fail(422, "framework_blocked", `Not approved — ${critical.length} framework rule(s) to fix.`, { details: { findings: critical } });
     }
     return missingPhoto(post);
@@ -229,7 +235,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     if (refusal) return refusal;
     post.status = "approved";
     post.reviewedBy = actor;
-    post.overrideReason = approvalMode(post.findings) === "override" ? (overrideReason?.trim() ?? null) : null;
+    post.overrideReason = approvalMode(post.findings) === "override" ? overrideReason?.trim() || null : null;
+    post.approvedWithCritical = post.findings.filter((f) => f.level === "critical").length;
     post.schedule = { hold: false, scheduledAt: null, position: null };
     queue.push(id);
     touch(post);
@@ -312,7 +319,7 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     return { target: post.platform, url: `https://www.linkedin.com/feed/update/${share}`, externalId: share, at };
   }
 
-  function publish(id: string, actor: string): MockOutcome<Post> {
+  function publish(id: string, actor: string, withTwin = false): MockOutcome<Post> {
     const guarded = guard(id, actor);
     if (!guarded.ok) return guarded;
     const post = guarded.data;
@@ -344,6 +351,8 @@ export function createMockStore(options: { now?: () => number; jobDurationMs?: n
     post.published = publication(post);
     dequeue(id);
     touch(post);
+    const twin = twinOf(post);
+    if (withTwin && twin?.status === "approved") publish(twin.id, actor);
     return ok(view(post));
   }
 

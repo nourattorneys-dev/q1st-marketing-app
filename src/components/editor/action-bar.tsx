@@ -11,7 +11,7 @@ import {
 } from "@/app/[locale]/(app)/review/actions";
 import { ActionError } from "@/components/actions/action-error";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useEngineAction } from "@/lib/actions/use-engine-action";
 import type { EngineFailure } from "@/lib/engine/result";
 import type { Post } from "@/lib/engine/schemas";
@@ -86,8 +86,8 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
     router.push("/review");
     return null;
   };
-  const publishPost = async () => {
-    const result = await publish.run({ locale, postId: post.id });
+  const publishPost = async (_note: string, withTwin: boolean) => {
+    const result = await publish.run({ locale, postId: post.id, withTwin: post.canPublishTwin === true && withTwin });
     return result.ok ? null : refusal(result.error);
   };
 
@@ -108,9 +108,9 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             triggerLabel={t("approve")}
             disabled={dirty || locked || photoMissing}
             title={t("overrideTitle")}
-            description={t("overrideBody")}
+            description={post.reasonRequired ? t("overrideBody") : t("overrideBodyOptional")}
             confirmLabel={t("approveAnyway")}
-            note={{ label: t("overrideReason"), required: true }}
+            note={{ label: post.reasonRequired ? t("overrideReason") : t("overrideReasonOptional"), required: post.reasonRequired === true }}
             pending={approve.pending}
             onConfirm={approveWithReason}
           />
@@ -131,6 +131,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
             confirmLabel={t("publishNow")}
             pending={publish.pending}
             pendingLabel={t("publishing")}
+            option={post.canPublishTwin && post.twin ? { label: t("publishWithTwin"), defaultChecked: true } : undefined}
             onConfirm={publishPost}
             canManageSettings={canManageSettings}
           />
@@ -175,6 +176,14 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           />
         )}
       </div>
+      {post.waitsForSource && post.twin && (
+        <p data-testid="waits-for-source" className="text-sm text-muted-foreground">
+          {t("waitsForSource")}{" "}
+          <Link href={`/review/${post.twin.id}`} className="text-primary underline">
+            {t("openSource")}
+          </Link>
+        </p>
+      )}
       {(allowed.has("approve") || allowed.has("publishNow")) && photoMissing && (
         <p data-testid="photo-needed" className="text-sm text-bad-fg">
           {t("photoNeeded")}
