@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LimitStrip } from "@/components/plan/limit-strip";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionSkeleton } from "@/components/dashboard/section-skeleton";
 import { ScheduledQueue } from "@/components/schedule/scheduled-queue";
@@ -11,6 +12,9 @@ export default async function ScheduledPage({ params }: PageProps<"/[locale]/sch
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-heading text-[32px] leading-tight">{t("title")}</h1>
+      <Suspense fallback={null}>
+        <LimitStrip locale={locale} metrics={["publishes"]} today />
+      </Suspense>
       <Suspense fallback={<SectionSkeleton />}>
         <ScheduledQueue locale={locale} />
       </Suspense>

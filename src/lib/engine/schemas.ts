@@ -407,6 +407,8 @@ export const PublishingSettingsSchema = z.object({
   overrideReasonRequired: z.boolean().nullish(),
   /** The most articles the account may publish a day (set by Quantum1st; a pair counts once); null = no limit. */
   maxPerDay: z.number().int().nullish(),
+  /** Articles the account published today (a pair counts once), for "N of M left today". */
+  publishedToday: z.number().int().nullish(),
   version: z.number().int(),
 });
 export type PublishingSettings = z.infer<typeof PublishingSettingsSchema>;

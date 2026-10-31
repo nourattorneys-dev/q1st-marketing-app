@@ -364,10 +364,11 @@
     "notLive": "Not live on the website yet",
     "overrideReasonOptional": "Reason (optional)",
     "overrideBodyOptional": "This post has critical findings. You can approve it anyway; History records how many it had, and your reason if you give one.",
-    "waitsForPair": "Approve the {language} version too: an article and its translation are published together.",
-    "openPair": "Open it",
+    "waitsForPair": "An article and its translation are published together. Review and approve the {language} version, then publish either one.",
+    "openPair": "Open the {language} version",
     "goesWithArticle": "Goes out with its article",
-    "waitsForTranslation": "Waits for its translation to be approved"
+    "waitsForTranslation": "Waits for its translation to be approved",
+    "waitsForPairTitle": "The {language} version isn't approved yet"
   },
   "Scheduled": {
     "title": "Scheduled",
@@ -1023,5 +1024,11 @@
     "submit": "Change password",
     "saving": "Saving…",
     "changed": "Your password is changed. You've been signed out on your other devices."
+  },
+  "Limits": {
+    "label": "What's left of your limits",
+    "left": "{label}: {left} of {limit} left this month",
+    "unlimited": "{label}: unlimited",
+    "today": "Articles today: {left} of {limit} left"
   }
 }

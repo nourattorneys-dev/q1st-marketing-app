@@ -364,10 +364,11 @@
     "notLive": "لم يُنشر في الموقع بعد",
     "overrideReasonOptional": "السبب (اختياري)",
     "overrideBodyOptional": "في هذا المقال ملاحظات حرجة. يمكنك اعتماده رغم ذلك؛ يسجّل السجل عددها، وسببك إن كتبته.",
-    "waitsForPair": "اعتمد النسخة {language} أيضًا: يُنشر المقال وترجمته معًا.",
-    "openPair": "افتحها",
+    "waitsForPair": "يُنشر المقال وترجمته معًا. راجع النسخة {language} واعتمدها، ثم انشر أيًّا منهما.",
+    "openPair": "افتح النسخة {language}",
     "goesWithArticle": "يُنشر مع مقاله",
-    "waitsForTranslation": "بانتظار اعتماد ترجمته"
+    "waitsForTranslation": "بانتظار اعتماد ترجمته",
+    "waitsForPairTitle": "النسخة {language} لم تُعتمد بعد"
   },
   "Scheduled": {
     "title": "المجدولة",
@@ -1023,5 +1024,11 @@
     "submit": "تغيير كلمة المرور",
     "saving": "جارٍ الحفظ…",
     "changed": "تم تغيير كلمة المرور، وسُجّل خروجك من أجهزتك الأخرى."
+  },
+  "Limits": {
+    "label": "المتبقي من حدودك",
+    "left": "{label}: متبقٍ {left} من {limit} هذا الشهر",
+    "unlimited": "{label}: بلا حد",
+    "today": "مقالات اليوم: متبقٍ {left} من {limit}"
   }
 }

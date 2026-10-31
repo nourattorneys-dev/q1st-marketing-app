@@ -101,3 +101,11 @@ test("more keywords than one request takes: Add waits, and the limit is said in 
   await expect(page.getByTestId("add-keywords")).toBeDisabled();
   await expect(page.getByTestId("keywords-limit")).toHaveText("أضف 50 كلمة مفتاحية كحدٍّ أقصى في كل مرة.");
 });
+
+test("each section shows what is left of the limits it uses", async ({ page }) => {
+  await page.goto("/en/keywords");
+  await expect(page.getByTestId("limit-strip")).toBeVisible();
+  await expect(page.getByTestId("limit-articles")).toContainText(/Articles: \d+ of \d+ left this month|Articles: unlimited/);
+  await page.goto("/en/site-health");
+  await expect(page.getByTestId("limit-siteScans")).toContainText("2 of 4 left this month");
+});

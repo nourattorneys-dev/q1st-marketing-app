@@ -1,5 +1,6 @@
 "use client";
 
+import { Languages } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -96,6 +97,24 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
     <div className="flex flex-col gap-2">
       {jobId && <JobProgress jobId={jobId} pollSeconds={pollSeconds} onDone={finishJob} />}
       {!jobId && post.status === "drafting" && <StatusWatcher locale={locale} postId={post.id} status={post.status} pollSeconds={pollSeconds} />}
+      {post.waitsFor && (
+        <div
+          role="status"
+          data-testid="waits-for-pair"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-warn-fg/30 bg-warn-bg px-4 py-3 text-sm text-warn-fg animate-in fade-in-0 slide-in-from-bottom-1 duration-300"
+        >
+          <Languages aria-hidden="true" className="size-5 shrink-0" />
+          <span className="flex-1">
+            <span className="block font-semibold">
+              {t("waitsForPairTitle", { language: tLanguages.has(post.waitsFor.language) ? tLanguages(post.waitsFor.language) : post.waitsFor.language })}
+            </span>
+            {t("waitsForPair", { language: tLanguages.has(post.waitsFor.language) ? tLanguages(post.waitsFor.language) : post.waitsFor.language })}
+          </span>
+          <Button asChild size="sm">
+            <Link href={`/review/${post.waitsFor.id}`}>{t("openPair", { language: tLanguages.has(post.waitsFor.language) ? tLanguages(post.waitsFor.language) : post.waitsFor.language })}</Link>
+          </Button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {allowed.has("approve") && mode === "direct" && (
           <Button data-testid="approve" disabled={dirty || locked || approve.pending || photoMissing} onClick={() => void approveDirectly()}>
@@ -176,14 +195,7 @@ export function ActionBar({ locale, post, dirty, pollSeconds, lockedBy, onLocked
           />
         )}
       </div>
-      {post.waitsFor && (
-        <p data-testid="waits-for-pair" className="text-sm text-muted-foreground">
-          {t("waitsForPair", { language: tLanguages.has(post.waitsFor.language) ? tLanguages(post.waitsFor.language) : post.waitsFor.language })}{" "}
-          <Link href={`/review/${post.waitsFor.id}`} className="text-primary underline">
-            {t("openPair")}
-          </Link>
-        </p>
-      )}
+
       {(allowed.has("approve") || allowed.has("publishNow")) && photoMissing && (
         <p data-testid="photo-needed" className="text-sm text-bad-fg">
           {t("photoNeeded")}
