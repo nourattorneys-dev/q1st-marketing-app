@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { AppLocale } from "@/i18n/locales";
+import { requireSession } from "@/lib/auth/session";
 import { quotaView } from "@/lib/dashboard/quota";
 import { getEngine } from "@/lib/engine";
 import { tryEngine } from "@/lib/engine/result";
@@ -19,6 +20,8 @@ const TONE = {
  * 20 left this month") and, where publishing happens, today's articles. Nothing shows when the plan can't be read.
  */
 export async function LimitStrip({ locale, metrics, today = false }: { locale: AppLocale; metrics: string[]; today?: boolean }) {
+  // The request first (as every engine view): while Next builds a page, this stops it before any setting is read.
+  await requireSession(locale);
   const engine = await getEngine();
   const [plan, publishing] = await Promise.all([
     tryEngine(() => engine.plan()),

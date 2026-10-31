@@ -13,7 +13,8 @@
     "e2e": "playwright test && playwright test -c playwright.password.config.ts",
     "e2e:password": "playwright test -c playwright.password.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "check:release-build": "AUTH_MODE=password ENGINE_MODE=live TWO_FACTOR=off NEXT_OUTPUT=standalone APP_URL= next build"
   },
   "dependencies": {
     "@tiptap/extension-image": "3.32.0",
