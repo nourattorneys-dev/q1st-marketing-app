@@ -88,7 +88,7 @@ test("an Admin sends themselves a test email; with EMAIL_MODE=log it's only kept
   expect(sent.map((email) => email.to)).toEqual(["admin@example.com"]);
   expect(sent[0].subject).toBe("Qalam test email · رسالة تجريبية من منصة قلم");
   expect(sent[0].text).toContain("This is a test from Qalam. If you can read this, the dashboard's emails work.");
-  expect(sent[0].html).toContain('<div dir="rtl" lang="ar"');
+  expect(sent[0].html).toContain('<td dir="rtl" lang="ar"');
 
   await page.getByTestId("test-email-send").click(); // each press is a new email
   await expect.poll(async () => newEmails(before, await readOutbox(page)).length).toBe(2);

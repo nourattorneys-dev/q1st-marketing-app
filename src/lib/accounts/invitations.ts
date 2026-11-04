@@ -54,9 +54,9 @@ export function addDays(date: Date, days: number): Date {
 }
 
 /** The invitation email (bilingual), to the invited address. A failure is the mailer's MailError, for the caller. */
-export async function emailInvitation(mailer: Mailer, appUrl: string, invitation: Invitation, token: string): Promise<void> {
+export async function emailInvitation(mailer: Mailer, appUrl: string, invitation: Invitation, token: string, clientName?: string): Promise<void> {
   await mailer.send({
-    ...renderAccountEmail("invitation", { appUrl, token, role: invitation.role }),
+    ...renderAccountEmail("invitation", { appUrl, token, role: invitation.role, client: clientName }),
     to: invitation.email,
     idempotencyKey: `invitation-${invitation.tokenHash.slice(0, 32)}`,
   });

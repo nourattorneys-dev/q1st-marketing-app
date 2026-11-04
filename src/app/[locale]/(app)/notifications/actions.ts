@@ -11,6 +11,9 @@ import { MailError } from "@/lib/notifications/mail-error";
 import { mailerFor } from "@/lib/notifications/mailer";
 import { renderTestEmail } from "@/lib/notifications/render";
 import { servicesEnv } from "@/lib/services-env";
+import { serverEnv } from "@/lib/env";
+import { getHostClient } from "@/lib/tenancy";
+import { clientOrigin } from "@/lib/tenancy/address";
 
 /**
  * Design §4 preferences: each person turns their own notification emails on or off. Setting the same value twice changes
@@ -36,7 +39,7 @@ export async function sendTestEmailAction(input: { locale: string; idempotencyKe
   const session = await requirePermission(parsed.data.locale, "settings.manage");
   const env = servicesEnv();
   try {
-    await mailerFor(env).send({ ...renderTestEmail(), to: session.email, idempotencyKey: `test-${randomUUID()}` });
+    await mailerFor(env).send({ ...renderTestEmail(clientOrigin(await getHostClient(), serverEnv())), to: session.email, idempotencyKey: `test-${randomUUID()}` });
   } catch (error) {
     if (!(error instanceof MailError)) throw error;
     return { ok: false, error: { status: 502, code: "mail_failed", message: error.message, details: { source: "dashboard", kind: error.kind, reply: error.reply } } };

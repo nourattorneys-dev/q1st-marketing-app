@@ -19,10 +19,12 @@ const ADMIN = { userId: "dev_admin", email: "admin@example.com", name: "Admin", 
 const requirePermission = vi.fn(async () => ADMIN);
 vi.mock("@/lib/auth/session", () => ({ requirePermission, requireSession: vi.fn() }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("@/lib/tenancy", () => ({ getHostClient: vi.fn(async () => null) }));
 
 const { sendTestEmailAction } = await import("@/app/[locale]/(app)/notifications/actions");
 const { MAIL_ERROR_KINDS, MailError } = await import("@/lib/notifications/mail-error");
 const { renderTestEmail } = await import("@/lib/notifications/render");
+const { serverEnv } = await import("@/lib/env");
 
 const SMTP = {
   EMAIL_MODE: "smtp",
@@ -49,7 +51,7 @@ describe("sending a test email (M5b)", () => {
     expect(sent.map((email) => email.to)).toEqual(["admin@example.com", "admin@example.com"]);
     expect(sent[0].idempotencyKey).toMatch(/^test-[0-9a-f-]{36}$/);
     expect(sent[1].idempotencyKey).not.toBe(sent[0].idempotencyKey);
-    expect(sent[0]).toMatchObject(renderTestEmail());
+    expect(sent[0]).toMatchObject(renderTestEmail(serverEnv().appUrl));
   });
 
   it("takes no address: one slipped into the request is ignored", async () => {
@@ -86,12 +88,12 @@ describe("sending a test email (M5b)", () => {
 });
 
 describe("the test email's words (M5b)", () => {
-  it("uses the notification emails' format: English, then Arabic right to left, with no links", () => {
+  it("uses the notification emails' format: English, then Arabic right to left, with no dashboard links before its address is known", () => {
     const email = renderTestEmail();
     expect(email.subject).toBe("Qalam test email · رسالة تجريبية من منصة قلم");
-    expect(email.html).toContain('<div dir="ltr" lang="en"');
-    expect(email.html).toContain('<div dir="rtl" lang="ar"');
-    expect(email.html).not.toContain("<a ");
+    expect(email.html).toContain('<td dir="ltr" lang="en"');
+    expect(email.html).toContain('<td dir="rtl" lang="ar"');
+    expect([...email.html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]).every((href) => href === "https://quantum1st.com")).toBe(true);
     expect(email.text).toContain("This is a test from Qalam. If you can read this, the dashboard's emails work.");
     expect(email.text).toContain("هذه رسالة تجريبية من منصة قلم.");
   });

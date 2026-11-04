@@ -72,8 +72,8 @@ describe("the email (design §10: bilingual, one per batch)", () => {
       ORIGIN,
     );
     expect(email.subject).toBe("3 drafts ready for review · 3 مسودات جاهزة للمراجعة");
-    expect(email.html).toContain('<a href="https://portal.example/en/review">3 drafts are ready for review</a>');
-    expect(email.html).toContain('<div dir="rtl" lang="ar"');
+    expect(email.html).toMatch(/<a href="https:\/\/portal\.example\/en\/review"[^>]*>3 drafts are ready for review /);
+    expect(email.html).toContain('<td dir="rtl" lang="ar"');
     expect(email.html).toContain("https://portal.example/ar/review");
     expect(email.html).toContain("https://portal.example/en/notifications");
     expect(email.text).toContain("- 3 drafts are ready for review: https://portal.example/en/review");
@@ -98,7 +98,7 @@ describe("the email (design §10: bilingual, one per batch)", () => {
     expect(email.text).toContain("- 1 post failed to publish: https://portal.example/en/history");
     expect(email.text).toContain("- LinkedIn connection: expiring soon: https://portal.example/en/settings/social");
     expect(email.text).not.toContain("not working");
-    expect(email.html).not.toContain("<img");
+    expect(email.html.match(/<img [^>]*>/g)?.every((tag) => tag.includes("/email/qalam-mark.png")) ?? true).toBe(true);
     expect(email.html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(email.text).toContain("- Articles: 36 of 40 used this month: https://portal.example/en/plan");
     expect(email.text).toContain("- Site scan finished: 7 findings: https://portal.example/en/site-health");
@@ -107,7 +107,7 @@ describe("the email (design §10: bilingual, one per batch)", () => {
 
   it("has no links before this dashboard's address is known", () => {
     const email = renderBatch({ audience: "reviewers", items: [item("e1", "drafted", "reviewers", { postId: "p_1" })] }, null);
-    expect(email.html).not.toContain("<a ");
+    expect([...email.html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]).every((href) => href === "https://quantum1st.com")).toBe(true);
     expect(email.text).not.toContain("http");
   });
 });

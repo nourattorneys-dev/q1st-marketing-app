@@ -66,7 +66,7 @@ export function createAccountsDirectory(deps: {
   /** A failed send becomes the page's mail_failed answer, with the kind and the server's reply. */
   async function send(invitation: Invitation, token: string): Promise<void> {
     try {
-      await emailInvitation(deps.mailer, deps.appUrl, invitation, token);
+      await emailInvitation(deps.mailer, deps.appUrl, invitation, token, deps.clientName);
     } catch (error) {
       if (error instanceof MailError) throw new DirectoryError("mail_failed", error.message, undefined, { kind: error.kind, reply: error.reply });
       throw error;
