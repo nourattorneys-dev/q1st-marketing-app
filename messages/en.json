@@ -924,11 +924,12 @@
       "subject": "Qalam test email",
       "heading": "Test email",
       "body": "This is a test from Qalam. If you can read this, the dashboard's emails work.",
-      "footer": "Sent because you pressed Send me a test email on the Email notifications page."
+      "footer": "Sent because you pressed Send me a test email on the Email notifications page.",
+      "button": "Open email settings"
     },
     "invitation": {
-      "subject": "You're invited to Qalam",
-      "heading": "You're invited to the Qalam dashboard as {role}.",
+      "subject": "{client, select, none {You're invited to Qalam} other {You're invited to {client} on Qalam}}",
+      "heading": "{client, select, none {You're invited to Qalam as {role}.} other {You're invited to {client} on Qalam, as {role}.}}",
       "link": "Set your password and sign in",
       "footer": "The link works once and expires in 7 days. If you didn't expect this email, you can ignore it."
     },
@@ -943,6 +944,10 @@
       "heading": "You now work for {client} on Qalam, as {role}.",
       "link": "Open {client}",
       "footer": "Sign in with the email and password you already use for Qalam."
+    },
+    "button": {
+      "reviewers": "Open Review",
+      "admins": "Open the dashboard"
     }
   },
   "Notifications": {

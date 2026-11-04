@@ -68,42 +68,119 @@ function linesFor(batch: Batch, locale: Locale): Line[] {
   return lines;
 }
 
-/** One language's half of an email. */
+/** One language's half of an email: a title, optional rows (each may link), one main button, and a note. */
 type Part = {
   locale: Locale;
   subject: string;
   heading: string;
   lines: { text: string; href: string | null }[];
+  button?: { text: string; href: string } | null;
   footer: string;
   settings: string | null;
 };
 
-/** Design §10: one email, English then Arabic (right to left), as HTML and as plain text. */
-function compose(parts: Part[]): { subject: string; html: string; text: string } {
-  const link = (text: string, href: string | null, style = "") => (href ? `<a href="${escapeHtml(href)}"${style}>${escapeHtml(text)}</a>` : escapeHtml(text));
-  const html = [
-    '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937">',
-    parts
+/**
+ * Whose email this is: the client's name, main colour, logo (an https address mail apps can load) and address.
+ * Null: Qalam's own look (an email with no client yet, such as a password reset).
+ */
+export type EmailBrand = { name: string; color: string | null; logoUrl: string | null; origin: string | null };
+
+const INK = "#07090f";
+const QALAM_BLUE = "#2f6bff";
+const PAGE = "#f4f2ee";
+const LINE = "#e6e2da";
+const MUTED = "#6b7280";
+const TEXT = "#1f2937";
+
+/** Black or white text on a colour, whichever reads better (the client's colour can be light or dark). */
+function textOn(hex: string): string {
+  const n = Number.parseInt(hex.replace("#", ""), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? INK : "#ffffff";
+}
+
+const FONT = { en: "Arial,Helvetica,sans-serif", ar: "Tahoma,'Segoe UI',Arial,sans-serif" } as const;
+
+/**
+ * Design §10: one email, English then Arabic (right to left), as HTML and as plain text. Tables and inline styles only,
+ * so Outlook, Gmail and Apple Mail show it the same way; the client's colour heads it and colours its button.
+ */
+function compose(parts: Part[], brand: EmailBrand | null = null, assetOrigin: string | null = null): { subject: string; html: string; text: string } {
+  const accent = brand?.color ?? QALAM_BLUE;
+  const head = brand?.color ?? INK;
+  const onHead = textOn(head);
+  const onAccent = textOn(accent);
+  const mark = assetOrigin ? `${assetOrigin}/email/qalam-mark.png` : null;
+  const e = escapeHtml;
+
+  const header = brand?.logoUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#ffffff;border-radius:10px;padding:8px 12px"><img src="${e(brand.logoUrl)}" alt="${e(brand.name)}" height="40" style="display:block;height:40px;max-width:220px;border:0"></td></tr></table>`
+    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr>${mark && !brand ? `<td style="padding-right:10px"><img src="${e(mark)}" alt="" width="32" height="32" style="display:block;border:0;border-radius:8px"></td>` : ""}<td style="font-family:${FONT.en};font-size:20px;font-weight:bold;color:${onHead}">${e(brand?.name ?? "qalam")}</td></tr></table>`;
+
+  const section = (part: Part) => {
+    const rtl = part.locale === "ar";
+    const align = rtl ? "right" : "left";
+    const font = FONT[part.locale];
+    const rows = part.lines
       .map(
-        (part) =>
-          `<div dir="${part.locale === "ar" ? "rtl" : "ltr"}" lang="${part.locale}" style="margin-bottom:24px">` +
-          `<p><strong>${escapeHtml(part.heading)}</strong></p>` +
-          `<ul>${part.lines.map((line) => `<li>${link(line.text, line.href)}</li>`).join("")}</ul>` +
-          `<p style="color:#6b7280;font-size:13px">${link(part.footer, part.settings, ' style="color:#6b7280"')}</p></div>`,
+        (line) =>
+          `<tr><td style="padding:10px 0;border-bottom:1px solid ${LINE};font-family:${font};font-size:15px;line-height:1.5;color:${TEXT};text-align:${align}">` +
+          (line.href ? `<a href="${e(line.href)}" style="color:${TEXT};text-decoration:none">${e(line.text)} <span style="color:${accent}">${rtl ? "&larr;" : "&rarr;"}</span></a>` : e(line.text)) +
+          `</td></tr>`,
       )
-      .join('<hr style="border:none;border-top:1px solid #e5e7eb">'),
-    "</body></html>",
+      .join("");
+    const button = part.button
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 6px" align="${align}"><tr><td style="background:${accent};border-radius:10px">` +
+        `<a href="${e(part.button.href)}" style="display:inline-block;padding:12px 22px;font-family:${font};font-size:15px;font-weight:bold;color:${onAccent};text-decoration:none">${e(part.button.text)}</a></td></tr></table>` +
+        `<div style="clear:both;font-family:${font};font-size:12px;color:${MUTED};text-align:${align};padding-top:6px">${e(part.button.href)}</div>`
+      : "";
+    const note = part.settings
+      ? `<a href="${e(part.settings)}" style="color:${MUTED}">${e(part.footer)}</a>`
+      : e(part.footer);
+    return (
+      `<tr><td dir="${rtl ? "rtl" : "ltr"}" lang="${part.locale}" style="padding:28px 32px;text-align:${align}">` +
+      `<div style="font-family:${font};font-size:20px;line-height:1.35;font-weight:bold;color:${INK};margin:0 0 12px">${e(part.heading)}</div>` +
+      (rows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>` : "") +
+      button +
+      `<div style="font-family:${font};font-size:13px;line-height:1.5;color:${MUTED};margin-top:18px">${note}</div>` +
+      `</td></tr>`
+    );
+  };
+
+  const site = brand?.origin ? brand.origin.replace(/^https?:\/\//, "") : null;
+  const html = [
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>`,
+    `<body style="margin:0;padding:0;background:${PAGE}">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE}"><tr><td align="center" style="padding:24px 12px">`,
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${LINE}">`,
+    `<tr><td style="background:${head};padding:20px 32px">${header}</td></tr>`,
+    parts.map(section).join(`<tr><td style="padding:0 32px"><div style="border-top:1px solid ${LINE};height:1px;line-height:1px">&nbsp;</div></td></tr>`),
+    `</table>`,
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px"><tr><td align="center" style="padding:18px 12px;font-family:${FONT.en};font-size:12px;line-height:1.6;color:${MUTED}">`,
+    `${mark ? `<img src="${e(mark)}" alt="" width="18" height="18" style="vertical-align:middle;border:0;border-radius:5px"> ` : ""}Qalam by Quantum1st${site ? ` &middot; <a href="${e(brand!.origin!)}" style="color:${MUTED}">${e(site)}</a>` : ""}`,
+    `</td></tr></table>`,
+    `</td></tr></table></body></html>`,
   ].join("");
   const text = parts
     .map((part) =>
-      [part.heading, "", ...part.lines.map((line) => `- ${line.text}${line.href ? `: ${line.href}` : ""}`), "", `${part.footer}${part.settings ? ` ${part.settings}` : ""}`].join("\n"),
+      [
+        part.heading,
+        "",
+        ...part.lines.map((line) => `- ${line.text}${line.href ? `: ${line.href}` : ""}`),
+        ...(part.button ? ["", `${part.button.text}: ${part.button.href}`] : []),
+        "",
+        `${part.footer}${part.settings ? ` ${part.settings}` : ""}`,
+      ].join("\n"),
     )
     .join("\n\n———\n\n");
   return { subject: parts.map((part) => part.subject).join(" · "), html, text };
 }
 
 /** Design §10: one email per batch, linking to both languages of the dashboard. */
-export function renderBatch(batch: Batch, origin: string | null): { subject: string; html: string; text: string } {
+export function renderBatch(batch: Batch, origin: string | null, brand: EmailBrand | null = null): { subject: string; html: string; text: string } {
   return compose(
     LOCALES.map((locale) => {
       const t = translator(locale, "Email");
@@ -115,20 +192,33 @@ export function renderBatch(batch: Batch, origin: string | null): { subject: str
         subject: t(`subject.${batch.audience}`, { count, n: String(count) }),
         heading: t(`heading.${batch.audience}`),
         lines,
+        button: origin ? { text: t(`button.${batch.audience}`), href: `${origin}/${locale}${batch.audience === "reviewers" ? "/review" : ""}` } : null,
         footer: t("footer"),
         settings: href("/notifications"),
       };
     }),
+    brand,
+    origin,
   );
 }
 
 /** M5b: an Admin's test email, in the notification emails' format, so it shows how those arrive. */
-export function renderTestEmail(): { subject: string; html: string; text: string } {
+export function renderTestEmail(brand: EmailBrand | null = null, origin: string | null = null): { subject: string; html: string; text: string } {
   return compose(
     LOCALES.map((locale) => {
       const t = translator(locale, "Email.test");
-      return { locale, subject: t("subject"), heading: t("heading"), lines: [{ text: t("body"), href: null }], footer: t("footer"), settings: null };
+      return {
+        locale,
+        subject: t("subject"),
+        heading: t("heading"),
+        lines: [{ text: t("body"), href: null }],
+        button: origin ? { text: t("button"), href: `${origin}/${locale}/notifications` } : null,
+        footer: t("footer"),
+        settings: null,
+      };
     }),
+    brand,
+    origin,
   );
 }
 
@@ -142,7 +232,7 @@ export function renderTestEmail(): { subject: string; html: string; text: string
  */
 export function renderAccountEmail(
   kind: "invitation" | "reset" | "added",
-  input: { appUrl: string; token?: string; role?: Role; client?: string },
+  input: { appUrl: string; token?: string; role?: Role; client?: string; brand?: EmailBrand | null },
 ): { subject: string; html: string; text: string } {
   const path = kind === "invitation" ? "invitation" : kind === "reset" ? "reset-password" : "";
   return compose(
@@ -150,8 +240,10 @@ export function renderAccountEmail(
       const t = translator(locale, `Email.${kind}`);
       const role = input.role ? translator(locale, "Shell.role")(input.role) : "";
       const href = input.token ? `${input.appUrl}/${locale}/${path}?token=${encodeURIComponent(input.token)}` : `${input.appUrl}/${locale}`;
-      const values = { role, client: input.client ?? "" };
-      return { locale, subject: t("subject", values), heading: t("heading", values), lines: [{ text: t("link", values), href }], footer: t("footer"), settings: null };
+      const values = { role, client: input.client || "none" };
+      return { locale, subject: t("subject", values), heading: t("heading", values), lines: [], button: { text: t("link", values), href }, footer: t("footer"), settings: null };
     }),
+    input.brand ?? null,
+    input.appUrl,
   );
 }
