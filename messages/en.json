@@ -680,7 +680,8 @@
         "list": "List",
         "faq": "FAQ",
         "quote": "Quote",
-        "table": "Table"
+        "table": "Table",
+        "date": "Publish date"
       },
       "fieldLabels": {
         "url": "Site address",
@@ -688,7 +689,10 @@
         "secret": "Password or token",
         "postType": "Post type",
         "collection": "Collection",
-        "publishAs": "Articles appear on the site as"
+        "publishAs": "Articles appear on the site as",
+        "siteUrl": "Website address",
+        "defaultCategory": "Default category",
+        "articlePath": "Article path on the website"
       },
       "fieldOptions": {
         "publish": "Published (live at once)",
