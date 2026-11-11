@@ -665,6 +665,7 @@
         "locale": "Arabic locale of the same entry"
       },
       "mapKeys": {
+        "body": "Article body",
         "title": "Title",
         "slug": "Slug",
         "subtitle": "Subtitle",

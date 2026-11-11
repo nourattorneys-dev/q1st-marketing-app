@@ -283,7 +283,7 @@ export function WebsiteSettingsForm({ locale, saved, types, lastChecked }: Props
             <FieldMessage field="arabic.mode" message={errors.byField["arabic.mode"]} />
           </div>
         </div>
-        {form.bodyFormat === "blocks" && (
+        {form.bodyFormat === "blocks" && ((adapter?.blockTypes?.length ?? 0) > 0 || Object.keys(form.blockMap).length > 0) && (
           <MapEditor
             testId="block-map"
             title={t("blockMap")}
