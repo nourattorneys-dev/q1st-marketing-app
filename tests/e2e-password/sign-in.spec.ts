@@ -12,6 +12,11 @@ test("signs in with email and password, stays signed in, and signs out (spec M5c
   await signInWithPassword(page, "Admin@Example.com");
   await expect(page).toHaveURL(/\/en$/);
   await expect(page.getByTestId("user-name")).toHaveText("Sara Admin");
+  // The browser tab names the client, so several open dashboards are told apart.
+  await expect(page).toHaveTitle("Fakher & Co · Qalam");
+  await page.goto("/ar");
+  await expect(page).toHaveTitle("Fakher & Co · قلم");
+  await page.goto("/en");
   expect((await context.cookies()).find((cookie) => cookie.name === "session")).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/" });
   await page.reload();
   await expect(page.getByTestId("user-name")).toHaveText("Sara Admin");

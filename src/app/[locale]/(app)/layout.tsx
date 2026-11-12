@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClientBrandStyle } from "@/components/brand/client-brand";
 import { Splash } from "@/components/brand/splash";
 import { Footer } from "@/components/shell/footer";
@@ -7,6 +8,15 @@ import { ServiceBanner } from "@/components/shell/service-banner";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { asAppLocale } from "@/i18n/locales";
+import { tabClientName } from "@/lib/tenancy/title";
+
+/** The browser tab names the client ("Fakher & Co · Qalam"), so several open dashboards are told apart. */
+export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Meta" });
+  const client = await tabClientName();
+  return { title: client ? t("clientTitle", { client }) : t("title") };
+}
 
 export default async function AppLayout({ children, params }: LayoutProps<"/[locale]">) {
   const locale = asAppLocale((await params).locale);

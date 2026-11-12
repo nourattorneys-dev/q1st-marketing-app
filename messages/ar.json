@@ -1,6 +1,7 @@
 {
   "Meta": {
-    "title": "Qalam"
+    "title": "Qalam",
+    "clientTitle": "{client} · قلم"
   },
   "Shell": {
     "brand": "قلم",
