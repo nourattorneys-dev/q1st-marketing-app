@@ -235,7 +235,8 @@ export const PostSchema = z.object({
   status: z.string(),
   topic: z.string().nullish(),
   tone: z.string().nullish(),
-  title: z.string(),
+  // Empty while the AI is still writing it (an article, or its translation): shown by its topic until then.
+  title: z.string().nullish(),
   subtitle: z.string().nullish(),
   slug: z.string().nullish(),
   metaTitle: z.string().nullish(),
@@ -272,7 +273,7 @@ export const PostSchema = z.object({
   updatedAt: isoDateTime,
   version: z.number().int(),
   actions: list(z.string()), // GET …/posts/{id} returns the allowed actions
-}).transform(viaApp);
+}).transform((post) => viaApp({ ...post, title: post.title || post.topic || "" }));
 export type Post = z.output<typeof PostSchema>;
 export const PostsSchema = z.array(PostSchema);
 
