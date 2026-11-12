@@ -15,7 +15,13 @@ export function parseItems<T extends z.ZodType>(items: unknown[], schema: T): { 
   for (const item of items) {
     const result = schema.safeParse(item);
     if (result.success) parsed.push(result.data);
-    else skipped += 1;
+    else {
+      skipped += 1;
+      // Which item and which fields: enough to find the cause in the server log, never the item's content.
+      const id = item && typeof item === "object" && "id" in item ? String((item as { id: unknown }).id) : "?";
+      const paths = result.error.issues.map((issue) => `${issue.path.join(".") || "(item)"}: ${issue.code}`).slice(0, 5);
+      console.warn(`[engine] skipped item ${id}: ${paths.join("; ")}`);
+    }
   }
   return { items: parsed, skipped };
 }
